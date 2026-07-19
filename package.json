@@ -1,0 +1,17 @@
+{
+  "name": "play.yaml-monorepo",
+  "version": "1.0.0",
+  "description": "Monorepo for the play.yaml project: Musician-Coder DSL to MIDI compiler.",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "test": "npm test --workspaces"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "license": "MIT"
+}

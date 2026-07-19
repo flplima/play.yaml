@@ -1,0 +1,32 @@
+# The spec's canonical reference score, now as a two-track YAML song.
+# Compile it with:  node index.js --input examples/my-score.play.yaml -o track.mid
+
+meta:
+  title: Reference Score
+  composer: spec example
+  bpm: 120
+options:
+  beatsPerMeasure: 4
+tracks:
+  - name: Lead
+    channel: 1
+    config:
+      root: C
+      scale: major
+      octave: 4
+    measures:
+      - "f :: 1 1 5 5"                          # Bar 1: forte quarter notes
+      - "     6 6 5- ~"                         # Bar 2: inherited forte, legato 5th, rest
+      - "p :: {4,4,3,3}. {2,2,1,1}. [1,3,5] ."  # Bar 3: piano, staccato 16ths, held chord
+      - "     5>! ~ ~ 1<<"                      # Bar 4: accented high note, jumps low
+  - name: Bass
+    channel: 2
+    config:
+      root: C
+      scale: major
+      octave: 2
+    measures:
+      - "1 ~ 5 ~"
+      - "6 ~ 5 ~"
+      - "4 ~ 1 ~"
+      - "5 ~ 1 ~"

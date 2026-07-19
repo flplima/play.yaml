@@ -1,0 +1,181 @@
+'use strict';
+
+/**
+ * yaml.ts — a tiny, zero-dependency YAML subset in TypeScript.
+ */
+
+interface Token {
+  indent: number;
+  text: string;
+}
+
+/** Split into significant lines: { indent, text } with comments/blank removed. */
+function tokenize(src: string): Token[] {
+  const out: Token[] = [];
+  for (const raw of src.split(/\r?\n/)) {
+    let inS = false;
+    let inD = false;
+    let s = '';
+    for (let k = 0; k < raw.length; k++) {
+      const c = raw[k];
+      if (inS) {
+        s += c;
+        if (c === "'") inS = false;
+        continue;
+      }
+      if (inD) {
+        s += c;
+        if (c === '"' && raw[k - 1] !== '\\') inD = false;
+        continue;
+      }
+      if (c === "'") {
+        inS = true;
+        s += c;
+        continue;
+      }
+      if (c === '"') {
+        inD = true;
+        s += c;
+        continue;
+      }
+      if (c === '#' && (k === 0 || /\s/.test(raw[k - 1]))) break; // comment
+      s += c;
+    }
+    const trimmedRight = s.replace(/\s+$/, '');
+    if (trimmedRight.trim() === '') continue;
+    const indent = trimmedRight.length - trimmedRight.replace(/^\s+/, '').length;
+    out.push({ indent, text: trimmedRight.slice(indent) });
+  }
+  return out;
+}
+
+function isSeqLine(text: string): boolean {
+  return text[0] === '-' && (text.length === 1 || text[1] === ' ');
+}
+
+function isKeyLine(text: string): boolean {
+  if (text[0] === '"' || text[0] === "'") return false;
+  return /^[^:'"]+:(\s|$)/.test(text);
+}
+
+function splitKey(text: string): { key: string; rest: string } {
+  const m = /^([^:]+):(?:\s+([\s\S]*))?$/.exec(text);
+  if (!m) return { key: text.trim(), rest: '' };
+  return { key: m[1].trim(), rest: m[2] != null ? m[2].trim() : '' };
+}
+
+function parseScalar(s: string): any {
+  if (s === '' || s === '~' || s === 'null') return null;
+  if (s === 'true') return true;
+  if (s === 'false') return false;
+  if (s[0] === '"' && s[s.length - 1] === '"') return JSON.parse(s);
+  if (s[0] === "'" && s[s.length - 1] === "'") return s.slice(1, -1).replace(/''/g, "'");
+  if (/^-?\d+$/.test(s)) return parseInt(s, 10);
+  if (/^-?\d*\.\d+$/.test(s)) return parseFloat(s);
+  return s;
+}
+
+export function parseYaml(src: string): any {
+  const toks = tokenize(src);
+  let pos = 0;
+
+  function parseNode(indent: number): any {
+    const t = toks[pos];
+    if (!t) return null;
+    return isSeqLine(t.text) ? parseSeq(indent) : parseMap(indent);
+  }
+
+  function parseMap(indent: number): any {
+    const map: Record<string, any> = {};
+    while (pos < toks.length && toks[pos].indent === indent && !isSeqLine(toks[pos].text)) {
+      const { key, rest } = splitKey(toks[pos].text);
+      pos++;
+      if (rest !== '') {
+        map[key] = parseScalar(rest);
+      } else if (pos < toks.length && toks[pos].indent > indent) {
+        map[key] = parseNode(toks[pos].indent);
+      } else {
+        map[key] = null;
+      }
+    }
+    return map;
+  }
+
+  function parseSeq(indent: number): any[] {
+    const arr: any[] = [];
+    while (pos < toks.length && toks[pos].indent === indent && isSeqLine(toks[pos].text)) {
+      const t = toks[pos];
+      const after = t.text.slice(1).replace(/^\s*/, '');
+      const contentIndent = indent + (t.text.length - after.length);
+      if (after === '') {
+        pos++;
+        arr.push(pos < toks.length && toks[pos].indent > indent ? parseNode(toks[pos].indent) : null);
+      } else if (isKeyLine(after)) {
+        toks[pos] = { indent: contentIndent, text: after }; // re-anchor the dash line as a map key
+        arr.push(parseMap(contentIndent));
+      } else {
+        arr.push(parseScalar(after));
+        pos++;
+      }
+    }
+    return arr;
+  }
+
+  return parseNode(toks.length ? toks[0].indent : 0);
+}
+
+// ---------------------------------------------------------------------------
+// Emit (targeted at the song schema — not a general YAML dumper)
+// ---------------------------------------------------------------------------
+
+function q(str: string): string {
+  return JSON.stringify(String(str)); // safe double-quoted scalar
+}
+
+function scalarNeedsQuote(v: any): boolean {
+  return !/^[A-Za-z0-9#][A-Za-z0-9#.\/ ()-]*$/.test(String(v)) || /:\s/.test(String(v));
+}
+
+function emitScalar(v: any): string {
+  if (v == null) return '~';
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+  return scalarNeedsQuote(v) ? q(v) : String(v);
+}
+
+export function emitMap(obj: Record<string, any>, indent: number): string {
+  const pad = ' '.repeat(indent);
+  let out = '';
+  for (const [k, v] of Object.entries(obj)) {
+    if (v === undefined) continue;
+    if (Array.isArray(v)) {
+      out += `${pad}${k}:\n${emitSeq(v, indent + 2)}`;
+    } else if (v && typeof v === 'object') {
+      out += `${pad}${k}:\n${emitMap(v, indent + 2)}`;
+    } else {
+      out += `${pad}${k}: ${emitScalar(v)}\n`;
+    }
+  }
+  return out;
+}
+
+export function emitSeq(arr: any[], indent: number): string {
+  const pad = ' '.repeat(indent);
+  let out = '';
+  for (const item of arr) {
+    if (item && typeof item === 'object' && !Array.isArray(item)) {
+      const body = emitMap(item, indent + 2);
+      out += pad + '- ' + body.slice(indent + 2); // first key sits after the dash
+    } else {
+      out += `${pad}- ${emitScalar(item)}\n`;
+    }
+  }
+  return out;
+}
+
+/** Serialize a song doc { meta, options, tracks } to YAML text. */
+export function stringifySong(doc: any, header?: string): string {
+  let out = '';
+  if (header) out += header.replace(/^/gm, '# ').replace(/# $/gm, '#') + '\n\n';
+  out += emitMap(doc, 0);
+  return out;
+}
