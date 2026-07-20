@@ -43,6 +43,7 @@ export default function App() {
   const [playing, setPlaying] = useState(false);
   const [loop, setLoop] = useState(true);
   const [metronome, setMetronome] = useState(false);
+  const [showPanel, setShowPanel] = useState(true);
   // The player polls this ref every beat, so toggling works mid-playback.
   const metronomeRef = useRef(false);
 
@@ -293,6 +294,19 @@ export default function App() {
         >
           {playing ? '■ Stop' : '▶ Play'}
         </button>
+
+        <button
+          className={
+            showPanel
+              ? 'rounded border border-zinc-600 bg-zinc-800 px-2 py-1 text-xs text-zinc-200'
+              : 'rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-400 hover:bg-zinc-800'
+          }
+          aria-pressed={showPanel}
+          onClick={() => setShowPanel((v) => !v)}
+          title={showPanel ? 'Hide the MIDI panel' : 'Show the MIDI panel'}
+        >
+          ▤
+        </button>
       </header>
 
       <main className="flex min-h-0 flex-1">
@@ -307,12 +321,14 @@ export default function App() {
             extensions={[yaml(), playingNoteExtension]}
           />
         </div>
-        <MidiPanel
-          samples={samples}
-          midi={midi}
-          routes={routes}
-          onRouteChange={handleRouteChange}
-        />
+        {showPanel && (
+          <MidiPanel
+            samples={samples}
+            midi={midi}
+            routes={routes}
+            onRouteChange={handleRouteChange}
+          />
+        )}
       </main>
 
       <footer className="flex items-center gap-3 border-t border-zinc-800 bg-zinc-900 px-4 py-1.5 text-xs">

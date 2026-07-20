@@ -100,6 +100,36 @@ check('unknown tokens fall back to rests', () => {
   assert.strictEqual(parsePlay('c xyz9 e ~').length, 2);
 });
 
+console.log('\nheld notes:');
+check('_ prolongs the previous note instead of striking a new one', () => {
+  const tl = parsePlay('c _ _ _');
+  assert.strictEqual(tl.length, 1);
+  assert.strictEqual(tl[0].duration, 4 * 0.9);
+});
+check('a rest still cuts the sound, and cannot be prolonged across', () => {
+  const tl = parsePlay('c ~ _ _');
+  assert.strictEqual(tl.length, 1);
+  assert.strictEqual(tl[0].duration, 0.9);
+});
+check('_ ties across the barline', () => {
+  const tl = parsePlay(['c ~ ~ ~'.replace('~ ~ ~', '_ _ _'), '_ _ _ _']);
+  assert.strictEqual(tl.length, 1);
+  assert.strictEqual(tl[0].duration, 8 * 0.9);
+});
+check('a chord is prolonged as a whole', () => {
+  const tl = parsePlay('[c e g] _ ~ ~');
+  assert.strictEqual(tl.length, 3);
+  assert.deepStrictEqual(tl.map((n) => n.duration), [1.8, 1.8, 1.8]);
+});
+check('inside a group, _ prolongs only the note before it', () => {
+  const tl = parsePlay('{c d _ _} ~ ~ ~');
+  assert.deepStrictEqual(tl.map((n) => [n.time, n.duration]), [[0, 0.225], [0.25, 0.675]]);
+});
+check('_ picks up the gate in force when it lands', () => {
+  const tl = parsePlay(['c _ _ _'], { gate: 1 });
+  assert.strictEqual(tl[0].duration, 4);
+});
+
 console.log('\nscale degrees:');
 check('degree 1 = scale root at the track octave (g2 = 1)', () => {
   const tl = parsePlay('1 2 3 4', { scale: 'g major', octave: 2 });

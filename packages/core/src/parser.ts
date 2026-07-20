@@ -22,6 +22,8 @@
  * whitespace-separated tokens: 4 tokens in 4/4 are quarter notes, 8 tokens
  * are eighth notes. Tokens recurse:
  *   ~          rest
+ *   _          hold — prolongs the previous note through this slot (a tie),
+ *              at any depth and across barlines
  *   c  eb3     note — letter, optional #/b, optional octave (default 4)
  *   1  8  4#   scale degree in the track's `scale` (default "c major"):
  *              1 = root at the track's `octave`, 8 = root an octave up,
@@ -146,6 +148,9 @@ export const DEFAULT_SAMPLE = 'piano';
 export const DEFAULT_SCALE = 'c major';
 export const DEFAULT_OCTAVE = 4;
 export const DEFAULT_VELOCITY = 90;
+
+/** The token that prolongs the previous note rather than striking a new one. */
+export const HOLD = '_';
 
 /** Fraction of a slot a note actually sounds, so repeated notes re-articulate. */
 export const DEFAULT_GATE = 0.9;
@@ -702,6 +707,8 @@ interface EmitCtx {
   gate: number;
   /** Active crescendo/diminuendo; notes inside the span interpolate. */
   velocityRamp?: { fromBeat: number; toBeat: number; from: number; to: number };
+  /** The notes a `_` would prolong, and how much time they cover so far. */
+  held?: { events: TimelineEvent[]; span: number } | null;
 }
 
 const clampVelocity = (v: number) => Math.max(1, Math.min(127, Math.round(v)));
@@ -721,12 +728,33 @@ function velocityAt(ctx: EmitCtx, beat: number): number {
  */
 function placeToken(token: string, start: number, span: number, ctx: EmitCtx): void {
   const tok = token.trim();
-  if (!tok || tok === '~') return;
+  if (!tok) return;
+
+  // A rest cuts the sound off, so nothing can be prolonged across it.
+  if (tok === '~') {
+    ctx.held = null;
+    return;
+  }
+
+  // `_` prolongs whatever sounded last instead of striking a new note — a tie.
+  // It works at any depth and across barlines.
+  if (tok === HOLD) {
+    if (ctx.held) {
+      ctx.held.span += span;
+      const duration = round(ctx.held.span * ctx.gate);
+      for (const event of ctx.held.events) event.duration = duration;
+    }
+    return;
+  }
 
   if (tok[0] === '[' && tok[tok.length - 1] === ']') {
+    const before = ctx.events.length;
     for (const part of splitTopLevel(tok.slice(1, -1))) {
       placeToken(part, start, span, ctx);
     }
+    // The whole chord is prolonged together.
+    const chord = ctx.events.slice(before);
+    ctx.held = chord.length ? { events: chord, span } : null;
     return;
   }
 
@@ -742,13 +770,15 @@ function placeToken(token: string, start: number, span: number, ctx: EmitCtx): v
     ? degreeToMidi(tok, ctx.scale, ctx.octave)
     : noteToMidi(tok, ctx.octave);
   if (midi === null) return; // unknown token → treat as a rest, stay robust
-  ctx.events.push({
+  const event: TimelineEvent = {
     time: round(start),
     pitch: midiToName(midi),
     duration: round(span * ctx.gate),
     velocity: velocityAt(ctx, start),
     midi,
-  });
+  };
+  ctx.events.push(event);
+  ctx.held = { events: [event], span };
 }
 
 function playItems(play: PlayInput): (string | PlayDirective)[] {

@@ -105,6 +105,7 @@ Each string in the `play` array (or each line of a `play: |` multiline string) i
 
   Degrees climb past the octave on their own (`8` is the root an octave up, `15` two), so a comfortable convention is to let plain numbers cover the working range — roughly `1`–`16`, two octaves — and reach for a modifier only on outliers, where `5-` reads far better than the equivalent `-2`. Scales take any Greek mode alongside `major`/`minor` (`g lydian`, `d dorian`), plus non-diatonic scales: `harmonic minor`, `melodic minor`, `harmonic major`, `octatonic`, `bebop dominant`, `bebop major`. Multi-word abbreviations work: `g harm min`, `c bebop dom`.
 - `~` — a rest
+- `_` — a hold: prolongs the note before it through this slot, like a tie. It works at any nesting depth and across barlines, so `"c _ _ _"` is one note filling the measure and `"[c e g] _"` prolongs the whole chord. A `~` cuts the sound, so nothing carries across a rest.
 - `[c e g]` — a chord: all notes sound together for the whole slot
 - `{c d}` — a group: the slot is subdivided equally among its elements
 

@@ -99,7 +99,7 @@ play:
   - set: g maj, oct 2
   - set: crescendo to f over 2, allargando over 2   # broaden into the fermata closing Part 1
   - 21: "{4- 2 5 6} {7 5 6 7} {4- 2 5 6} {7 5 6 7}"
-  - 22: "{4- 2 5 7} {9 11# 12 ~} {~ 2 3 4} {5 6 7 8}" # the run to the fermata: the midpoint (4# = a passing c#)
+  - 22: "{4- 2 5 7} {9 11# 12 _} {_ 2 3 4} {5 6 7 8}" # the run to the fermata: the midpoint (4# = a passing c#)
 
   # ══ PART 2 (mm.23–38) — one long D7 chord ══
   # Winold: a "dominant prolongation" — sixteen bars of pure dominant
@@ -119,7 +119,7 @@ play:
   # open-string pedal alternates with moving notes (double pedal, d + a).
   - set: g maj
   - set: crescendo to f over 8   # the long climb over the pedal begins
-  - 29: "{5- ~ 11 10} {9 8 7 6} {5 11 10 9} {8 7 6 5}"
+  - 29: "{5- _ 11 10} {9 8 7 6} {5 11 10 9} {8 7 6 5}"
   - 30: "{4 10 9 8} {7 6 5 4} {3 9 8 7} {6 5 4 3}"
   - set: detached   # bariolage: crisp separate bows so the string crossing speaks
   - 31: "{2 8 7 6} {7 9 5 9} {6 9 7 9} {8 9 6 9}" # bariolage begins
@@ -139,9 +139,9 @@ play:
   # ══ THE CLOSE (mm.39–42) ══
   # Tonic six-four chord, then D7 with a 4–3 suspension, and at last the
   # plain G major chord — tension resolved.
-  - set: tenuto, f, allargando to adagio over 3, ordinario   # the close broadens: a warm bow, slowing to the end
+  - set: tenuto, f, allargando to andante over 3, ordinario   # the close broadens: a warm bow, easing off
   - 39: "{15 10 5 10} {15 10 15 10} {15 10 5 10} {15 10 15 10}"
   - 40: "{15 9 5 9} {15 9 15 9} {15 9 5 9} {15 9 15 9}"
   - 41: "{14 11 5 11} {14 11 14 11} {14 11 5 11} {14 11 14 11}"
-  - set: maestoso, molto vibrato   # let the last chord ring, full vibrato
+  - set: maestoso, molto vibrato, legato, allargando to largo over 1   # the last chord: rings on, stretching right out
   - 42: "[1 10 15]" # finis
