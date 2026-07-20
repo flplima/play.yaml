@@ -227,6 +227,17 @@ play:
   - "{0 4 5 4} {5 4 5 4} {0 4 5 4} {5 4 5 4}"
 ```
 
+An expression mark can be written as a bare string in the play list, sitting between measures the way a marking sits in a score:
+
+```yaml
+play:
+  - 1: "1 2 3 4"
+  - "dolce, crescendo to f over 2"
+  - 2: "5 6 7 8"
+```
+
+`- set: dolce` still works and is never ambiguous, so reach for it if you prefer. A **measure wins any tie**: a string whose tokens all read as notes stays a measure, so `"f"` is the note F rather than *forte* — write `"forte"` or `set: f` for the dynamic.
+
 Play-list items can also be **numbered measures** — the key states the 1-based measure the string occupies, so scores stay labeled and gaps become silence:
 
 ```yaml

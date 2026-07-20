@@ -554,8 +554,8 @@ export function parseSet(
 
     const named = new RegExp(`^([a-z][a-z0-9_]*)\\s+(${NUM})$`, 'i').exec(clause);
     const namedSpec = named && resolveControl(controls, named[1].toLowerCase());
-    if (named && namedSpec && controls[named[1].toLowerCase()] !== undefined) {
-      addCc(namedSpec.cc, Number(named[2]));
+    if (namedSpec) {
+      addCc(namedSpec.cc, Number(named![2]));
       continue;
     }
 
@@ -656,6 +656,34 @@ export function measureToBeats(measure: string | number | undefined): number {
     throw new Error(`Invalid measure "${measure}" — expected "4/4" or a beat count.`);
   }
   return parseInt(m[1], 10) * (4 / parseInt(m[2], 10));
+}
+
+/** Could this token appear in a measure — a note, degree, rest, hold or group? */
+function isMeasureToken(token: string): boolean {
+  if (token === '~' || token === HOLD) return true;
+  if (token[0] === '{' || token[0] === '[' || isSetToken(token)) return true;
+  if (/^-?\d+(#|b)?[+^-]*$/.test(token)) return true; // scale degree
+  return noteToMidi(token) !== null;
+}
+
+/**
+ * Is this play-list string an expression mark rather than a measure?
+ *
+ * Measures win any tie: a string whose tokens all read as notes is always a
+ * measure, so `"f"` stays the note F rather than becoming forte (write
+ * `"forte"`, or `set: f`, when you mean the dynamic).
+ */
+export function isDirectiveString(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  const tokens = splitTopLevel(trimmed);
+  if (tokens.length > 0 && tokens.every(isMeasureToken)) return false;
+  try {
+    parseSet(trimmed);
+    return true;
+  } catch {
+    return false; // neither — leave it to the measure parser to complain
+  }
 }
 
 /** Is this token an inline `||…||` set directive? */
@@ -802,7 +830,7 @@ export function playMeasureEntries(play: PlayInput | undefined): PlayMeasureEntr
   let m = 0;
   const push = (raw: string) => {
     const text = raw.trim();
-    if (!text) return;
+    if (!text || isDirectiveString(text)) return; // expression marks take no time
     out.push({ text, index: m });
     if (splitTopLevel(text).some((t) => !isSetToken(t))) m++;
   };
@@ -915,6 +943,12 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
   const compileMeasure = (raw: string) => {
     const measure = raw.trim();
     if (!measure) return;
+    // A bare expression mark ("legato", "allargando over 2") sits between
+    // measures like a marking in a score, and takes no time.
+    if (isDirectiveString(measure)) {
+      applySet(measure, m * measureBeats);
+      return;
+    }
     const tokens = splitTopLevel(measure);
     const noteTokens = tokens.filter((t) => !isSetToken(t));
     if (noteTokens.length === 0) {

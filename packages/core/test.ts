@@ -377,8 +377,9 @@ check('an inline ||…|| control lands mid-measure', () => {
 check('cc values clamp to 0..127', () => {
   assert.deepStrictEqual(parseSet('cc74 300').ccs, [{ cc: 74, value: 127 }]);
 });
-check('unknown names still throw', () => {
-  assert.throws(() => parseSet('bow 30'), /Unknown set clause/);
+check('a numeric control uses the conventional CC; unknown names still throw', () => {
+  assert.deepStrictEqual(parseSet('bow 30').ccs, [{ cc: 74, value: 30 }]);
+  assert.throws(() => parseSet('wobble 30'), /Unknown set clause/);
 });
 
 console.log('\ntempo changes:');
@@ -503,6 +504,37 @@ check('a character mark as dynamic: sets both, and children inherit', () => {
 check('diminuendo without a target simply fades', () => {
   const tl = parsePlay(['c c c c', { set: 'diminuendo over 1' }, 'c c c c']);
   assert.ok(tl[7].velocity < tl[4].velocity, 'fading');
+});
+
+console.log('\nbare expression marks:');
+check('a bare string of expression words is a mark, not a measure', () => {
+  const song = compileDoc({ play: ['c ~ ~ ~', 'legato', 'c ~ ~ ~'] });
+  assert.strictEqual(song.lengthBeats, 8); // the mark took no time
+  assert.deepStrictEqual(song.tracks[0].timeline.map((n) => [n.time, n.duration]),
+    [[0, 0.9], [4, 1.05]]);
+});
+check('multi-clause marks work bare too', () => {
+  const song = compileDoc({
+    tempo: 100,
+    play: ['c ~ ~ ~', 'ff, sul ponticello, allargando to adagio over 2', 'c ~ ~ ~'],
+  });
+  assert.strictEqual(song.tracks[0].timeline[1].velocity, 112);
+  assert.deepStrictEqual(song.tempoMap, [{ time: 4, bpm: 66, rampBeats: 8 }]);
+  assert.deepStrictEqual(song.tracks[0].controls, [{ time: 4, cc: 74, value: 114 }]);
+});
+check('a measure wins any tie: "f" is the note, not forte', () => {
+  const song = compileDoc({ play: ['f'] });
+  assert.strictEqual(song.tracks[0].timeline.length, 1);
+  assert.strictEqual(song.tracks[0].timeline[0].pitch, 'F4');
+  assert.strictEqual(song.lengthBeats, 4);
+});
+check('marks do not shift the numbering of later measures', () => {
+  const song = compileDoc({ play: ['c ~ ~ ~', 'legato', { 3: 'e ~ ~ ~' }] });
+  assert.deepStrictEqual(song.tracks[0].timeline.map((n) => n.time), [0, 8]);
+});
+check('gibberish is still treated as a measure, not a mark', () => {
+  const song = compileDoc({ play: ['c ~ ~ ~', 'xyzzy plugh', 'c ~ ~ ~'] });
+  assert.strictEqual(song.lengthBeats, 12); // three measures, the middle silent
 });
 
 console.log('\nnumbered measures:');
