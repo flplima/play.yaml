@@ -340,9 +340,29 @@ export const SCALES: Record<string, number[]> = {
   'melodic minor': [0, 2, 3, 5, 7, 9, 11],
   'harmonic major': [0, 2, 4, 5, 7, 8, 11],
   octatonic: [0, 1, 3, 4, 6, 7, 9, 10], // diminished, half-whole
+  diminished: [0, 2, 3, 5, 6, 8, 9, 11], // whole-half — the scale of a °7 chord
+  'whole tone': [0, 2, 4, 6, 8, 10],
   'bebop dominant': [0, 2, 4, 5, 7, 9, 10, 11],
   'bebop major': [0, 2, 4, 5, 7, 8, 9, 11],
 };
+
+/**
+ * Chord quality → the scale it implies, in the chord-scale sense: the notes a
+ * player would draw on while that chord sounds. Longest suffix wins, so "m7b5"
+ * is matched before "m7" and "m".
+ */
+const CHORD_SCALES: [RegExp, string][] = [
+  [/^(m7b5|min7b5|ø7?|halfdim)$/i, 'locrian'],
+  [/^(dim7?|°7?|o7)$/i, 'diminished'],
+  [/^(m|min|-)(maj|M)7$/i, 'harmonic minor'],
+  [/^(m|min|-)(6|69|7|9|11|13)/i, 'dorian'], // m7 and m6 are dorian territory
+  [/^(m|min|-)/i, 'aeolian'],
+  [/^(maj|M|Δ)(7|9|13)?(#11)$/i, 'lydian'],
+  [/^(maj|M|Δ)(7|9|13)/i, 'ionian'],
+  [/^(aug|\+)/i, 'whole tone'],
+  [/^(7|9|11|13|sus|7sus)/i, 'mixolydian'],
+  [/^(6|69|add9|)$/i, 'ionian'], // plain triad or 6/add9
+];
 
 export interface ScaleInfo {
   rootPc: number;
@@ -354,8 +374,26 @@ export interface ScaleInfo {
  * class + intervals. Any Greek mode name works alongside major/minor, and
  * unique prefixes of at least 3 letters abbreviate ("g mix", "c lyd").
  */
+/**
+ * A chord symbol → the scale it implies ("Dm7" → D dorian, "A7" → A
+ * mixolydian, "G#dim7" → G# diminished). A slash bass is accepted and
+ * ignored: degrees stay measured from the chord's root.
+ */
+export function chordToScale(chord: string): ScaleInfo | null {
+  const m = /^([a-gA-G])(#|b)?([^/\s]*)(?:\/[a-gA-G][#b]?)?$/.exec(chord.trim());
+  if (!m) return null;
+  const quality = m[3].replace(/[()]/g, '');
+  const found = CHORD_SCALES.find(([re]) => re.test(quality));
+  if (!found) return null;
+  let rootPc = PITCH_CLASSES[m[1].toLowerCase()];
+  if (m[2] === '#') rootPc += 1;
+  if (m[2] === 'b') rootPc -= 1;
+  return { rootPc: ((rootPc % 12) + 12) % 12, intervals: SCALES[found[1]] };
+}
+
 export function parseScale(scale: string | undefined): ScaleInfo {
-  const m = /^([a-gA-G])(#|b)?((?:\s+[a-z]+)*)$/i.exec(String(scale ?? DEFAULT_SCALE).trim());
+  const text = String(scale ?? DEFAULT_SCALE).trim();
+  const m = /^([a-gA-G])(#|b)?((?:\s+[a-z]+)*)$/i.exec(text);
   const mode = (m?.[3] || 'major').trim().toLowerCase().replace(/\s+/g, ' ');
   let intervals = m && SCALES[mode];
   if (m && !intervals) {
@@ -371,7 +409,13 @@ export function parseScale(scale: string | undefined): ScaleInfo {
     }
   }
   if (!m || !intervals) {
-    throw new Error(`Invalid scale "${scale}" — expected e.g. "g major", "a minor" or "g lydian".`);
+    // Not a scale name — it may be a chord symbol, which implies one.
+    const fromChord = chordToScale(text);
+    if (fromChord) return fromChord;
+    throw new Error(
+      `Invalid scale "${scale}" — expected a scale ("g major", "g lydian") or a ` +
+        `chord symbol ("Dm7", "A7", "G#dim7").`,
+    );
   }
   let rootPc = PITCH_CLASSES[m[1].toLowerCase()];
   if (m[2] === '#') rootPc += 1;
@@ -661,7 +705,9 @@ export function measureToBeats(measure: string | number | undefined): number {
 /** Could this token appear in a measure — a note, degree, rest, hold or group? */
 function isMeasureToken(token: string): boolean {
   if (token === '~' || token === HOLD) return true;
-  if (token[0] === '{' || token[0] === '[' || isSetToken(token)) return true;
+  if (token[0] === '{' || token[0] === '[') return true;
+  if (isSetToken(token) || isScaleToken(token)) return true;
+  if (/^_+\S/.test(token)) return true; // _1, __d3
   if (/^-?\d+(#|b)?[+^-]*$/.test(token)) return true; // scale degree
   return noteToMidi(token) !== null;
 }
@@ -691,9 +737,16 @@ export function isSetToken(token: string): boolean {
   return token.startsWith('||');
 }
 
-/** "||g lyd, oct up||" → "g lyd, oct up". */
+/** Is this token an inline `==…==` scale or chord change? */
+export function isScaleToken(token: string): boolean {
+  return token.startsWith('==');
+}
+
+/** "||g lyd, oct up||" → "g lyd, oct up"; "==Dm7==" → "Dm7". */
 export function setTokenBody(token: string): string {
-  return token.slice(2, token.endsWith('||') ? -2 : undefined).trim();
+  const width = isScaleToken(token) ? 2 : 2;
+  const closer = isScaleToken(token) ? '==' : '||';
+  return token.slice(width, token.endsWith(closer) ? -width : undefined).trim();
 }
 
 /**
@@ -710,9 +763,13 @@ export function splitTopLevel(text: string): string[] {
   };
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
-    if (depth === 0 && ch === '|' && text[i + 1] === '|') {
+    // `||…||` and `==…==` are single tokens however many spaces they contain.
+    const fence = depth === 0 && ((ch === '|' && text[i + 1] === '|') || (ch === '=' && text[i + 1] === '='))
+      ? ch + ch
+      : null;
+    if (fence) {
       flush();
-      const close = text.indexOf('||', i + 2);
+      const close = text.indexOf(fence, i + 2);
       const end = close === -1 ? text.length : close + 2;
       out.push(text.slice(i, end));
       i = end - 1;
@@ -794,9 +851,16 @@ function placeToken(token: string, start: number, span: number, ctx: EmitCtx): v
     return;
   }
 
-  const midi = /^-?\d/.test(tok)
-    ? degreeToMidi(tok, ctx.scale, ctx.octave)
-    : noteToMidi(tok, ctx.octave);
+  // A leading `_` drops the note an octave, repeatable: `_1`, `__d3`. (A `_`
+  // on its own is the hold token, handled above.)
+  const under = /^(_+)(?=\S)/.exec(tok);
+  const core = under ? tok.slice(under[1].length) : tok;
+  const octavesDown = under ? under[1].length : 0;
+
+  const raw = /^-?\d/.test(core)
+    ? degreeToMidi(core, ctx.scale, ctx.octave)
+    : noteToMidi(core, ctx.octave);
+  const midi = raw === null ? null : raw - 12 * octavesDown;
   if (midi === null) return; // unknown token → treat as a rest, stay robust
   const event: TimelineEvent = {
     time: round(start),
@@ -832,7 +896,7 @@ export function playMeasureEntries(play: PlayInput | undefined): PlayMeasureEntr
     const text = raw.trim();
     if (!text || isDirectiveString(text)) return; // expression marks take no time
     out.push({ text, index: m });
-    if (splitTopLevel(text).some((t) => !isSetToken(t))) m++;
+    if (splitTopLevel(text).some((t) => !isSetToken(t) && !isScaleToken(t))) m++;
   };
   for (const item of playItems(play)) {
     if (item && typeof item === 'object') {
@@ -950,17 +1014,24 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
       return;
     }
     const tokens = splitTopLevel(measure);
-    const noteTokens = tokens.filter((t) => !isSetToken(t));
+    const isMark = (t: string) => isSetToken(t) || isScaleToken(t);
+    const noteTokens = tokens.filter((t) => !isMark(t));
     if (noteTokens.length === 0) {
       // A directive-only line changes state but is not a measure.
-      for (const tok of tokens) applySet(setTokenBody(tok), m * measureBeats);
+      for (const tok of tokens) {
+        if (isScaleToken(tok)) ctx.scale = parseScale(setTokenBody(tok));
+        else applySet(setTokenBody(tok), m * measureBeats);
+      }
       return;
     }
     const step = measureBeats / noteTokens.length;
     let slot = 0;
     for (const tok of tokens) {
       const at = m * measureBeats + slot * step;
-      if (isSetToken(tok)) {
+      if (isScaleToken(tok)) {
+        // `==Dm7==` / `==C mixolydian==` — re-key the degrees that follow.
+        ctx.scale = parseScale(setTokenBody(tok));
+      } else if (isSetToken(tok)) {
         applySet(setTokenBody(tok), at);
       } else {
         placeToken(tok, at, step, ctx);
@@ -1035,7 +1106,7 @@ function effectiveProps(node: TrackNode, inherited: TrackProps): TrackProps {
 function playedMeasureCount(play: PlayInput): number {
   let max = 0;
   for (const e of playMeasureEntries(play)) {
-    if (splitTopLevel(e.text).some((t) => !isSetToken(t))) max = Math.max(max, e.index + 1);
+    if (splitTopLevel(e.text).some((t) => !isSetToken(t) && !isScaleToken(t))) max = Math.max(max, e.index + 1);
   }
   return max;
 }

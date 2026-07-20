@@ -100,6 +100,51 @@ check('unknown tokens fall back to rests', () => {
   assert.strictEqual(parsePlay('c xyz9 e ~').length, 2);
 });
 
+console.log('\nchords as scales:');
+check('a chord symbol implies its chord-scale', () => {
+  assert.deepStrictEqual(midis(parsePlay('1 3 5 7', { scale: 'A7', octave: 3 })), [57, 61, 64, 67]);
+  // Dm7 is dorian: the 6th is B natural, not Bb
+  assert.deepStrictEqual(midis(parsePlay('6 ~ ~ ~', { scale: 'Dm7', octave: 3 })), [59]);
+  assert.deepStrictEqual(midis(parsePlay('6 ~ ~ ~', { scale: 'Dm', octave: 3 })), [58]);
+});
+check('half-diminished, diminished and augmented qualities', () => {
+  assert.deepStrictEqual(midis(parsePlay('1 3 5 7', { scale: 'Em7b5', octave: 3 })), [52, 55, 58, 62]);
+  assert.deepStrictEqual(midis(parsePlay('1 3 5 7', { scale: 'G#dim7', octave: 2 })), [44, 47, 50, 53]);
+  assert.deepStrictEqual(midis(parsePlay('1 3 ~ ~', { scale: 'Caug', octave: 4 })), [60, 64]);
+});
+check('a slash bass is accepted and degrees stay on the chord root', () => {
+  assert.deepStrictEqual(
+    midis(parsePlay('1 3 5 ~', { scale: 'Gm6/Bb', octave: 3 })),
+    midis(parsePlay('1 3 5 ~', { scale: 'Gm6', octave: 3 })),
+  );
+});
+check('==Dm7== re-keys the degrees mid-measure', () => {
+  const tl = parsePlay('==Dm== 1 ==A7== 1', { octave: 3 });
+  assert.deepStrictEqual(midis(tl), [50, 57]); // d3 then a3
+  assert.deepStrictEqual(times(tl), [0, 2]); // the marks take no slot
+});
+check('==C mixolydian== works as well as a chord', () => {
+  assert.deepStrictEqual(midis(parsePlay('==c mixolydian== 7 ~ ~ ~', { octave: 4 })), [70]);
+});
+
+console.log('\noctave-down prefix:');
+check('_ before a degree or note drops it an octave', () => {
+  assert.deepStrictEqual(midis(parsePlay('1 _1 __1 ~', { scale: 'd minor', octave: 3 })),
+    [50, 38, 26]);
+  assert.deepStrictEqual(midis(parsePlay('d3 _d3 ~ ~')), [50, 38]);
+});
+check('the prefix matches the existing suffix form', () => {
+  assert.deepStrictEqual(
+    midis(parsePlay('_5 ~ ~ ~', { scale: 'd minor', octave: 3 })),
+    midis(parsePlay('5- ~ ~ ~', { scale: 'd minor', octave: 3 })),
+  );
+});
+check('a lone _ is still the hold token', () => {
+  const tl = parsePlay('c _ _ _');
+  assert.strictEqual(tl.length, 1);
+  assert.strictEqual(tl[0].duration, 3.6);
+});
+
 console.log('\nheld notes:');
 check('_ prolongs the previous note instead of striking a new one', () => {
   const tl = parsePlay('c _ _ _');
