@@ -9,6 +9,45 @@ interface Token {
   text: string;
 }
 
+/**
+ * Fold literal block scalars (`key: |`) into single-line JSON-quoted scalars
+ * before tokenizing, so the line-oriented parser below never sees them.
+ */
+function foldBlockScalars(src: string): string {
+  const lines = src.split(/\r?\n/);
+  const out: string[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const m = /^(\s*)([^:#'"]+):\s*\|[+-]?\s*$/.exec(lines[i]);
+    if (!m) {
+      out.push(lines[i]);
+      i++;
+      continue;
+    }
+    const keyIndent = m[1].length;
+    const block: string[] = [];
+    let blockIndent = -1;
+    let j = i + 1;
+    while (j < lines.length) {
+      const line = lines[j];
+      if (line.trim() === '') {
+        block.push('');
+        j++;
+        continue;
+      }
+      const indent = line.length - line.replace(/^\s+/, '').length;
+      if (indent <= keyIndent) break;
+      if (blockIndent === -1) blockIndent = indent;
+      block.push(line.slice(blockIndent));
+      j++;
+    }
+    while (block.length && block[block.length - 1] === '') block.pop();
+    out.push(`${m[1]}${m[2]}: ${JSON.stringify(block.join('\n'))}`);
+    i = j;
+  }
+  return out.join('\n');
+}
+
 /** Split into significant lines: { indent, text } with comments/blank removed. */
 function tokenize(src: string): Token[] {
   const out: Token[] = [];
@@ -64,6 +103,32 @@ function splitKey(text: string): { key: string; rest: string } {
   return { key: m[1].trim(), rest: m[2] != null ? m[2].trim() : '' };
 }
 
+/** Split "a: 1, b: 2" on commas that sit outside brackets/quotes. */
+function splitFlow(body: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let quote = '';
+  let current = '';
+  for (const ch of body) {
+    if (quote) {
+      current += ch;
+      if (ch === quote) quote = '';
+      continue;
+    }
+    if (ch === '"' || ch === "'") quote = ch;
+    if (ch === '{' || ch === '[') depth++;
+    else if (ch === '}' || ch === ']') depth--;
+    if (ch === ',' && depth === 0) {
+      out.push(current);
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  if (current.trim()) out.push(current);
+  return out.map((s) => s.trim()).filter(Boolean);
+}
+
 function parseScalar(s: string): any {
   if (s === '' || s === '~' || s === 'null') return null;
   if (s === 'true') return true;
@@ -72,11 +137,28 @@ function parseScalar(s: string): any {
   if (s[0] === "'" && s[s.length - 1] === "'") return s.slice(1, -1).replace(/''/g, "'");
   if (/^-?\d+$/.test(s)) return parseInt(s, 10);
   if (/^-?\d*\.\d+$/.test(s)) return parseFloat(s);
+  // Inline flow mapping — only when it actually holds "key: value" pairs, so
+  // an unquoted measure like {1 2 3 4} stays the string it looks like.
+  if (s[0] === '{' && s[s.length - 1] === '}') {
+    const entries = splitFlow(s.slice(1, -1));
+    if (entries.length && entries.every((e) => /^[^:]+:\s*\S/.test(e))) {
+      const map: Record<string, any> = {};
+      for (const entry of entries) {
+        const idx = entry.indexOf(':');
+        map[entry.slice(0, idx).trim().replace(/^["']|["']$/g, '')] =
+          parseScalar(entry.slice(idx + 1).trim());
+      }
+      return map;
+    }
+  }
+  if (s[0] === '[' && s[s.length - 1] === ']') {
+    return splitFlow(s.slice(1, -1)).map(parseScalar);
+  }
   return s;
 }
 
 export function parseYaml(src: string): any {
-  const toks = tokenize(src);
+  const toks = tokenize(foldBlockScalars(src));
   let pos = 0;
 
   function parseNode(indent: number): any {

@@ -1,0 +1,8 @@
+# The smallest possible play.yaml score — the document itself is a track.
+# Defaults: 80 bpm, 4/4, piano, octave 4.
+
+play:
+  - "c c g g"
+  - "a a g ~"
+  - "f f e e"
+  - "d d c ~"

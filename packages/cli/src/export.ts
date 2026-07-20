@@ -2,9 +2,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { compileDoc, SongDoc } from './parser';
-import { encodeMidi } from './exporter';
-import { parseYaml } from './yaml';
+import { compileDoc, SongDoc, encodeMidi, parseYaml } from '@play.yaml/core';
 
 interface CliArgs {
   input?: string;
@@ -52,8 +50,8 @@ Flags:
 export function loadDoc(inputPath: string): SongDoc {
   const text = fs.readFileSync(path.resolve(process.cwd(), inputPath), 'utf8');
   const doc = /\.ya?ml$/i.test(inputPath) ? parseYaml(text) : JSON.parse(text);
-  if (!doc || !Array.isArray(doc.tracks)) {
-    throw new Error(`Score "${inputPath}" must define a "tracks:" list.`);
+  if (!doc || typeof doc !== 'object' || (doc.play == null && doc.tracks == null)) {
+    throw new Error(`Score "${inputPath}" must define a "play:" or "tracks:" key.`);
   }
   return doc;
 }

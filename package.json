@@ -8,10 +8,17 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces",
-    "test": "npm test --workspaces"
+    "test": "npm test --workspaces",
+    "dev": "npm run dev -w @play.yaml/web",
+    "dev:stop": "npm run dev:stop -w @play.yaml/web",
+    "logs": "npm run logs -w @play.yaml/web",
+    "logs:follow": "npm run logs:follow -w @play.yaml/web"
   },
   "engines": {
     "node": ">=16.0.0"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "pm2": "^7.0.3"
+  }
 }

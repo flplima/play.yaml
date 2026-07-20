@@ -4,8 +4,9 @@
  * exporter.ts — Timeline Matrix → Standard MIDI File in TypeScript.
  */
 
-import * as fs from 'fs';
-import { nameToMidi, TimelineEvent, CompiledSong, CompiledTrack } from './parser';
+import {
+  nameToMidi, TimelineEvent, CompiledSong, CompiledTrack, ControlEvent, TempoEvent,
+} from './parser';
 
 const DEFAULT_TPQN = 480;
 const DEFAULT_BPM = 120;
@@ -38,6 +39,18 @@ interface BuildTrackOptions {
   tempo: boolean;
   name?: string;
   program?: number;
+  controls?: ControlEvent[];
+  /** Tempo changes for the conductor track, in beats. */
+  tempoMap?: TempoEvent[];
+}
+
+/** A ramped tempo change becomes this many stepped meta-events in the file. */
+const RAMP_STEPS = 16;
+
+/** Tempo meta-event bytes for a bpm value. */
+function tempoMeta(bpm: number): number[] {
+  const mpq = Math.round(60000000 / Math.max(1, bpm));
+  return [0xff, 0x51, 0x03, (mpq >> 16) & 0xff, (mpq >> 8) & 0xff, mpq & 0xff];
 }
 
 interface MidiInternalEvent {
@@ -50,16 +63,42 @@ interface MidiInternalEvent {
  * Build the MTrk payload (events only, no chunk header) from a timeline.
  * Optionally prepends a tempo meta-event and/or a track-name / program-change.
  */
-function buildTrackBytes(timeline: TimelineEvent[], { tpqn, bpm, channel, tempo, name, program }: BuildTrackOptions): number[] {
+function buildTrackBytes(
+  timeline: TimelineEvent[],
+  { tpqn, bpm, channel, tempo, name, program, controls, tempoMap }: BuildTrackOptions,
+): number[] {
   const events: MidiInternalEvent[] = [];
 
   if (tempo) {
     // Tempo meta at the very start (conductor / single-track use).
-    const mpq = Math.round(60000000 / bpm); // microseconds per quarter note
+    events.push({ tick: 0, order: 0, data: tempoMeta(bpm) });
+
+    // Later changes; ramps become a staircase, since SMF has no tempo glide.
+    let running = bpm;
+    for (const change of tempoMap ?? []) {
+      const startTick = Math.round(change.time * tpqn);
+      if (change.rampBeats > 0) {
+        const spanTicks = change.rampBeats * tpqn;
+        for (let step = 1; step <= RAMP_STEPS; step++) {
+          const ratio = step / RAMP_STEPS;
+          events.push({
+            tick: Math.round(startTick + spanTicks * ratio),
+            order: 0,
+            data: tempoMeta(running + (change.bpm - running) * ratio),
+          });
+        }
+      } else {
+        events.push({ tick: startTick, order: 0, data: tempoMeta(change.bpm) });
+      }
+      running = change.bpm;
+    }
+  }
+
+  for (const control of controls ?? []) {
     events.push({
-      tick: 0,
-      order: 0,
-      data: [0xff, 0x51, 0x03, (mpq >> 16) & 0xff, (mpq >> 8) & 0xff, mpq & 0xff],
+      tick: Math.round(control.time * tpqn),
+      order: 0, // ahead of any note at the same tick
+      data: [0xb0 | channel, control.cc & 0x7f, control.value & 0x7f],
     });
   }
   if (name) {
@@ -131,7 +170,12 @@ export function encodeMidi(input: TimelineEvent[] | CompiledSong | CompiledTrack
   let tracks: CompiledTrack[];
   if (Array.isArray(input)) {
     if (input.length === 0 || (input[0] && (input[0] as any).pitch !== undefined)) {
-      tracks = [{ name: 'Track 1', channel: opts.channel || 1, timeline: input as TimelineEvent[] }];
+      tracks = [{
+        name: 'Track 1',
+        channel: opts.channel || 1,
+        timeline: input as TimelineEvent[],
+        controls: [],
+      }];
     } else {
       tracks = input as CompiledTrack[];
     }
@@ -139,12 +183,16 @@ export function encodeMidi(input: TimelineEvent[] | CompiledSong | CompiledTrack
     tracks = (input as CompiledSong).tracks || [];
   }
 
+  const tempoMap = (!Array.isArray(input) && (input as CompiledSong).tempoMap) || [];
+
   if (tracks.length <= 1) {
-    const t = tracks[0] || { name: 'Track 1', channel: 1, timeline: [] };
+    const t = tracks[0] || { name: 'Track 1', channel: 1, timeline: [], controls: [] };
     const bytes = buildTrackBytes(t.timeline, {
       tpqn,
       bpm,
       tempo: true,
+      tempoMap,
+      controls: t.controls,
       name: t.name,
       program: t.program,
       channel: ((t.channel || 1) - 1) & 0x0f,
@@ -153,7 +201,9 @@ export function encodeMidi(input: TimelineEvent[] | CompiledSong | CompiledTrack
   }
 
   // Format 1: conductor track (tempo) + one MTrk per song track.
-  const chunks = [mtrk(buildTrackBytes([], { tpqn, bpm, tempo: true, channel: 0, name: 'Conductor' }))];
+  const chunks = [
+    mtrk(buildTrackBytes([], { tpqn, bpm, tempo: true, tempoMap, channel: 0, name: 'Conductor' })),
+  ];
   for (const t of tracks) {
     chunks.push(
       mtrk(
@@ -161,6 +211,7 @@ export function encodeMidi(input: TimelineEvent[] | CompiledSong | CompiledTrack
           tpqn,
           bpm,
           tempo: false,
+          controls: t.controls,
           name: t.name,
           program: t.program,
           channel: ((t.channel || 1) - 1) & 0x0f,
@@ -169,11 +220,4 @@ export function encodeMidi(input: TimelineEvent[] | CompiledSong | CompiledTrack
     );
   }
   return Buffer.from([...mthd(1, tracks.length + 1, tpqn), ...chunks.flat()]);
-}
-
-/** Encode and write to disk. Returns the number of bytes written. */
-export function saveMidiFile(timeline: TimelineEvent[] | CompiledSong | CompiledTrack[], filePath: string, opts: EncodeMidiOptions = {}): number {
-  const buf = encodeMidi(timeline, opts);
-  fs.writeFileSync(filePath, buf);
-  return buf.length;
 }

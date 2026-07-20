@@ -58,8 +58,8 @@ Options:
   try {
     const text = fs.readFileSync(resolvedPath, 'utf8');
     const doc = parseYaml(text);
-    if (!doc || !Array.isArray(doc.tracks)) {
-      throw new Error(`Invalid score: must define a "tracks:" list.`);
+    if (!doc || typeof doc !== 'object' || (doc.play == null && doc.tracks == null)) {
+      throw new Error(`Invalid score: must define a "play:" or "tracks:" key.`);
     }
 
     const compiled = compileDoc(doc);

@@ -150,7 +150,7 @@ export async function playSong(song: CompiledSong): Promise<void> {
 
   let maxDuration = now;
 
-  console.log(`Starting playback of "${song.meta?.title || 'Untitled'}" at ${bpm} BPM...`);
+  console.log(`Starting playback of "${song.title || 'Untitled'}" at ${bpm} BPM...`);
 
   for (const track of song.tracks) {
     // Determine instrument preset based on program number or track name

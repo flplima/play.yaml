@@ -7,7 +7,6 @@ export default defineConfig({
     lib: {
       entry: {
         index: resolve(__dirname, 'src/index.ts'),
-        cli: resolve(__dirname, 'src/cli.ts'),
       },
       formats: ['cjs', 'es'],
       fileName: (format, entryName) => {
@@ -19,14 +18,6 @@ export default defineConfig({
     },
     rollupOptions: {
       external: ['fs', 'path', 'assert', 'url'],
-      output: {
-        banner: (chunk) => {
-          if (chunk.name === 'cli') {
-            return '#!/usr/bin/env node\n';
-          }
-          return '';
-        },
-      },
     },
     target: 'node16',
     minify: false,
@@ -34,6 +25,8 @@ export default defineConfig({
   plugins: [
     dts({
       rollupTypes: false,
+      entryRoot: 'src',
+      include: ['src'],
     }),
   ],
 });

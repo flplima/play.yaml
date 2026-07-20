@@ -5,6 +5,7 @@
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
+    "play-yaml": "./dist/export.js",
     "play-yaml-play": "./dist/cli.js"
   },
   "exports": {
@@ -16,7 +17,7 @@
   "scripts": {
     "build": "vite build",
     "start": "tsx src/cli.ts",
-    "play": "tsx src/cli.ts ../core/examples/my-score.play.yaml",
+    "play": "tsx src/cli.ts ../../examples/my-score.play.yaml",
     "test": "echo \"No tests for CLI\"",
     "verify-midi": "tsx src/verify-midi.ts"
   },
