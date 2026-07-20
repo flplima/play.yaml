@@ -215,14 +215,14 @@ export async function playSong(
   for (const change of song.tempoMap ?? []) {
     const from = runningBpm;
     transport.schedule((time) => {
+      // transport.bpm is a TickSignal backing transport.ticks; every change is
+      // scheduled strictly later than the last, so there is nothing to cancel.
       if (change.rampBeats > 0) {
         // Ramp length in seconds, using the average of the two tempi.
         const seconds = (change.rampBeats * 60) / ((from + change.bpm) / 2);
-        transport.bpm.cancelScheduledValues(time);
         transport.bpm.setValueAtTime(from, time);
         transport.bpm.linearRampToValueAtTime(change.bpm, time + seconds);
       } else {
-        transport.bpm.cancelScheduledValues(time);
         transport.bpm.setValueAtTime(change.bpm, time);
       }
     }, atBeat(change.time));

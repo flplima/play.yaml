@@ -350,6 +350,87 @@ check('exported .mid carries control changes', () => {
   assert.ok(found, 'expected a CC74=30 message in the file');
 });
 
+console.log('\nmusical terms:');
+check('dynamic marks set velocity (pp, mf, ff)', () => {
+  const tl = parsePlay(['c ~ ~ ~', { set: 'pp' }, 'c ~ ~ ~', { set: 'ff' }, 'c ~ ~ ~']);
+  assert.deepStrictEqual(tl.map((n) => n.velocity), [90, 32, 112]);
+});
+check('spelled-out and plain-english dynamics', () => {
+  assert.strictEqual(parsePlay(['c', { set: 'forte' }, 'c'])[1].velocity, 96);
+  assert.strictEqual(parsePlay(['c', { set: 'quiet' }, 'c'])[1].velocity, 48);
+});
+check('louder / softer step relative to the current dynamic', () => {
+  const tl = parsePlay(['c ~ ~ ~', { set: 'mp' }, 'c ~ ~ ~', { set: 'louder' }, 'c ~ ~ ~',
+    { set: 'softer, softer' }, 'c ~ ~ ~']);
+  assert.deepStrictEqual(tl.map((n) => n.velocity), [90, 64, 80, 48]);
+});
+check('a bare "f" is forte, not F major', () => {
+  assert.strictEqual(parseSet('f').velocity, 96);
+  assert.strictEqual(parseSet('f major').scale, 'f major');
+});
+check('articulation words: staccato, tenuto, smooth', () => {
+  const tl = parsePlay(['c', { set: 'staccato' }, 'c', { set: 'tenuto' }, 'c', { set: 'smooth' }, 'c']);
+  assert.deepStrictEqual(tl.map((n) => n.duration), [3.6, 1.6, 3.92, 4.2]);
+});
+check('character marks expand to dynamic + articulation', () => {
+  const [plain, dolce] = parsePlay(['c ~ ~ ~', { set: 'dolce' }, 'c ~ ~ ~']);
+  assert.strictEqual(plain.velocity, 90);
+  assert.strictEqual(dolce.velocity, 56);
+  assert.ok(dolce.duration > plain.duration, 'dolce is more connected');
+});
+check('tempo marks: allegro, adagio', () => {
+  const song = compileDoc({ play: ['c ~ ~ ~', { set: 'allegro' }, 'c ~ ~ ~', { set: 'adagio' }, 'c ~ ~ ~'] });
+  assert.deepStrictEqual(song.tempoMap.map((t) => [t.time, t.bpm]), [[4, 132], [8, 66]]);
+});
+check('ritardando / accelerando ramp relative to the running tempo', () => {
+  const song = compileDoc({
+    tempo: 100,
+    play: ['c ~ ~ ~', { set: 'ritardando over 2' }, 'c ~ ~ ~'],
+  });
+  assert.deepStrictEqual(song.tempoMap, [{ time: 4, bpm: 80, rampBeats: 8 }]);
+});
+check('"rit." with a trailing dot, and plain-english slower/faster', () => {
+  assert.strictEqual(parseSet('rit.').tempo?.scale, 0.8);
+  assert.strictEqual(parseSet('slower').tempo?.scale, 0.9);
+  assert.strictEqual(parseSet('faster').tempo?.scale, 1.1);
+});
+check('gradual tempo marks take a target: "allargando to adagio over 3"', () => {
+  const song = compileDoc({
+    tempo: 100,
+    play: ['c ~ ~ ~', { set: 'allargando to adagio over 3' }, 'c ~ ~ ~'],
+  });
+  assert.deepStrictEqual(song.tempoMap, [{ time: 4, bpm: 66, rampBeats: 12 }]);
+  assert.strictEqual(parseSet('rit to 60 over 2').tempo?.bpm, 60);
+});
+check('"a tempo" returns to the tempo the track started at', () => {
+  const song = compileDoc({
+    tempo: 77,
+    play: ['c ~ ~ ~', { set: 'allegro' }, 'c ~ ~ ~', { set: 'a tempo' }, 'c ~ ~ ~'],
+  });
+  assert.deepStrictEqual(song.tempoMap.map((t) => t.bpm), [132, 77]);
+});
+check('crescendo interpolates velocity across its span', () => {
+  const tl = parsePlay(['c c c c', { set: 'p, crescendo to f over 1' }, 'c c c c', 'c ~ ~ ~']);
+  const during = tl.slice(4, 8).map((n) => n.velocity);
+  assert.strictEqual(during[0], 48); // starts at piano
+  assert.ok(during[1] > during[0] && during[2] > during[1], `rising: ${during}`);
+  assert.strictEqual(tl[8].velocity, 96); // lands on forte and stays
+});
+check('dynamic: and articulation: props are the worded velocity/gate', () => {
+  const song = compileDoc({ dynamic: 'pp', articulation: 'staccato', play: 'c ~ ~ ~' });
+  assert.strictEqual(song.tracks[0].timeline[0].velocity, 32);
+  assert.strictEqual(song.tracks[0].timeline[0].duration, 0.4);
+});
+check('a character mark as dynamic: sets both, and children inherit', () => {
+  const song = compileDoc({ dynamic: 'dolce', tracks: { a: { play: 'c ~ ~ ~' } } });
+  assert.strictEqual(song.tracks[0].timeline[0].velocity, 56);
+  assert.ok(song.tracks[0].timeline[0].duration > 1);
+});
+check('diminuendo without a target simply fades', () => {
+  const tl = parsePlay(['c c c c', { set: 'diminuendo over 1' }, 'c c c c']);
+  assert.ok(tl[7].velocity < tl[4].velocity, 'fading');
+});
+
 console.log('\nnumbered measures:');
 check('numbered keys place measures at their slot', () => {
   const song = compileDoc({ play: [{ 1: 'c ~ ~ ~' }, { 2: 'e ~ ~ ~' }] });

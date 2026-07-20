@@ -138,6 +138,32 @@ Built-in samples: `piano`, `keys`, `bass`, `strings`, `cello`, `pad`, `flute`, `
 set: g ionian, octave 2
 ```
 
+### Expression marks
+
+Performance is written the way a score marks it, not in numbers. Every term below works as a `set:` clause mid-song, and `dynamic:` / `articulation:` set the starting values as track props:
+
+- **Dynamics** — `ppp` `pp` `p` `mp` `mf` `f` `ff` `fff`, spelled out (`piano`, `forte`), or in plain English (`quiet`, `loud`, `louder`, `softer`)
+- **Gradual dynamics** — `crescendo`, `diminuendo`, with an optional target and span: `crescendo to ff over 2`. Notes inside the span interpolate.
+- **Tempo** — `grave` `largo` `lento` `adagio` `andante` `moderato` `allegretto` `allegro` `vivace` `presto`
+- **Gradual tempo** — `ritardando`, `rallentando`, `allargando`, `accelerando`, `stringendo`, plus `slower` / `faster`; each takes an optional target and span (`allargando to adagio over 3`, `rit. over 2`). `a tempo` returns to the tempo the track started at.
+- **Articulation** — `staccatissimo` `staccato` `portato` `detached` `tenuto` `legato` (or `short` / `smooth`)
+- **Character** — `dolce` `cantabile` `espressivo` `sotto voce` `leggiero` `grazioso` `marcato` `pesante` `maestoso` `agitato` `tranquillo`, each standing for a dynamic and a bowing together
+
+```yaml
+dynamic: mf
+articulation: tenuto
+play:
+  - 1: "1 2 3 4"
+  - set: dolce, crescendo to f over 2
+  - 2: "5 6 7 8"
+  - set: legato, stringendo over 1
+  - 3: "1 2 3 4"
+  - set: allargando to adagio over 2, maestoso
+  - 4: "8 ~ ~ ~"
+```
+
+The numeric forms (`velocity 88`, `gate 1.05`, `tempo 60 over 2`) all still work — the words are shorthands over them. Note that a bare `f` means *forte*; write `f major` for the key.
+
 ### Articulation (`gate`)
 
 `gate` is the fraction of its slot a note sounds. Below 1 the note releases before the next begins; **above 1 the notes overlap**, which is how physical-model instruments (SWAM and friends) are told to slur rather than re-attack each note:

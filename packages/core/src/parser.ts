@@ -57,6 +57,10 @@ export interface TrackProps {
    * models such as SWAM are told to play a slur rather than re-attack.
    */
   gate?: number;
+  /** A dynamic or character mark ("mf", "dolce") — the worded form of `velocity`. */
+  dynamic?: string;
+  /** An articulation mark ("legato", "tenuto") — the worded form of `gate`. */
+  articulation?: string;
   /** Named MIDI controls: alias → CC number, e.g. { bow: 74, pressure: 71 }. */
   controls?: Record<string, number>;
 }
@@ -140,10 +144,91 @@ export const DEFAULT_GATE = 0.9;
  * is what tells a physical-model instrument to slur instead of re-attacking.
  */
 export const ARTICULATIONS: Record<string, number> = {
+  staccatissimo: 0.25,
   staccato: 0.4,
+  short: 0.4,
+  portato: 0.7,
   detached: DEFAULT_GATE,
+  separate: DEFAULT_GATE,
+  tenuto: 0.98,
   legato: 1.05,
+  smooth: 1.05,
+  slurred: 1.05,
   slur: 1.05,
+};
+
+/** Dynamic marks → MIDI velocity. */
+export const DYNAMICS: Record<string, number> = {
+  ppp: 16,
+  pianississimo: 16,
+  pp: 32,
+  pianissimo: 32,
+  p: 48,
+  piano: 48,
+  quiet: 48,
+  mp: 64,
+  mezzopiano: 64,
+  mf: 80,
+  mezzoforte: 80,
+  f: 96,
+  forte: 96,
+  loud: 96,
+  ff: 112,
+  fortissimo: 112,
+  fff: 127,
+  fortississimo: 127,
+};
+
+/** How much one "louder" / "softer" step moves the velocity. */
+const DYNAMIC_STEP = 16;
+
+/** Tempo marks → beats per minute. */
+export const TEMPO_MARKS: Record<string, number> = {
+  grave: 40,
+  largo: 50,
+  lento: 55,
+  adagio: 66,
+  andante: 76,
+  andantino: 88,
+  moderato: 100,
+  allegretto: 116,
+  allegro: 132,
+  vivace: 160,
+  presto: 180,
+  prestissimo: 200,
+};
+
+/**
+ * Character marks — the composite ones. Each expands to the combination of
+ * dynamic and articulation a player would reach for on seeing the word.
+ */
+export const EXPRESSIONS: Record<string, { velocity?: number; gate?: number }> = {
+  dolce: { velocity: 56, gate: 1.02 }, // sweetly: soft and connected
+  cantabile: { velocity: 80, gate: 1.05 }, // singing
+  espressivo: { velocity: 88, gate: 1.02 },
+  'sotto voce': { velocity: 40, gate: 0.95 },
+  leggiero: { velocity: 56, gate: 0.6 }, // light and detached
+  grazioso: { velocity: 68, gate: 0.9 },
+  marcato: { velocity: 104, gate: 0.8 }, // marked, each note stressed
+  pesante: { velocity: 104, gate: 0.98 }, // heavy
+  maestoso: { velocity: 100, gate: 0.98 },
+  agitato: { velocity: 100, gate: 0.75 },
+  tranquillo: { velocity: 52, gate: 1.0 },
+};
+
+/** Gradual tempo words → the ratio they move the pulse by. */
+const TEMPO_GRADUAL: Record<string, number> = {
+  ritardando: 0.8,
+  rit: 0.8,
+  ritenuto: 0.8,
+  rallentando: 0.8,
+  rall: 0.8,
+  allargando: 0.85,
+  slower: 0.9,
+  accelerando: 1.25,
+  accel: 1.25,
+  stringendo: 1.25,
+  faster: 1.1,
 };
 
 /** Built-in sample names → General MIDI program, for .mid export. */
@@ -228,8 +313,15 @@ export interface SetPatch {
   octave?: number;
   octaveDelta?: number;
   velocity?: number;
+  /** Relative dynamic step, for "louder" / "softer". */
+  velocityDelta?: number;
+  /** Gradual dynamic: reach `to` over `overMeasures` measures. */
+  velocityRamp?: { to?: number; scale?: number; overMeasures: number };
   gate?: number;
-  tempo?: { bpm: number; overMeasures: number };
+  /** `bpm` is absolute, `scale` multiplies the running tempo; both may ramp. */
+  tempo?: { bpm?: number; scale?: number; overMeasures: number };
+  /** "a tempo" — return to the tempo the track started at. */
+  aTempo?: boolean;
   ccs?: { cc: number; value: number }[];
 }
 
@@ -279,8 +371,77 @@ export function parseSet(
       continue;
     }
 
-    if (ARTICULATIONS[clause.toLowerCase()] !== undefined) {
-      patch.gate = ARTICULATIONS[clause.toLowerCase()];
+    const word = clause.toLowerCase().replace(/\.$/, ''); // "rit." → "rit"
+
+    if (ARTICULATIONS[word] !== undefined) {
+      patch.gate = ARTICULATIONS[word];
+      continue;
+    }
+
+    if (DYNAMICS[word] !== undefined) {
+      patch.velocity = DYNAMICS[word];
+      continue;
+    }
+
+    if (EXPRESSIONS[word] !== undefined) {
+      Object.assign(patch, EXPRESSIONS[word]);
+      continue;
+    }
+
+    if (TEMPO_MARKS[word] !== undefined) {
+      patch.tempo = { bpm: TEMPO_MARKS[word], overMeasures: 0 };
+      continue;
+    }
+
+    if (word === 'a tempo' || word === 'atempo') {
+      patch.aTempo = true;
+      continue;
+    }
+
+    if (word === 'louder' || word === 'softer') {
+      patch.velocityDelta = (patch.velocityDelta ?? 0) +
+        (word === 'louder' ? DYNAMIC_STEP : -DYNAMIC_STEP);
+      continue;
+    }
+
+    // Gradual marks: "ritardando", "rit over 2", "allargando to adagio over 3".
+    const gradual = new RegExp(
+      `^([a-z]+)(?:\\s+to\\s+([a-z]+|${NUM}))?(?:\\s+over\\s+(${NUM}))?$`,
+      'i',
+    ).exec(word);
+    if (gradual && TEMPO_GRADUAL[gradual[1]] !== undefined) {
+      const overMeasures = gradual[3] ? Number(gradual[3]) : 1;
+      if (gradual[2] !== undefined) {
+        const bpm = TEMPO_MARKS[gradual[2]] ?? Number(gradual[2]);
+        if (!Number.isFinite(bpm)) {
+          throw new Error(`Unknown tempo "${gradual[2]}" in "${clause}".`);
+        }
+        patch.tempo = { bpm, overMeasures };
+      } else {
+        patch.tempo = { scale: TEMPO_GRADUAL[gradual[1]], overMeasures };
+      }
+      continue;
+    }
+
+    // "crescendo", "cresc to ff over 2", "diminuendo over 4".
+    const hairpin = new RegExp(
+      `^(crescendo|cresc|diminuendo|dim|decrescendo|decresc)` +
+        `(?:\\s+to\\s+([a-z]+|${NUM}))?(?:\\s+over\\s+(${NUM}))?$`,
+      'i',
+    ).exec(word);
+    if (hairpin) {
+      const rising = /^cres/.test(hairpin[1]);
+      const target = hairpin[2];
+      const overMeasures = hairpin[3] ? Number(hairpin[3]) : 1;
+      if (target !== undefined) {
+        const to = DYNAMICS[target] ?? Number(target);
+        if (!Number.isFinite(to)) {
+          throw new Error(`Unknown dynamic "${target}" in "${clause}".`);
+        }
+        patch.velocityRamp = { to, overMeasures };
+      } else {
+        patch.velocityRamp = { scale: rising ? 1.4 : 0.65, overMeasures };
+      }
       continue;
     }
 
@@ -316,9 +477,10 @@ export function parseSet(
       // Not a scale either — fall through to the error below.
     }
     throw new Error(
-      `Unknown set clause "${clause}" — expected a scale ("g lydian"), an octave ` +
-        `("oct up"), "tempo 60 over 2", an articulation ("legato", "gate 1.05"), ` +
-        `"velocity 90", or a control ("cc74 30", or a name from \`controls\`).`,
+      `Unknown set clause "${clause}" — expected a dynamic ("mf", "dolce", ` +
+        `"crescendo to f over 2"), a tempo ("allegro", "ritardando over 2", ` +
+        `"a tempo", "tempo 60"), an articulation ("legato", "staccato"), a scale ` +
+        `("g lydian"), an octave ("oct up"), or a control ("cc74 30").`,
     );
   }
   return patch;
@@ -453,6 +615,19 @@ interface EmitCtx {
   octave: number;
   velocity: number;
   gate: number;
+  /** Active crescendo/diminuendo; notes inside the span interpolate. */
+  velocityRamp?: { fromBeat: number; toBeat: number; from: number; to: number };
+}
+
+const clampVelocity = (v: number) => Math.max(1, Math.min(127, Math.round(v)));
+
+/** Velocity for a note, honouring any crescendo/diminuendo in progress. */
+function velocityAt(ctx: EmitCtx, beat: number): number {
+  const ramp = ctx.velocityRamp;
+  if (!ramp || beat <= ramp.fromBeat) return ramp ? ramp.from : ctx.velocity;
+  if (beat >= ramp.toBeat) return ramp.to;
+  const t = (beat - ramp.fromBeat) / (ramp.toBeat - ramp.fromBeat);
+  return clampVelocity(ramp.from + (ramp.to - ramp.from) * t);
 }
 
 /**
@@ -486,7 +661,7 @@ function placeToken(token: string, start: number, span: number, ctx: EmitCtx): v
     time: round(start),
     pitch: midiToName(midi),
     duration: round(span * ctx.gate),
-    velocity: ctx.velocity,
+    velocity: velocityAt(ctx, start),
     midi,
   });
 }
@@ -552,31 +727,67 @@ export interface PlayResult {
 export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResult {
   const measureBeats = measureToBeats(props.measure);
   const controlAliases = props.controls ?? {};
+  const baseTempo = props.tempo ?? DEFAULT_TEMPO;
+  let runningTempo = baseTempo;
+  // `dynamic:` and `articulation:` are the worded forms of velocity and gate.
+  const worded = parseSet(
+    [props.dynamic, props.articulation].filter(Boolean).join(', ') || [],
+  );
   const ctx: EmitCtx = {
     events: [],
     scale: parseScale(props.scale),
     octave: props.octave ?? DEFAULT_OCTAVE,
-    velocity: Math.max(1, Math.min(127, props.velocity ?? DEFAULT_VELOCITY)),
-    gate: props.gate ?? DEFAULT_GATE,
+    velocity: clampVelocity(props.velocity ?? worded.velocity ?? DEFAULT_VELOCITY),
+    gate: props.gate ?? worded.gate ?? DEFAULT_GATE,
   };
   const controls: ControlEvent[] = [];
   const tempos: TempoEvent[] = [];
+
+  const setTempo = (bpm: number, overMeasures: number, at: number) => {
+    runningTempo = bpm;
+    tempos.push({
+      time: round(at),
+      bpm: round(bpm),
+      rampBeats: round(overMeasures * measureBeats),
+    });
+  };
 
   const applyPatch = (patch: SetPatch, at: number) => {
     if (patch.scale) ctx.scale = parseScale(patch.scale);
     if (patch.octave !== undefined) ctx.octave = patch.octave;
     if (patch.octaveDelta) ctx.octave += patch.octaveDelta;
+
+    // A new dynamic cancels any hairpin still in progress.
     if (patch.velocity !== undefined) {
-      ctx.velocity = Math.max(1, Math.min(127, patch.velocity));
+      ctx.velocity = clampVelocity(patch.velocity);
+      ctx.velocityRamp = undefined;
     }
+    if (patch.velocityDelta) {
+      ctx.velocity = clampVelocity(ctx.velocity + patch.velocityDelta);
+      ctx.velocityRamp = undefined;
+    }
+    if (patch.velocityRamp) {
+      const from = velocityAt(ctx, at);
+      const to = clampVelocity(
+        patch.velocityRamp.to ?? from * (patch.velocityRamp.scale ?? 1),
+      );
+      ctx.velocityRamp = {
+        fromBeat: at,
+        toBeat: at + patch.velocityRamp.overMeasures * measureBeats,
+        from,
+        to,
+      };
+      ctx.velocity = to; // where the music sits once the hairpin has landed
+    }
+
     if (patch.gate !== undefined) ctx.gate = patch.gate;
+
+    if (patch.aTempo) setTempo(baseTempo, 0, at);
     if (patch.tempo) {
-      tempos.push({
-        time: round(at),
-        bpm: patch.tempo.bpm,
-        rampBeats: round(patch.tempo.overMeasures * measureBeats),
-      });
+      const target = patch.tempo.bpm ?? runningTempo * (patch.tempo.scale ?? 1);
+      setTempo(target, patch.tempo.overMeasures, at);
     }
+
     for (const c of patch.ccs ?? []) {
       controls.push({ time: round(at), cc: c.cc, value: c.value });
     }
@@ -650,7 +861,7 @@ export function parsePlay(play: PlayInput, props: TrackProps = {}): TimelineEven
 
 const INHERITED: (keyof TrackProps)[] = [
   'tempo', 'measure', 'sample', 'scale', 'octave', 'channel', 'program', 'velocity',
-  'gate', 'controls',
+  'gate', 'dynamic', 'articulation', 'controls',
 ];
 
 function effectiveProps(node: TrackNode, inherited: TrackProps): TrackProps {
@@ -684,12 +895,13 @@ export function compileDoc(doc: SongDoc): CompiledSong {
     throw new Error('Score must be a mapping with a "play:" or "tracks:" key.');
   }
 
+  // velocity and gate are deliberately left unset here so that their worded
+  // forms (`dynamic:` / `articulation:`) can supply them.
   const rootProps = effectiveProps(doc, {
     tempo: DEFAULT_TEMPO,
     measure: DEFAULT_MEASURE,
     sample: DEFAULT_SAMPLE,
     octave: DEFAULT_OCTAVE,
-    velocity: DEFAULT_VELOCITY,
   });
 
   const tracks: CompiledTrack[] = [];
