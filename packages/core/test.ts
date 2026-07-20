@@ -281,6 +281,50 @@ check('gate is inheritable and overridable per track', () => {
   assert.strictEqual(song.tracks[1].timeline[0].duration, 0.4);
 });
 
+console.log('\nplaying techniques:');
+check('bow position words map onto the bow control', () => {
+  const { controls } = parsePlayFull(['c', { set: 'sul tasto' }, 'c', { set: 'ordinario' }, 'c',
+    { set: 'sul ponticello' }, 'c']);
+  assert.deepStrictEqual(controls.map((c) => [c.cc, c.value]), [[74, 0], [74, 64], [74, 114]]);
+});
+check('vibrato words, from senza to molto', () => {
+  const { controls } = parsePlayFull(['c', { set: 'senza vibrato' }, 'c', { set: 'poco vibrato' }, 'c',
+    { set: 'molto vibrato' }, 'c']);
+  assert.deepStrictEqual(controls.map((c) => c.value), [0, 32, 127]);
+});
+check('bow pressure words', () => {
+  const { controls } = parsePlayFull(['c', { set: 'light bow' }, 'c', { set: 'heavy bow' }, 'c']);
+  assert.deepStrictEqual(controls.map((c) => [c.cc, c.value]), [[71, 25], [71, 108]]);
+});
+check('a declared control overrides the conventional CC', () => {
+  const song = compileDoc({ controls: { bow: 20 }, play: ['c', { set: 'sul tasto' }, 'c'] });
+  assert.strictEqual(song.tracks[0].controls[0].cc, 20);
+});
+check('a control range can narrow or invert the mapping', () => {
+  const narrow = compileDoc({
+    controls: { bow: { cc: 74, min: 40, max: 80 } },
+    play: ['c', { set: 'sul tasto' }, 'c', { set: 'sul ponticello' }, 'c'],
+  });
+  assert.deepStrictEqual(narrow.tracks[0].controls.map((c) => c.value), [40, 76]);
+  const inverted = compileDoc({
+    controls: { bow: { cc: 74, min: 127, max: 0 } },
+    play: ['c', { set: 'sul tasto' }, 'c'],
+  });
+  assert.strictEqual(inverted.tracks[0].controls[0].value, 127);
+});
+check('techniques work with no controls declared at all', () => {
+  assert.deepStrictEqual(parseSet('sul ponticello').ccs, [{ cc: 74, value: 114 }]);
+  assert.deepStrictEqual(parseSet('molto vibrato').ccs, [{ cc: 1, value: 127 }]);
+});
+check('a track-level set: opens the instrument at beat 0', () => {
+  const song = compileDoc({ set: 'sul tasto, molto vibrato, mf', play: 'c d e f' });
+  assert.deepStrictEqual(song.tracks[0].controls, [
+    { time: 0, cc: 74, value: 0 },
+    { time: 0, cc: 1, value: 127 },
+  ]);
+  assert.strictEqual(song.tracks[0].timeline[0].velocity, 80); // the mf applied too
+});
+
 console.log('\ncontrol changes:');
 check('raw cc clauses emit control events at their beat', () => {
   const { controls } = parsePlayFull(['c ~ ~ ~', { set: 'cc74 30' }, 'c ~ ~ ~']);

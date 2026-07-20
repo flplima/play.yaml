@@ -61,8 +61,19 @@ export interface TrackProps {
   dynamic?: string;
   /** An articulation mark ("legato", "tenuto") — the worded form of `gate`. */
   articulation?: string;
-  /** Named MIDI controls: alias → CC number, e.g. { bow: 74, pressure: 71 }. */
-  controls?: Record<string, number>;
+  /**
+   * Named MIDI controls: alias → CC number, or → { cc, min, max } when the
+   * instrument's mapping uses a narrower band or runs the other way round
+   * (`{ cc: 74, min: 127, max: 0 }` inverts it).
+   */
+  controls?: Record<string, number | ControlSpec>;
+}
+
+/** How a named control maps onto a CC, and over what range. */
+export interface ControlSpec {
+  cc: number;
+  min?: number;
+  max?: number;
 }
 
 /** A control-change emitted at a point in the timeline. */
@@ -216,6 +227,65 @@ export const EXPRESSIONS: Record<string, { velocity?: number; gate?: number }> =
   tranquillo: { velocity: 52, gate: 1.0 },
 };
 
+/**
+ * Conventional CCs for the named controls, so the playing-technique words
+ * below work untouched. Override per track with `controls:` to match your
+ * instrument's own MIDI mapping.
+ */
+export const DEFAULT_CONTROLS: Record<string, ControlSpec> = {
+  bow: { cc: 74 }, // bow position / brightness
+  pressure: { cc: 71 },
+  vibrato: { cc: 1 }, // modulation, the near-universal vibrato control
+};
+
+/**
+ * Playing techniques → a position from 0 to 1 along a named control, which is
+ * then scaled into that control's range. Bow position runs from over the
+ * fingerboard (0) to at the bridge (1); if your instrument maps it the other
+ * way, invert the range in `controls:` rather than rewriting the score.
+ */
+export const CONTROL_TERMS: Record<string, { control: string; amount: number }> = {
+  // ── bow position ──
+  'sul tasto': { control: 'bow', amount: 0 },
+  flautando: { control: 'bow', amount: 0.1 },
+  flautato: { control: 'bow', amount: 0.1 },
+  'poco sul tasto': { control: 'bow', amount: 0.25 },
+  ordinario: { control: 'bow', amount: 0.5 },
+  naturale: { control: 'bow', amount: 0.5 },
+  ord: { control: 'bow', amount: 0.5 },
+  'poco sul ponticello': { control: 'bow', amount: 0.75 },
+  'sul ponticello': { control: 'bow', amount: 0.9 },
+  'molto sul ponticello': { control: 'bow', amount: 1 },
+
+  // ── bow pressure ──
+  'light bow': { control: 'pressure', amount: 0.2 },
+  sfiorando: { control: 'pressure', amount: 0.1 }, // barely touching
+  'normal bow': { control: 'pressure', amount: 0.5 },
+  'heavy bow': { control: 'pressure', amount: 0.85 },
+  premuto: { control: 'pressure', amount: 0.9 }, // pressed
+  pressed: { control: 'pressure', amount: 0.9 },
+
+  // ── vibrato ──
+  'senza vibrato': { control: 'vibrato', amount: 0 },
+  'non vibrato': { control: 'vibrato', amount: 0 },
+  'no vibrato': { control: 'vibrato', amount: 0 },
+  'poco vibrato': { control: 'vibrato', amount: 0.25 },
+  'light vibrato': { control: 'vibrato', amount: 0.25 },
+  vibrato: { control: 'vibrato', amount: 0.6 },
+  'molto vibrato': { control: 'vibrato', amount: 1 },
+  'full vibrato': { control: 'vibrato', amount: 1 },
+};
+
+/** Resolve a named control to its CC and range, falling back to convention. */
+export function resolveControl(
+  controls: Record<string, number | ControlSpec> | undefined,
+  name: string,
+): ControlSpec | undefined {
+  const declared = controls?.[name];
+  const spec = typeof declared === 'number' ? { cc: declared } : declared ?? DEFAULT_CONTROLS[name];
+  return spec && { min: 0, max: 127, ...spec };
+}
+
 /** Gradual tempo words → the ratio they move the pulse by. */
 const TEMPO_GRADUAL: Record<string, number> = {
   ritardando: 0.8,
@@ -341,7 +411,7 @@ const NUM = String.raw`-?\d+(?:\.\d+)?`;
  */
 export function parseSet(
   value: string | string[],
-  controls: Record<string, number> = {},
+  controls: Record<string, number | ControlSpec> = {},
 ): SetPatch {
   const patch: SetPatch = {};
   const clauses = (Array.isArray(value) ? value : [value])
@@ -385,6 +455,20 @@ export function parseSet(
 
     if (EXPRESSIONS[word] !== undefined) {
       Object.assign(patch, EXPRESSIONS[word]);
+      continue;
+    }
+
+    // Playing techniques: "sul tasto", "molto vibrato", "heavy bow".
+    if (CONTROL_TERMS[word] !== undefined) {
+      const { control, amount } = CONTROL_TERMS[word];
+      const spec = resolveControl(controls, control);
+      if (!spec) {
+        throw new Error(
+          `"${clause}" needs a "${control}" control — add it under \`controls:\`, ` +
+            `e.g. controls: { ${control}: 74 }.`,
+        );
+      }
+      addCc(spec.cc, spec.min! + (spec.max! - spec.min!) * amount);
       continue;
     }
 
@@ -464,8 +548,9 @@ export function parseSet(
     }
 
     const named = new RegExp(`^([a-z][a-z0-9_]*)\\s+(${NUM})$`, 'i').exec(clause);
-    if (named && controls[named[1].toLowerCase()] !== undefined) {
-      addCc(controls[named[1].toLowerCase()], Number(named[2]));
+    const namedSpec = named && resolveControl(controls, named[1].toLowerCase());
+    if (named && namedSpec && controls[named[1].toLowerCase()] !== undefined) {
+      addCc(namedSpec.cc, Number(named[2]));
       continue;
     }
 
@@ -870,10 +955,14 @@ function effectiveProps(node: TrackNode, inherited: TrackProps): TrackProps {
     if (node[key] !== undefined) (props as any)[key] = node[key];
   }
   if (node.set !== undefined) {
-    const patch = parseSet(node.set);
+    const patch = parseSet(node.set, props.controls);
     if (patch.scale) props.scale = patch.scale;
     if (patch.octave !== undefined) props.octave = patch.octave;
     if (patch.octaveDelta) props.octave = (props.octave ?? DEFAULT_OCTAVE) + patch.octaveDelta;
+    if (patch.velocity !== undefined) props.velocity = patch.velocity;
+    if (patch.gate !== undefined) props.gate = patch.gate;
+    // Any control changes it declares are emitted at the start of the track,
+    // in compileDoc — see the `set` handling in walk().
   }
   return props;
 }
@@ -914,6 +1003,9 @@ export function compileDoc(doc: SongDoc): CompiledSong {
 
     if (node.play != null) {
       const { timeline, controls, tempos } = parsePlayFull(node.play, props);
+      // A `set:` on the track itself opens the instrument at beat 0.
+      const opening = (node.set !== undefined ? parseSet(node.set, props.controls).ccs ?? [] : [])
+        .map((c) => ({ time: 0, cc: c.cc, value: c.value }));
       const measureBeats = measureToBeats(props.measure);
       lengthBeats = Math.max(lengthBeats, playedMeasureCount(node.play) * measureBeats);
       const sample = props.sample ?? DEFAULT_SAMPLE;
@@ -925,7 +1017,7 @@ export function compileDoc(doc: SongDoc): CompiledSong {
         sample,
         program: props.program ?? SAMPLE_PROGRAMS[sample.toLowerCase()],
         timeline,
-        controls,
+        controls: [...opening, ...controls],
       });
     }
 

@@ -148,6 +148,7 @@ Performance is written the way a score marks it, not in numbers. Every term belo
 - **Gradual tempo** — `ritardando`, `rallentando`, `allargando`, `accelerando`, `stringendo`, plus `slower` / `faster`; each takes an optional target and span (`allargando to adagio over 3`, `rit. over 2`). `a tempo` returns to the tempo the track started at.
 - **Articulation** — `staccatissimo` `staccato` `portato` `detached` `tenuto` `legato` (or `short` / `smooth`)
 - **Character** — `dolce` `cantabile` `espressivo` `sotto voce` `leggiero` `grazioso` `marcato` `pesante` `maestoso` `agitato` `tranquillo`, each standing for a dynamic and a bowing together
+- **Playing technique** — bow position `sul tasto` `flautando` `poco sul tasto` `ordinario` `poco sul ponticello` `sul ponticello` `molto sul ponticello`; bow pressure `sfiorando` `light bow` `normal bow` `heavy bow` `premuto`; vibrato `senza vibrato` `poco vibrato` `vibrato` `molto vibrato`
 
 ```yaml
 dynamic: mf
@@ -179,19 +180,26 @@ play:
 
 ### Instrument controls (CC)
 
-Declare a `controls` alias map matching your instrument's MIDI mapping, then set them by name mid-song. Raw `ccNN` always works without a map:
+The technique words above drive `bow`, `pressure` and `vibrato`, which default to the conventional CCs 74, 71 and 1 — so they work with nothing declared:
 
 ```yaml
 sample: cello
-controls: { bow: 74, pressure: 71 }
 play:
   - 1: "1 2 3 4"
-  - set: bow 30, pressure 90    # sul tasto, heavier bow
+  - set: sul tasto, molto vibrato
   - 2: "5 6 7 8"
-  - set: cc74 55                # or address the CC directly
 ```
 
-Note that SWAM's Bow Position and Bow Pressure have no fixed CC numbers — they're assigned on its "MIDI Mapping" page, so point the aliases at whatever you configured there.
+SWAM's Bow Position and Bow Pressure have no fixed CC numbers — they're assigned on its "MIDI Mapping" page — so `controls:` retargets them. A control can also declare a range, which narrows the band or, by putting `min` above `max`, inverts a mapping that runs the other way:
+
+```yaml
+controls:
+  bow: { cc: 74, min: 127, max: 0 }   # this instrument has 0 at the bridge
+  pressure: { cc: 71, min: 40, max: 90 }
+  vibrato: 1                          # plain CC number when the full range is fine
+```
+
+Numbers remain available for anything without a word — `set: bow 52`, or `set: cc74 55` to address a CC directly.
 
 ### Tempo changes and rubato
 

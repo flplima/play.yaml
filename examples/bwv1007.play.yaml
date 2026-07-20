@@ -16,9 +16,10 @@
 #   the way a score marks it: dynamics ('mf', 'ff', 'crescendo to f over 2'),
 #   tempo ('allargando over 3', 'stringendo', 'a tempo'), articulation
 #   ('legato' slurs by overlapping the notes, 'detached' separates them),
-#   and character marks ('dolce', 'agitato', 'maestoso') that stand for a
-#   dynamic and a bowing together. Named controls like 'bow 52' send the
-#   MIDI CCs listed under `controls:` to a real instrument.
+#   character marks ('dolce', 'agitato', 'maestoso') that stand for a
+#   dynamic and a bowing together, and playing techniques ('sul ponticello',
+#   'ordinario', 'molto vibrato') that move the bow and vibrato on a real
+#   instrument through the MIDI controls listed under `controls:`.
 #   A # or b after a degree raises/lowers it a half step — kept only where
 #   Bach writes a true chromatic note that belongs to no scale of the moment.
 #
@@ -33,7 +34,7 @@ tempo: 77
 sample: cello
 articulation: tenuto  # a connected détaché — the default bowing here
 dynamic: mf           # on SWAM this drives the expression, i.e. the bow speed
-controls: { bow: 74, pressure: 71, vibrato: 1 }   # match your instrument's MIDI map
+controls: { bow: 74, vibrato: 1 }   # only if your instrument's MIDI map differs
 set: g major, octave 2
 play:
 
@@ -62,12 +63,12 @@ play:
   # toward a minor). Diminished chords live in the OCTATONIC scale, so
   # for one measure 1 = e and the degrees renumber into its 8-note ladder.
   - set: e octatonic
-  - set: agitato, bow 52   # diminished tension: nearer the bridge, restless
+  - set: agitato, poco sul ponticello   # diminished tension: nearer the bridge, restless
   - 11: "{12 8 10 9} {10 8 12 8} {14 8 10 9} {10 8 12 8}"
 
   # mm.12–15 — back home: 1 = g again.
   - set: g maj
-  - set: mf, tenuto, bow 64   # settle back to an ordinary bow
+  - set: mf, tenuto, ordinario   # settle back to an ordinary bow
   - 12: "{4 6 9 10} {11 9 6 5} {4 6 9 10} {11 9 7 6}"
   # m.13 — a d#°7 chord pulling toward e minor. E HARMONIC MINOR holds
   # this chord natively: 1 = e, and the d# is its degree 7 — a leading
@@ -131,16 +132,16 @@ play:
   # mm.37–38 — an ascending CHROMATIC scale, one half-step at a time —
   # among the earliest extended chromatic scales in music (Winold). No
   # scale contains this by design, so here the accidentals ARE the point.
-  - set: legato, ff, stringendo over 1, bow 44   # the chromatic climax: slurred, pressing forward
+  - set: legato, ff, stringendo over 1, sul ponticello   # the chromatic climax: slurred, pressing forward
   - 37: "{7 9 5 6} {7b 5 7 5} {8 5 8# 5} {9 5 9# 5}"
   - 38: "{10 5 11 5} {11# 5 12 5} {12# 5 13 5} {14b 5 14 5}"
 
   # ══ THE CLOSE (mm.39–42) ══
   # Tonic six-four chord, then D7 with a 4–3 suspension, and at last the
   # plain G major chord — tension resolved.
-  - set: tenuto, f, allargando to adagio over 3, bow 64   # the close broadens: a warm bow, slowing to the end
+  - set: tenuto, f, allargando to adagio over 3, ordinario   # the close broadens: a warm bow, slowing to the end
   - 39: "{15 10 5 10} {15 10 15 10} {15 10 5 10} {15 10 15 10}"
   - 40: "{15 9 5 9} {15 9 15 9} {15 9 5 9} {15 9 15 9}"
   - 41: "{14 11 5 11} {14 11 14 11} {14 11 5 11} {14 11 14 11}"
-  - set: maestoso, vibrato 96   # let the last chord ring, full vibrato
+  - set: maestoso, molto vibrato   # let the last chord ring, full vibrato
   - 42: "[1 10 15]" # finis
