@@ -10,7 +10,10 @@ import {
   DEFAULT_MEASURE, DEFAULT_OCTAVE, ScaleInfo, degreeToMidi, measureToBeats,
   midiToName, noteToMidi, parseScale,
 } from './theory';
-import { ACCENT_STEP, ControlSpec, DEFAULT_GATE, DEFAULT_STRUM, SAMPLE_PROGRAMS, resolveControl } from './vocabulary';
+import {
+  ACCENT_STEP, ControlSpec, DEFAULT_GATE, DEFAULT_STRUM, SAMPLE_PROGRAMS,
+  drumName, resolveControl, resolveDrum,
+} from './vocabulary';
 import { SetPatch, parseSet } from './set';
 import { HOLD, isDirectiveString, isScaleToken, isSetToken, setTokenBody, splitTopLevel } from './tokens';
 
@@ -65,6 +68,14 @@ export interface TrackProps {
   /** An articulation mark ("legato", "tenuto") — the worded form of `gate`. */
   articulation?: string;
   /**
+   * Names a drum kit ("acoustic", "808", "percussion") and switches the
+   * track's tokens from pitches to drum names: `bd hh sd hh` instead of
+   * notes. Kit tracks default to MIDI channel 10 (GM percussion) and take no
+   * program change. A `~` suffix rolls a hit (`sd~` = snare roll); scale and
+   * octave are ignored.
+   */
+  kit?: string;
+  /**
    * Named MIDI controls: alias → CC number, or → { cc, min, max } when the
    * instrument's mapping uses a narrower band or runs the other way round
    * (`{ cc: 74, min: 127, max: 0 }` inverts it).
@@ -115,6 +126,8 @@ export interface CompiledTrack {
   name: string;
   channel: number;
   sample?: string;
+  /** The drum kit this track plays, when it is a `kit:` track. */
+  kit?: string;
   program?: number;
   timeline: TimelineEvent[];
   /** CC changes declared mid-song, in beat order. */
@@ -153,6 +166,8 @@ const clampVelocity = (v: number) => Math.max(1, Math.min(127, Math.round(v)));
 
 interface EmitCtx {
   events: TimelineEvent[];
+  /** Kit track: tokens are drum names / raw GM keys, not pitches. */
+  drums: boolean;
   scale: ScaleInfo;
   octave: number;
   velocity: number;
@@ -263,6 +278,43 @@ function placeToken(token: string, start: number, span: number, ctx: EmitCtx, bo
     return;
   }
 
+  // Kit tracks: the token is a drum name ("bd", "snare") or a raw GM key.
+  if (ctx.drums) {
+    const spec = resolveDrum(tok);
+    if (!spec) return; // unknown token → rest, same policy as pitches
+    const pitch = drumName(spec.note) ?? String(spec.note);
+    const baseVelocity = clampVelocity(velocityAt(ctx, start) + boost);
+    if (strumMarks > 0) {
+      // `sd~` is a roll: retriggered hits filling the slot at 32nd-note pace
+      // (`~~` at 64ths), swelling into the beat it lands on. Retriggers keep
+      // the roll audible on any GM synth and in the .mid export.
+      const step = 0.125 / strumMarks;
+      const hits = Math.max(2, Math.round(span / step));
+      for (let i = 0; i < hits; i++) {
+        const t = hits > 1 ? i / (hits - 1) : 1;
+        ctx.events.push({
+          time: round(start + (i * span) / hits),
+          pitch,
+          duration: round((span / hits) * 0.9),
+          velocity: clampVelocity(baseVelocity * (0.6 + 0.4 * t)),
+          midi: spec.note,
+        });
+      }
+      ctx.held = { events: [ctx.events[ctx.events.length - 1]], span: span / hits };
+      return;
+    }
+    const event: TimelineEvent = {
+      time: round(start),
+      pitch,
+      duration: round(span * ctx.gate),
+      velocity: baseVelocity,
+      midi: spec.note,
+    };
+    ctx.events.push(event);
+    ctx.held = { events: [event], span };
+    return;
+  }
+
   // A leading `_` drops the note an octave, repeatable: `_1`, `__d3`. (A `_`
   // on its own is the hold token, handled above.)
   const under = /^(_+)(?=\S)/.exec(tok);
@@ -360,6 +412,7 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
   );
   const ctx: EmitCtx = {
     events: [],
+    drums: props.kit != null,
     scale: parseScale(props.scale),
     octave: props.octave ?? DEFAULT_OCTAVE,
     velocity: clampVelocity(props.velocity ?? worded.velocity ?? DEFAULT_VELOCITY),
@@ -581,7 +634,7 @@ export function parsePlay(play: PlayInput, props: TrackProps = {}): TimelineEven
 
 const INHERITED: (keyof TrackProps)[] = [
   'tempo', 'measure', 'sample', 'scale', 'octave', 'channel', 'program', 'velocity',
-  'gate', 'dynamic', 'articulation', 'controls', 'strum', 'voices', 'strumTail',
+  'gate', 'dynamic', 'articulation', 'controls', 'strum', 'voices', 'strumTail', 'kit',
 ];
 
 function effectiveProps(node: TrackNode, inherited: TrackProps): TrackProps {
@@ -639,11 +692,17 @@ export function compileDoc(doc: SongDoc): CompiledSong {
       const sample = props.sample ?? DEFAULT_SAMPLE;
       // Tempo belongs to the song, not a voice — merge every track's changes.
       tempoMap.push(...tempos);
+      // Kit tracks live on GM percussion channel 10 (all of them — that is
+      // the channel's job) and take no program change; melodic auto-assign
+      // skips 10 so a large score never leaks notes onto the drum channel.
+      if (nextChannel === 10) nextChannel++;
       tracks.push({
         name,
-        channel: props.channel ?? nextChannel++,
+        channel: props.channel ?? (props.kit != null ? 10 : nextChannel++),
         sample,
-        program: props.program ?? SAMPLE_PROGRAMS[sample.toLowerCase()],
+        kit: props.kit,
+        program: props.kit != null ? undefined
+          : props.program ?? SAMPLE_PROGRAMS[sample.toLowerCase()],
         timeline,
         controls: [...opening, ...controls],
       });

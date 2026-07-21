@@ -225,6 +225,109 @@ export function resolveControl(
   return spec && { min: 0, max: 127, ...spec };
 }
 
+/** One drum voice: its GM percussion key, and the choke group it silences. */
+export interface DrumSpec {
+  /** General MIDI percussion note (channel 10). */
+  note: number;
+  /** Sounding voices in the same group stop when this one starts (hi-hats). */
+  choke?: string;
+}
+
+/**
+ * Drum tokens for `kit:` tracks → General MIDI percussion keys, so scores
+ * play on any GM synth and export cleanly to .mid. Aliases point at the same
+ * spec; the sampler maps the same names onto recorded hits.
+ */
+export const DRUMS: Record<string, DrumSpec> = {
+  // ── the kit ──
+  bd: { note: 36 }, // bass drum
+  sd: { note: 38 }, // snare
+  rim: { note: 37 }, // side stick
+  cp: { note: 39 }, // hand clap
+  hh: { note: 42, choke: 'hh' }, // closed hi-hat
+  ph: { note: 44, choke: 'hh' }, // pedal hi-hat
+  oh: { note: 46, choke: 'hh' }, // open hi-hat
+  ft: { note: 41 }, // floor tom
+  lt: { note: 45 }, // low tom
+  mt: { note: 47 }, // mid tom
+  ht: { note: 50 }, // high tom
+  cy: { note: 49 }, // crash
+  crash2: { note: 57 },
+  splash: { note: 55 },
+  china: { note: 52 },
+  rd: { note: 51 }, // ride
+  rb: { note: 53 }, // ride bell
+
+  // ── hand percussion ──
+  cb: { note: 56 }, // cowbell
+  tamb: { note: 54 },
+  vibraslap: { note: 58 },
+  bongo: { note: 60 }, // high bongo
+  lbongo: { note: 61 },
+  quinto: { note: 62 }, // the high conga (GM mute hi conga slot)
+  conga: { note: 63 }, // open hi conga
+  tumba: { note: 64 }, // the low conga
+  timbale: { note: 65 },
+  ltimbale: { note: 66 },
+  agogo: { note: 67 },
+  lagogo: { note: 68 },
+  cabasa: { note: 69 },
+  maracas: { note: 70 },
+  guiro: { note: 74 }, // long stroke
+  sguiro: { note: 73 }, // short stroke
+  clave: { note: 75 },
+  wb: { note: 76 }, // high woodblock
+  lwb: { note: 77 },
+  cuica: { note: 79 },
+  mcuica: { note: 78 },
+  tri: { note: 81 }, // open triangle
+  mtri: { note: 80 }, // muted triangle
+  whistle: { note: 72 },
+  swhistle: { note: 71 },
+  shaker: { note: 82 }, // GM2; falls back near maracas on GM1 synths
+  sleigh: { note: 83 }, // GM2 jingle bell
+  belltree: { note: 84 }, // GM2 bell tree
+};
+
+/** Longhand spellings → the canonical drum tokens above. */
+const DRUM_ALIASES: Record<string, string> = {
+  kick: 'bd', bassdrum: 'bd',
+  sn: 'sd', snare: 'sd',
+  rs: 'rim', sidestick: 'rim',
+  clap: 'cp',
+  ch: 'hh', hat: 'hh', closedhat: 'hh',
+  pedalhat: 'ph',
+  openhat: 'oh',
+  floortom: 'ft', lowtom: 'lt', midtom: 'mt', hightom: 'ht', tom: 'mt',
+  crash: 'cy',
+  ride: 'rd', ridebell: 'rb',
+  cowbell: 'cb',
+  tambourine: 'tamb',
+  claves: 'clave',
+  woodblock: 'wb',
+  triangle: 'tri',
+};
+for (const [alias, canonical] of Object.entries(DRUM_ALIASES)) {
+  DRUMS[alias] = DRUMS[canonical];
+}
+
+// Canonical names come before their aliases above, so first-wins is canonical.
+const DRUM_NAMES: Record<number, string> = {};
+for (const [name, spec] of Object.entries(DRUMS)) {
+  DRUM_NAMES[spec.note] ??= name;
+}
+
+/** Canonical name for a GM percussion key (aliases resolve to the short form). */
+export function drumName(note: number): string | undefined {
+  return DRUM_NAMES[note];
+}
+
+/** Resolve a drum token ("bd", "snare", or a raw GM number) in a kit track. */
+export function resolveDrum(token: string): DrumSpec | undefined {
+  if (/^\d+$/.test(token)) return { note: parseInt(token, 10) & 0x7f };
+  return DRUMS[token.toLowerCase()];
+}
+
 /** Built-in sample names → General MIDI program, for .mid export. */
 export const SAMPLE_PROGRAMS: Record<string, number> = {
   piano: 0,

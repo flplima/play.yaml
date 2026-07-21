@@ -954,6 +954,75 @@ check('a velocity: directive cancels an in-flight hairpin', () => {
   assert.ok(tl.slice(8).every((n) => n.velocity === 40));
 });
 
+console.log('\ndrums (kit tracks):');
+check('kit tracks read drum names and land on channel 10, no program', () => {
+  const song = compileDoc({ kit: 'acoustic', play: 'bd hh sd hh' });
+  const t = song.tracks[0];
+  assert.deepStrictEqual(t.timeline.map((n) => n.midi), [36, 42, 38, 42]);
+  assert.deepStrictEqual(t.timeline.map((n) => n.pitch), ['bd', 'hh', 'sd', 'hh']);
+  assert.strictEqual(t.channel, 10);
+  assert.strictEqual(t.program, undefined);
+  assert.strictEqual(t.kit, 'acoustic');
+});
+check('longhand aliases and raw GM numbers work', () => {
+  const tl = parsePlay('kick snare clap 46', { kit: 'acoustic' });
+  assert.deepStrictEqual(tl.map((n) => n.midi), [36, 38, 39, 46]);
+  assert.strictEqual(tl[3].pitch, 'oh'); // raw 46 names itself back
+});
+check('unknown drum words are rests; pitch names do not leak in', () => {
+  // "cb" is the cowbell in a kit track, never C-flat.
+  const tl = parsePlay('bd xyz cb ~', { kit: 'acoustic' });
+  assert.deepStrictEqual(tl.map((n) => n.midi), [36, 56]);
+});
+check('kit inherits to children; explicit channel wins', () => {
+  const song = compileDoc({
+    kit: 'acoustic',
+    tracks: { groove: { play: 'bd ~ sd ~' }, aux: { channel: 11, play: 'cb cb cb cb' } },
+  });
+  assert.deepStrictEqual(song.tracks.map((t) => t.channel), [10, 11]);
+  assert.strictEqual(song.tracks[1].kit, 'acoustic');
+});
+check('melodic auto-channels skip 10', () => {
+  const song = compileDoc({
+    tracks: Object.fromEntries(
+      Array.from({ length: 11 }, (_, i) => [`t${i}`, { play: 'c' }]),
+    ),
+  });
+  assert.ok(!song.tracks.some((t) => t.channel === 10));
+  assert.strictEqual(song.tracks[10].channel, 12); // 1..9, then 11, 12
+});
+check('accents, groups and chords compose with drum tokens', () => {
+  const tl = parsePlay('bd> {hh hh} [bd sd] hh<', { kit: 'acoustic', velocity: 80 });
+  assert.deepStrictEqual(tl.map((n) => [n.midi, n.velocity]), [
+    [36, 96], [42, 80], [42, 80], [36, 80], [38, 80], [42, 64],
+  ]);
+  assert.deepStrictEqual(times(tl), [0, 1, 1.5, 2, 2, 3]);
+});
+check('`sd~` rolls: retriggers fill the slot and swell', () => {
+  const tl = parsePlay('sd~ ~ ~ ~', { kit: 'acoustic' });
+  assert.strictEqual(tl.length, 8); // one beat at 32nds
+  assert.ok(tl.every((n) => n.midi === 38));
+  assert.ok(tl[7].velocity > tl[0].velocity, 'crescendo into the landing');
+  assert.strictEqual(tl[7].velocity, 90); // lands on the running dynamic
+});
+check('`~~` doubles the roll speed; a flam via `[sd sd]~`', () => {
+  assert.strictEqual(parsePlay('sd~~ ~ ~ ~', { kit: 'acoustic' }).length, 16);
+  const flam = parsePlay('[sd sd]~ ~ ~ ~', { kit: 'acoustic' });
+  assert.strictEqual(flam.length, 2);
+  assert.ok(flam[1].time - flam[0].time > 0 && flam[1].time - flam[0].time < 0.1);
+});
+check('`_` extends a hit; dynamics words still apply', () => {
+  const song = compileDoc({ kit: 'acoustic', play: ['cy _ _ _', 'pp', 'bd ~ ~ ~'] });
+  const tl = song.tracks[0].timeline;
+  assert.strictEqual(tl[0].duration, 3.6); // crash rings through the holds
+  assert.strictEqual(tl[1].velocity, 32); // the pp mark took no time
+  assert.strictEqual(song.lengthBeats, 8);
+});
+check('a drum measure is a measure, not a directive', () => {
+  const song = compileDoc({ kit: '808', play: ['bd hh sd hh', 'bd hh sd oh'] });
+  assert.strictEqual(song.lengthBeats, 8);
+});
+
 console.log('\ntempo timing (beats → seconds):');
 check('constant tempo is a straight line', () => {
   const segs = tempoSegments(120);
