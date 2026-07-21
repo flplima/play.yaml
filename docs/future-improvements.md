@@ -49,6 +49,15 @@ engine work needed — just UI.
 
 ## Shipped
 
+* **Drums & percussion** — `kit:` tracks with GM drum tokens (`bd hh sd hh`),
+  rolls (`sd~`), flams, choke groups, channel-10 export; sampled acoustic +
+  hand-percussion library (VSCO CE/VCSL, CC0) and a synthesized 808 kit.
+  Design notes: `docs/percussion-design.md`. Future extensions listed there:
+  brushes/snares-off technique words, non-GM instruments (cajon, darbuka).
+* **Native sampled instruments** — violin, cello, upright piano,
+  flute/ocarina and upright bass (pizz) play on CC0 recordings in the web
+  studio, velocity-layered, pitch-verified by autocorrelation
+  (`scripts/fetch-instruments.mjs`); `keys` is an FM e-piano preset.
 * **Continuous Controller (CC) automation** — covered by the `set` vocabulary
   rather than a separate `automation` block: named controls (`controls:`),
   technique words ("sul ponticello", "molto vibrato"), raw `cc74 30` clauses,

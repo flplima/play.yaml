@@ -145,7 +145,29 @@ tracks:
       - "c c ~ ~ c c ~ ~"        # 8 tokens → eighth notes
 ```
 
-Built-in samples: `piano`, `keys`, `bass`, `strings`, `cello`, `pad`, `flute`, `ocarina`, `lead` — each maps to a General MIDI program for `.mid` export and to a synth preset in the players.
+Built-in samples: `piano`, `keys`, `bass`, `strings`, `violin`, `cello`, `pad`, `flute`, `ocarina`, `lead` — each maps to a General MIDI program for `.mid` export. In the web studio, `piano`, `violin`, `cello`, `flute`/`ocarina` and `bass` play on **real recorded samples** (VSCO 2 CE / VCSL, all CC0, lazily loaded); everything else — and every instrument when samples can't load — renders on the built-in synth presets (`keys` is an FM electric piano, `lead` a sawtooth, …).
+
+### Drums & percussion (`kit:` tracks)
+
+A track with `kit:` reads its tokens as **drum names** instead of pitches:
+
+```yaml
+tempo: 96
+kit: acoustic                    # inherits to the child lanes
+tracks:
+  groove:
+    play: "bd ~ sd ~ {~ bd} bd sd ~"
+  hats:
+    play: "hh> hh hh hh hh> hh {hh hh} oh"
+```
+
+- **Kits**: `acoustic` and `percussion` play the sampled drum library in the browser; `808` is a synthesized electro kit. All of them export identically (see below).
+- **Tokens**: `bd` (kick) `sd` (snare) `rim` `cp` (clap) `hh`/`ph`/`oh` (closed/pedal/open hat) `ft lt mt ht` (toms) `cy` (crash) `rd`/`rb` (ride/bell) — plus hand percussion: `cb` (cowbell) `tamb` `bongo` `conga`/`quinto`/`tumba` `cabasa` `shaker` `maracas` `clave` `wb` `tri` `guiro` `sleigh`… Longhand aliases work (`kick`, `snare`, `clap`, `cowbell`), and a bare number plays any GM percussion key directly.
+- **The grammar is unchanged**: `{}` subdivides (fills), `[]` stacks hits, `>` accents, `<` ghosts, `_` lets a cymbal ring, `~` rests, and dynamics words/hairpins shape velocity. New here: a `~` **suffix rolls a hit** — `sd~` is a snare roll at 32nds swelling into the next beat, `sd~~` at 64ths, and `[sd sd]~` is a flam.
+- **MIDI**: kit tracks compile onto **channel 10** with General MIDI percussion keys and no program change, so `.mid` exports and routed hardware/DAWs play them correctly out of the box. Melodic auto-assigned channels skip 10.
+- Scale, octave and degree machinery are simply inert in kit tracks; unknown words are rests.
+
+See `examples/drum-lab.play.yaml` for a tour (groove + fills, son clave & congas, 808 trap hats), and `docs/percussion-design.md` for the full token table and design notes.
 
 ### The `set` shorthand
 
