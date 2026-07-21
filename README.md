@@ -78,7 +78,7 @@ npm run logs:follow  # stream logs live
 npm run dev:stop     # stop the dev server
 ```
 
-It offers a YAML editor with syntax highlighting, the bundled example scores (editable in-session, never persisted), opening/saving local `.play.yaml` files via the File System Access API, playback through a built-in Web Audio engine, and per-instrument routing to your MIDI devices via WebMIDI (with a per-mapping test note). A header toggle picks the output: **Built-in** renders everything in the browser, **MIDI** uses the panel's routes.
+It offers a YAML editor with syntax highlighting, the bundled example scores (editable in-session, never persisted), opening/saving local `.play.yaml` files via the File System Access API, playback through a built-in Web Audio engine, and per-instrument routing to your MIDI devices via WebMIDI (with a per-mapping test note). A header toggle picks the output: **Built-in** renders everything in the browser, **MIDI** uses the panel's routes. The **⬇ MP3** button renders the score offline with the built-in sounds (tempo map included) and downloads it as an MP3.
 
 The built-in engine is expressive: every track gets a control bus that performs
 the score's CC stream — expression (CC11) swells through held notes, vibrato

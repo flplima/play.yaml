@@ -170,6 +170,10 @@ interface MelodicManifest {
   defaultMode?: 'arco' | 'pizz';
   /** false = never loop long holds (a struck string's decay must just decay). */
   loop?: boolean;
+  /** Level trim: the raw recordings are not normalized across instruments. */
+  gain?: number;
+  /** Below this many seconds a bowed/blown note uses the short recordings. */
+  spiccatoMaxSec?: number;
 }
 
 interface DrumLayer {
@@ -179,6 +183,8 @@ interface DrumLayer {
 
 interface DrumManifest {
   kit: true;
+  /** Level trim for the whole library. */
+  gain?: number;
   notes: Record<string, DrumLayer[]>;
 }
 
@@ -226,6 +232,7 @@ export function loadInstrument(ctx: BaseAudioContext, name: string): Promise<Sam
   if (!promise) {
     promise = load(ctx, name).catch((err) => {
       console.warn(`Samples for "${name}" unavailable, falling back to synth:`, err);
+      loadPromises.delete(name); // transient failure — retry on the next play
       return null;
     });
     loadPromises.set(name, promise);
@@ -241,9 +248,51 @@ async function load(ctx: BaseAudioContext, name: string): Promise<Sampler | null
   return manifest.kit ? loadDrums(ctx, base, manifest) : loadMelodic(ctx, base, manifest);
 }
 
-async function fetchBuffer(ctx: BaseAudioContext, url: string): Promise<AudioBuffer> {
-  const data = await (await fetch(url)).arrayBuffer();
-  return ctx.decodeAudioData(data);
+async function fetchBuffer(
+  ctx: BaseAudioContext,
+  base: string,
+  file: string,
+  align: 'silence' | 'transient' = 'silence',
+): Promise<AudioBuffer> {
+  // Encode the filename: a '#' (sharp pitch) would otherwise become a URL
+  // fragment and silently fetch the wrong resource.
+  const response = await fetch(base + encodeURIComponent(file));
+  if (!response.ok) throw new Error(`${response.status} for ${file}`);
+  const buffer = await ctx.decodeAudioData(await response.arrayBuffer());
+  return trimStart(ctx, buffer, startOf(buffer, align));
+}
+
+/**
+ * Where a sample's sound really begins. 'silence' drops AAC encoder-priming
+ * quiet (a few ms) and suits slow bowed/blown attacks; 'transient' aligns
+ * percussive hits on their attack — the raw recordings put it anywhere from
+ * 0 to ~67 ms in (varying per velocity layer and round-robin), which made
+ * grooves audibly lumpy.
+ */
+function startOf(buffer: AudioBuffer, align: 'silence' | 'transient'): number {
+  const data = buffer.getChannelData(0);
+  const cap = Math.min(data.length, Math.floor(buffer.sampleRate * 0.1));
+  if (align === 'transient') {
+    let peak = 0;
+    for (let i = 0; i < data.length; i++) peak = Math.max(peak, Math.abs(data[i]));
+    const threshold = peak * 0.3;
+    let attack = 0;
+    while (attack < cap && Math.abs(data[attack]) < threshold) attack++;
+    // Keep 3 ms of the natural rise ahead of the attack point.
+    return Math.max(0, attack - Math.floor(buffer.sampleRate * 0.003));
+  }
+  let start = 0;
+  while (start < cap && Math.abs(data[start]) < 0.004) start++;
+  return start;
+}
+
+function trimStart(ctx: BaseAudioContext, buffer: AudioBuffer, start: number): AudioBuffer {
+  if (start < buffer.sampleRate * 0.002 || start >= buffer.length) return buffer;
+  const out = ctx.createBuffer(buffer.numberOfChannels, buffer.length - start, buffer.sampleRate);
+  for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+    out.getChannelData(ch).set(buffer.getChannelData(ch).subarray(start));
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -259,7 +308,13 @@ async function loadMelodic(
     const map: BufferMap = new Map();
     await Promise.all(
       notes.filter((n) => !filter || filter(n)).map(async (n) => {
-        map.set(n.midi, await fetchBuffer(ctx, base + n.url));
+        try {
+          map.set(n.midi, await fetchBuffer(ctx, base, n.url));
+        } catch (err) {
+          // One bad fetch/decode must not silence the instrument — the
+          // nearest playable neighbour covers this pitch instead.
+          console.warn(`Skipping sample ${n.url}:`, err);
+        }
       }),
     );
     return map;
@@ -275,6 +330,8 @@ async function loadMelodic(
   ]);
   const defaultPizz = manifest.defaultMode === 'pizz';
   const allowLoop = manifest.loop !== false;
+  const trim = manifest.gain ?? 1;
+  const spiccatoMaxSec = manifest.spiccatoMaxSec ?? SPICCATO_MAX_SEC;
 
   const nearest = (map: BufferMap, midi: number): [number, AudioBuffer] => {
     let bestMidi = -1;
@@ -290,7 +347,7 @@ async function loadMelodic(
     let sustained = false;
     if (plucked && pizz.size) map = pizz;
     else if (bus.state.tremolo) map = tremolo.size ? tremolo : susF;
-    else if (durationSec <= SPICCATO_MAX_SEC && spiccato.size) map = spiccato;
+    else if (durationSec <= spiccatoMaxSec && spiccato.size) map = spiccato;
     else {
       map = velocity < LAYER_SPLIT && susP.size ? susP : susF;
       sustained = true;
@@ -313,9 +370,9 @@ async function loadMelodic(
 
     // With an expression stream the bus carries the loudness and velocity
     // only shades the attack; otherwise velocity is the whole dynamic.
-    const level = bus.hasExpression
+    const level = trim * (bus.hasExpression
       ? 0.72 + 0.28 * (velocity / 127)
-      : Math.pow(velocity / 127, 1.4);
+      : Math.pow(velocity / 127, 1.4));
 
     const gain = bus.ctx.createGain();
     const end = startSec + durationSec;
@@ -364,10 +421,17 @@ async function loadDrums(
       const byVel = new Map<number, AudioBuffer[]>();
       await Promise.all(
         layers.map(async (l) => {
-          const buffer = await fetchBuffer(ctx, base + l.url);
-          (byVel.get(l.vel) ?? byVel.set(l.vel, []).get(l.vel)!).push(buffer);
+          try {
+            const buffer = await fetchBuffer(ctx, base, l.url, 'transient');
+            (byVel.get(l.vel) ?? byVel.set(l.vel, []).get(l.vel)!).push(buffer);
+          } catch (err) {
+            // A bad hit drops out of the round-robin; the synth kit covers
+            // the key entirely if none survive.
+            console.warn(`Skipping drum sample ${l.url}:`, err);
+          }
         }),
       );
+      if (byVel.size === 0) return;
       notes.set(
         parseInt(note, 10),
         [...byVel.entries()].sort((a, b) => a[0] - b[0]).map(([vel, buffers]) => ({ vel, buffers })),
@@ -387,7 +451,7 @@ async function loadDrums(
 
     const gain = bus.ctx.createGain();
     // Shade inside the chosen layer so repeated hits still breathe.
-    gain.gain.value = 0.55 + 0.45 * (velocity / 127);
+    gain.gain.value = (manifest.gain ?? 1) * (0.55 + 0.45 * (velocity / 127));
     const source = bus.ctx.createBufferSource();
     source.buffer = buffer;
     source.connect(gain);

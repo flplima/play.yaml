@@ -5,6 +5,7 @@ import type { EditorView } from '@codemirror/view';
 import { parseYaml, compileDoc, CompiledSong } from '@play.yaml/core';
 import { EXAMPLES } from './examples';
 import { playSong, routeKey, PlaybackHandle, RouteMap, MidiRoute } from './player';
+import { encodeMp3, renderSong } from './render';
 import { buildNoteSpans, NoteSpan } from './noteSpans';
 import { playingNoteExtension, setPlayingNotes } from './highlight';
 import { useMidi } from './useMidi';
@@ -49,6 +50,7 @@ export default function App() {
   const [dirty, setDirty] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
+  const [rendering, setRendering] = useState(false);
   const [loop, setLoop] = useState(true);
   const [metronome, setMetronome] = useState(false);
   const [showPanel, setShowPanel] = useState(true);
@@ -205,6 +207,28 @@ export default function App() {
     });
   };
 
+  // Offline-render the song with the built-in sounds and download it as MP3.
+  const downloadMp3 = async () => {
+    if (!song || rendering) return;
+    setRendering(true);
+    setStatus('Rendering MP3…');
+    try {
+      const buffer = await renderSong(song);
+      const blob = await encodeMp3(buffer);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${(song.title ?? 'song').replace(/[^\w.-]+/g, '-')}.mp3`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setStatus(`Rendered ${(blob.size / 1e6).toFixed(1)} MB MP3`);
+    } catch (err) {
+      setStatus(`Render failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setRendering(false);
+    }
+  };
+
   const handleRouteChange = (sample: string, route: MidiRoute | undefined) => {
     setRoutes((prev) => {
       const next = { ...prev };
@@ -338,6 +362,15 @@ export default function App() {
           disabled={!playing && !song}
         >
           {playing ? '■ Stop' : '▶ Play'}
+        </button>
+
+        <button
+          className="rounded border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-200 hover:bg-zinc-800 disabled:opacity-40"
+          onClick={() => void downloadMp3()}
+          disabled={!song || rendering}
+          title="Render the song offline with the built-in sounds and download it as MP3"
+        >
+          {rendering ? '… Rendering' : '⬇ MP3'}
         </button>
 
         <button

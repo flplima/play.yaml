@@ -48,6 +48,9 @@ const BASS_PIZZ = {
 /** SusVib has no E0 recording; every other pizz pitch has v1+v3 sustains. */
 const BASS_SUS = Object.keys(BASS_PIZZ).filter((p) => p !== 'E0');
 
+// Level trims: the VSCO recordings are not normalized across instruments
+// (cello peaks near -4 dBFS, flute near -16, contrabass pizz near -19).
+// `gain` rebalances at playback without touching intra-instrument layers.
 const INSTRUMENTS = {
   cello: {
     dir: 'cello',
@@ -66,6 +69,10 @@ const INSTRUMENTS = {
   flute: {
     dir: 'flute',
     loop: true,
+    gain: 5.0,
+    // Swing eighths at jazz tempos are ~0.11 s — keep them on the sustains;
+    // only true turn/grace figures drop to the staccato recordings.
+    spiccatoMaxSec: 0.1,
     articulations: {
       sustain: ['C3', 'E3', 'A3', 'C4', 'E4', 'A4', 'C5', 'E5', 'A5', 'C6']
         .map((p) => [p, `${FLUTE}/susvib/LDFlute_susvib_${p}_v1_1.wav`]),
@@ -77,6 +84,7 @@ const INSTRUMENTS = {
   bass: {
     dir: 'bass',
     loop: true,
+    gain: 3.2,
     defaultMode: 'pizz',
     articulations: {
       sustain: BASS_SUS.flatMap((p) => [
@@ -89,6 +97,7 @@ const INSTRUMENTS = {
   piano: {
     dir: 'piano',
     loop: false, // never loop a struck string's decay
+    gain: 0.8,
     trim: 8,
     // MappingChart: index N ↔ MIDI key 21 + 2N; even indices exist (4-semitone grid).
     articulations: {
@@ -148,6 +157,8 @@ for (const name of names) {
   const outDir = path.join(SAMPLES, inst.dir);
   fs.mkdirSync(outDir, { recursive: true });
   const manifest = { loop: inst.loop };
+  if (inst.gain) manifest.gain = inst.gain;
+  if (inst.spiccatoMaxSec) manifest.spiccatoMaxSec = inst.spiccatoMaxSec;
   if (inst.defaultMode) manifest.defaultMode = inst.defaultMode;
   /** Plausible offsets measured so far for this instrument, in order. */
   const instrumentOffsets = [];
@@ -167,7 +178,9 @@ for (const name of names) {
     const offsets = [];
     for (const [pitch, sourcePath, layer] of files) {
       const claimed = typeof pitch === 'number' ? pitch : nameToMidi(pitch);
-      const base = path.basename(sourcePath, '.wav');
+      // '#' in a filename becomes a URL fragment in the browser — sharp
+      // pitches (F#0) must be sanitized or their fetches silently truncate.
+      const base = path.basename(sourcePath, '.wav').replace(/#/g, 's');
       const outFile = `${base}.m4a`;
       const outPath = path.join(outDir, outFile);
       const wav = path.join(outDir, `.${base}.wav`);

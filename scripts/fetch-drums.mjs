@@ -217,7 +217,9 @@ for (const entry of SPEC) {
   }
 }
 
-const manifest = { kit: true, notes };
+// The kit recordings run hot (snare peaks at 0 dBFS) — trim a touch so the
+// melodic instruments sit alongside them.
+const manifest = { kit: true, gain: 0.9, notes };
 fs.writeFileSync(path.join(OUT_DIR, 'manifest.json'), JSON.stringify(manifest, null, 1) + '\n');
 const total = fs.readdirSync(OUT_DIR).filter((f) => f.endsWith('.m4a'))
   .reduce((n, f) => n + fs.statSync(path.join(OUT_DIR, f)).size, 0);
