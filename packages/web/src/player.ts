@@ -1,6 +1,6 @@
 import * as Tone from 'tone';
 import type { CompiledSong } from '@play.yaml/core';
-import { detectPreset, metronomeClick, playNote } from './synth';
+import { detectPreset, metronomeClick, playNote } from '@play.yaml/core';
 import { createTrackBus, loadViolin, TrackBus, ViolinSampler } from './sampler';
 
 /** Where a sample (the DSL's instrument name) should be routed. */

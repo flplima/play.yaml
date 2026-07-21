@@ -3,6 +3,17 @@ import * as path from 'path';
 import { parseYaml, compileDoc } from '@play.yaml/core';
 import { playSong, playSongMidi } from './index';
 
+const HELP = `play.yaml Player CLI
+
+Usage:
+  play-yaml-play <file.play.yaml> [options]
+
+Options:
+  -l, --loop         Loop the playback infinitely
+  -m, --midi         Output live MIDI events to virtual MIDI port instead of Web Audio
+  -p, --midi-port    Name of the MIDI output port to create/use (default: "play.yaml Output")
+  -h, --help         Show this help message`;
+
 async function main() {
   const args = process.argv.slice(2);
   let inputPath = '';
@@ -19,16 +30,7 @@ async function main() {
     } else if (arg === '--midi-port' || arg === '-p') {
       midiPort = args[++i];
     } else if (arg === '--help' || arg === '-h') {
-      console.log(`play.yaml Player CLI
-
-Usage:
-  play-yaml-play <file.play.yaml> [options]
-
-Options:
-  -l, --loop         Loop the playback infinitely
-  -m, --midi         Output live MIDI events to virtual MIDI port instead of Web Audio
-  -p, --midi-port    Name of the MIDI output port to create/use (default: "play.yaml Output")
-  -h, --help         Show this help message`);
+      console.log(HELP);
       process.exit(0);
     } else if (!arg.startsWith('-')) {
       inputPath = arg;
@@ -36,16 +38,7 @@ Options:
   }
 
   if (!inputPath) {
-    console.log(`play.yaml Player CLI
-
-Usage:
-  play-yaml-play <file.play.yaml> [options]
-
-Options:
-  -l, --loop         Loop the playback infinitely
-  -m, --midi         Output live MIDI events to virtual MIDI port instead of Web Audio
-  -p, --midi-port    Name of the MIDI output port to create/use (default: "play.yaml Output")
-  -h, --help         Show this help message`);
+    console.log(HELP);
     process.exit(1);
   }
 

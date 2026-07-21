@@ -18,7 +18,7 @@
     "build": "vite build",
     "start": "tsx src/cli.ts",
     "play": "tsx src/cli.ts ../../examples/my-score.play.yaml",
-    "test": "echo \"No tests for CLI\"",
+    "test": "tsc --noEmit",
     "verify-midi": "tsx src/verify-midi.ts"
   },
   "dependencies": {
