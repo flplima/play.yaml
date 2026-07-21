@@ -358,8 +358,25 @@ async function loadMelodic(
 
     const source = bus.ctx.createBufferSource();
     source.buffer = buffer;
-    source.playbackRate.value = Math.pow(2, (midi - sampleMidi) / 12);
-    bus.vibrato.connect(source.detune);
+    const rate = Math.pow(2, (midi - sampleMidi) / 12);
+    source.playbackRate.value = rate;
+    // Feed the track's vibrato LFO (in cents) into the note's pitch. Tone's
+    // live context is the standardized-audio-context shim, which never
+    // implemented AudioBufferSourceNode.detune — connecting to it there threw
+    // before source.start(), silencing every sampled note in live playback
+    // (offline renders use a native context and were fine). Fall back to
+    // playbackRate: 1 cent ≈ rate·ln2/1200.
+    let vibratoSink: AudioParam | GainNode;
+    if (source.detune) {
+      vibratoSink = source.detune;
+      bus.vibrato.connect(source.detune);
+    } else {
+      const centsToRate = bus.ctx.createGain();
+      centsToRate.gain.value = (rate * Math.LN2) / 1200;
+      bus.vibrato.connect(centsToRate);
+      centsToRate.connect(source.playbackRate);
+      vibratoSink = centsToRate;
+    }
 
     // Long holds loop inside the sample's steady region.
     if (allowLoop && sustained && durationSec > buffer.duration - 0.6) {
@@ -394,7 +411,7 @@ async function loadMelodic(
     gain.connect(bus.input);
     source.onended = () => {
       try {
-        bus.vibrato.disconnect(source.detune);
+        bus.vibrato.disconnect(vibratoSink as AudioParam);
       } catch {
         // Bus already disposed.
       }

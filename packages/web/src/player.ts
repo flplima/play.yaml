@@ -219,13 +219,19 @@ export async function playSong(
       for (const note of track.timeline) {
         endBeat = Math.max(endBeat, note.time + note.duration);
         transport.schedule((time) => {
-          if (track.kit) {
-            if (sampled?.kind === 'drums') sampled.play(bus, note.midi, note.velocity, time);
-            else playDrum(ctx, bus.input, note.midi, note.velocity, time);
-          } else if (sampled?.kind === 'melodic') {
-            sampled.play(bus, note.midi, note.velocity, time, note.duration * secPerBeat);
-          } else {
-            playNote(ctx, bus.input, preset!, note.midi, note.velocity, time, note.duration * secPerBeat);
+          // One bad voice must never break the transport's callback batch —
+          // an uncaught throw here silences every event after it in the tick.
+          try {
+            if (track.kit) {
+              if (sampled?.kind === 'drums') sampled.play(bus, note.midi, note.velocity, time);
+              else playDrum(ctx, bus.input, note.midi, note.velocity, time);
+            } else if (sampled?.kind === 'melodic') {
+              sampled.play(bus, note.midi, note.velocity, time, note.duration * secPerBeat);
+            } else {
+              playNote(ctx, bus.input, preset!, note.midi, note.velocity, time, note.duration * secPerBeat);
+            }
+          } catch (err) {
+            console.warn(`Voice failed (${track.name} @${note.time}):`, err);
           }
         }, atBeat(note.time));
       }
