@@ -322,6 +322,12 @@ export function drumName(note: number): string | undefined {
   return DRUM_NAMES[note];
 }
 
+/** Choke group of a GM percussion key (open hi-hat dies when a closed one hits). */
+export function drumChoke(note: number): string | undefined {
+  const name = DRUM_NAMES[note];
+  return name ? DRUMS[name].choke : undefined;
+}
+
 /** Resolve a drum token ("bd", "snare", or a raw GM number) in a kit track. */
 export function resolveDrum(token: string): DrumSpec | undefined {
   if (/^\d+$/.test(token)) return { note: parseInt(token, 10) & 0x7f };

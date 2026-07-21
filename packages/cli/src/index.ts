@@ -1,6 +1,6 @@
 import { AudioContext } from 'webaudio-node';
 import {
-  CompiledSong, beatsToSeconds, detectPreset, playNote, tempoSegments,
+  CompiledSong, beatsToSeconds, detectPreset, playDrum, playNote, tempoSegments,
 } from '@play.yaml/core';
 
 /**
@@ -18,13 +18,17 @@ export async function playSong(song: CompiledSong): Promise<void> {
 
   let end = now;
   for (const track of song.tracks) {
-    const preset = detectPreset(track);
-    console.log(`  Track: "${track.name}" | Preset: [${preset}] | ${track.timeline.length} notes`);
+    const preset = track.kit ? null : detectPreset(track);
+    console.log(`  Track: "${track.name}" | ${track.kit ? `Kit: [${track.kit}]` : `Preset: [${preset}]`} | ${track.timeline.length} notes`);
     for (const note of track.timeline) {
       const startSec = now + lead + beatsToSeconds(segments, note.time);
       const endSec = now + lead + beatsToSeconds(segments, note.time + note.duration);
       end = Math.max(end, endSec);
-      playNote(ctx, ctx.destination, preset, note.midi, note.velocity, startSec, endSec - startSec);
+      if (preset) {
+        playNote(ctx, ctx.destination, preset, note.midi, note.velocity, startSec, endSec - startSec);
+      } else {
+        playDrum(ctx, ctx.destination, note.midi, note.velocity, startSec);
+      }
     }
   }
 

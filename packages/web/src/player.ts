@@ -1,7 +1,9 @@
 import * as Tone from 'tone';
 import type { CompiledSong } from '@play.yaml/core';
-import { detectPreset, metronomeClick, playNote } from '@play.yaml/core';
-import { createTrackBus, loadViolin, TrackBus, ViolinSampler } from './sampler';
+import { detectPreset, metronomeClick, playDrum, playNote } from '@play.yaml/core';
+import {
+  createTrackBus, DRUM_LIBRARY, loadInstrument, Sampler, SAMPLED_INSTRUMENTS, TrackBus,
+} from './sampler';
 
 /** Where a sample (the DSL's instrument name) should be routed. */
 export interface MidiRoute {
@@ -12,9 +14,9 @@ export interface MidiRoute {
 /** Keyed by sample name — "cello", "piano", … */
 export type RouteMap = Record<string, MidiRoute | undefined>;
 
-/** The routing key for a compiled track: its sample. */
-export function routeKey(track: { sample?: string }): string {
-  return track.sample ?? 'piano';
+/** The routing key for a compiled track: its kit, else its sample. */
+export function routeKey(track: { sample?: string; kit?: string }): string {
+  return track.kit ?? track.sample ?? 'piano';
 }
 
 export interface PlaybackHandle {
@@ -113,13 +115,24 @@ export async function playSong(
   const buses: TrackBus[] = [];
   let endBeat = 0;
 
-  // The sampled violin loads once (≈5 MB, then browser-cached) before the
-  // transport starts, so its first note isn't a fallback oscillator.
-  let violin: ViolinSampler | null = null;
-  const needsViolin = song.tracks.some(
-    (t) => t.sample?.toLowerCase() === 'violin' && !(routes[routeKey(t)] && midiOutputs.get(routes[routeKey(t)]!.outputId)),
-  );
-  if (needsViolin) violin = await loadViolin(ctx);
+  // Sampled instruments load once (a few MB each, then browser-cached) before
+  // the transport starts, so first notes aren't fallback oscillators. Every
+  // sampled kit shares the drum library; the 808 kit is always synthesized.
+  const wanted = new Set<string>();
+  for (const track of song.tracks) {
+    const route = routes[routeKey(track)];
+    if (route && midiOutputs.get(route.outputId)) continue;
+    if (track.kit) {
+      if (track.kit !== '808') wanted.add(DRUM_LIBRARY);
+    } else {
+      const sample = track.sample?.toLowerCase();
+      if (sample && SAMPLED_INSTRUMENTS.includes(sample)) wanted.add(sample);
+    }
+  }
+  const samplers = new Map<string, Sampler | null>();
+  await Promise.all([...wanted].map(async (name) => {
+    samplers.set(name, await loadInstrument(ctx, name));
+  }));
 
   for (const track of song.tracks) {
     const route = routes[routeKey(track)];
@@ -186,12 +199,14 @@ export async function playSong(
       // Built-in rendering: every track gets a control bus so the score's CC
       // stream (expression swells, bow-position drifts, vibrato, pizzicato)
       // shapes the sound, whether sampled or synthesized.
-      const preset = detectPreset(track);
+      const preset = track.kit ? null : detectPreset(track);
       const bus = createTrackBus(ctx, masterGain, {
         hasExpression: (track.controls ?? []).some((c) => c.cc === 11),
       });
       buses.push(bus);
-      const sampled = track.sample?.toLowerCase() === 'violin' ? violin : null;
+      const sampled = track.kit
+        ? (track.kit !== '808' ? samplers.get(DRUM_LIBRARY) : null)
+        : (track.sample && samplers.get(track.sample.toLowerCase())) || null;
 
       for (const control of track.controls ?? []) {
         // Scheduled ahead of the notes at the same beat (insertion order), so
@@ -204,10 +219,13 @@ export async function playSong(
       for (const note of track.timeline) {
         endBeat = Math.max(endBeat, note.time + note.duration);
         transport.schedule((time) => {
-          if (sampled) {
+          if (track.kit) {
+            if (sampled?.kind === 'drums') sampled.play(bus, note.midi, note.velocity, time);
+            else playDrum(ctx, bus.input, note.midi, note.velocity, time);
+          } else if (sampled?.kind === 'melodic') {
             sampled.play(bus, note.midi, note.velocity, time, note.duration * secPerBeat);
           } else {
-            playNote(ctx, bus.input, preset, note.midi, note.velocity, time, note.duration * secPerBeat);
+            playNote(ctx, bus.input, preset!, note.midi, note.velocity, time, note.duration * secPerBeat);
           }
         }, atBeat(note.time));
       }
