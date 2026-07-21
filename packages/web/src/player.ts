@@ -2,7 +2,7 @@ import * as Tone from 'tone';
 import type { CompiledSong } from '@play.yaml/core';
 import { detectPreset, metronomeClick, playDrum, playNote } from '@play.yaml/core';
 import {
-  createTrackBus, DRUM_LIBRARY, loadInstrument, Sampler, SAMPLED_INSTRUMENTS, TrackBus,
+  createTrackBus, DRUM_LIBRARY, loadInstrument, Sampler, SAMPLE_LIBRARIES, TrackBus,
 } from './sampler';
 
 /** Where a sample (the DSL's instrument name) should be routed. */
@@ -125,8 +125,8 @@ export async function playSong(
     if (track.kit) {
       if (track.kit !== '808') wanted.add(DRUM_LIBRARY);
     } else {
-      const sample = track.sample?.toLowerCase();
-      if (sample && SAMPLED_INSTRUMENTS.includes(sample)) wanted.add(sample);
+      const library = SAMPLE_LIBRARIES[track.sample?.toLowerCase() ?? ''];
+      if (library) wanted.add(library);
     }
   }
   const samplers = new Map<string, Sampler | null>();
@@ -206,7 +206,7 @@ export async function playSong(
       buses.push(bus);
       const sampled = track.kit
         ? (track.kit !== '808' ? samplers.get(DRUM_LIBRARY) : null)
-        : (track.sample && samplers.get(track.sample.toLowerCase())) || null;
+        : samplers.get(SAMPLE_LIBRARIES[track.sample?.toLowerCase() ?? '']) || null;
 
       for (const control of track.controls ?? []) {
         // Scheduled ahead of the notes at the same beat (insertion order), so

@@ -168,6 +168,8 @@ interface MelodicManifest {
   tremolo?: ManifestNote[];
   /** What the instrument does before the score says arco/pizz ("pizz" = a groove bass). */
   defaultMode?: 'arco' | 'pizz';
+  /** false = never loop long holds (a struck string's decay must just decay). */
+  loop?: boolean;
 }
 
 interface DrumLayer {
@@ -194,8 +196,15 @@ export interface DrumSampler {
 
 export type Sampler = MelodicSampler | DrumSampler;
 
-/** Instrument names with a sampled set under public/samples/. */
-export const SAMPLED_INSTRUMENTS = ['violin', 'cello', 'flute', 'bass', 'piano'];
+/** DSL sample names → sampled set under public/samples/ (ocarina rides the flute). */
+export const SAMPLE_LIBRARIES: Record<string, string> = {
+  violin: 'violin',
+  cello: 'cello',
+  flute: 'flute',
+  ocarina: 'flute',
+  bass: 'bass',
+  piano: 'piano',
+};
 
 /** Every sampled kit shares one drum library; the 808 kit is pure synthesis. */
 export const DRUM_LIBRARY = 'drums';
@@ -265,6 +274,7 @@ async function loadMelodic(
     fetchMap(manifest.tremolo),
   ]);
   const defaultPizz = manifest.defaultMode === 'pizz';
+  const allowLoop = manifest.loop !== false;
 
   const nearest = (map: BufferMap, midi: number): [number, AudioBuffer] => {
     let bestMidi = -1;
@@ -295,7 +305,7 @@ async function loadMelodic(
     bus.vibrato.connect(source.detune);
 
     // Long holds loop inside the sample's steady region.
-    if (sustained && durationSec > buffer.duration - 0.6) {
+    if (allowLoop && sustained && durationSec > buffer.duration - 0.6) {
       source.loop = true;
       source.loopStart = Math.min(1.0, buffer.duration / 3);
       source.loopEnd = buffer.duration - 0.35;
