@@ -696,6 +696,233 @@ check('multitrack → format 1 with conductor', () => {
   assert.strictEqual((buf[10] << 8) | buf[11], 3); // conductor + 2 tracks
 });
 
+console.log('\naccents:');
+check('`>` raises one note\'s velocity by 16, stackable', () => {
+  const tl = parsePlay('1 2> 3>> 4', { velocity: 80 });
+  assert.deepStrictEqual(tl.map((n) => n.velocity), [80, 96, 112, 80]);
+});
+check('an accent on a chord lifts every member', () => {
+  const tl = parsePlay('[c e g]> ~ ~ ~', { velocity: 80 });
+  assert.deepStrictEqual(tl.map((n) => n.velocity), [96, 96, 96]);
+});
+check('accents work inside groups and clamp at 127', () => {
+  const tl = parsePlay('{c d>} ~ ~ ~', { velocity: 120 });
+  assert.deepStrictEqual(tl.map((n) => n.velocity), [120, 127]);
+});
+check('an accented-note line is still a measure, not a directive', () => {
+  const song = compileDoc({ play: ['c> d e d'] });
+  assert.strictEqual(song.tracks[0].timeline.length, 4);
+});
+
+console.log('\nmeter changes:');
+check('a 2/4 bar inside 4/4 takes two beats', () => {
+  const { timeline, lengthBeats } = parsePlayFull([
+    'c d e d',
+    { set: '2/4' },
+    'g g',
+    { set: '4/4' },
+    'c d e d',
+  ]);
+  assert.deepStrictEqual(times(timeline), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  assert.strictEqual(lengthBeats, 10);
+});
+check('`measure:` directive key works like the set clause', () => {
+  const { timeline } = parsePlayFull(['c d e d', { measure: '2/4' }, 'g g', 'c c']);
+  assert.deepStrictEqual(times(timeline), [0, 1, 2, 3, 4, 5, 6, 7]);
+});
+check('lengthBeats honours meter changes through compileDoc', () => {
+  const song = compileDoc({ play: ['c d e d', { set: '2/4' }, 'g g'] });
+  assert.strictEqual(song.lengthBeats, 6);
+});
+
+console.log('\nrelative tempo words:');
+check('più lento drops the running tempo at once', () => {
+  const { tempos } = parsePlayFull(['c d e d', { set: 'più lento' }, 'c d e d'], { tempo: 100 });
+  assert.strictEqual(tempos.length, 1);
+  assert.strictEqual(tempos[0].bpm, 75);
+  assert.strictEqual(tempos[0].rampBeats, 0);
+});
+check('meno mosso and piu mosso parse without the accent', () => {
+  assert.strictEqual(parseSet('meno mosso').tempo!.scale, 0.8);
+  assert.strictEqual(parseSet('piu mosso').tempo!.scale, 1.25);
+});
+
+console.log('\nSWAM-style techniques:');
+check('`<` softens a note, the dual of the accent', () => {
+  const tl = parsePlay('1 2< 3<< 4', { velocity: 80 });
+  assert.deepStrictEqual(tl.map((n) => n.velocity), [80, 64, 48, 80]);
+});
+check('pizzicato / col legno / tremolo / sordino need a mapped control', () => {
+  assert.throws(() => parseSet('pizzicato'), /needs a "playmode" control/);
+  const patch = parseSet('pizzicato', { playmode: 20 });
+  assert.deepStrictEqual(patch.ccs, [{ cc: 20, value: 64 }]);
+  assert.deepStrictEqual(parseSet('col legno', { playmode: 20 }).ccs, [{ cc: 20, value: 127 }]);
+  assert.deepStrictEqual(parseSet('tremolo fast', { tremolo: 21 }).ccs, [{ cc: 21, value: 127 }]);
+  assert.deepStrictEqual(parseSet('con sordino', { sordino: 22 }).ccs, [{ cc: 22, value: 127 }]);
+});
+check('a declared-control clause in a bare string is a directive, not a measure', () => {
+  // 'polyphony' is only known to the track's controls, not the classifier —
+  // the line must still classify as a directive and emit the CC.
+  const { timeline, controls } = parsePlayFull(
+    ['arco, polyphony 64', '1 2 3 4'],
+    { controls: { playmode: 20, polyphony: 26 } },
+  );
+  assert.strictEqual(timeline.length, 4); // no phantom silent measure or "64" note
+  assert.deepStrictEqual(controls.map((c) => c.cc).sort(), [20, 26]);
+});
+check('an unmapped technique word is still a directive, not a measure', () => {
+  // classification is lenient; compilation stays strict and explains itself
+  assert.throws(
+    () => parsePlayFull(['c d e d', 'pizzicato', 'c d e d']),
+    /needs a "playmode" control/,
+  );
+});
+check('left-hand fingering words drive the fingering control', () => {
+  assert.deepStrictEqual(parseSet('open strings', { fingering: 25 }).ccs, [{ cc: 25, value: 127 }]);
+  assert.deepStrictEqual(parseSet('mid position', { fingering: 25 }).ccs, [{ cc: 25, value: 0 }]);
+});
+check('martelé and spiccato read as articulation words', () => {
+  assert.strictEqual(parseSet('spiccato').gate, 0.3);
+  const m = parseSet('martelé');
+  assert.strictEqual(m.velocity, 112);
+  assert.strictEqual(m.gate, 0.55);
+});
+check('declared expression control mirrors dynamics as CCs', () => {
+  const { controls } = parsePlayFull(
+    ['1 2 3 4', { set: 'ff' }, '1 2 3 4'],
+    { velocity: 64, controls: { expression: 11 } },
+  );
+  assert.deepStrictEqual(controls[0], { time: 0, cc: 11, value: 64 }); // opening
+  assert.deepStrictEqual(controls[1], { time: 4, cc: 11, value: 112 });
+});
+check('a crescendo becomes an expression ramp at eighth-note steps', () => {
+  const { controls } = parsePlayFull(
+    ['1 2 3 4', { set: 'crescendo to ff over 1' }, '1 2 3 4'],
+    { velocity: 64, controls: { expression: 11 } },
+  );
+  const ramp = controls.filter((c) => c.time > 4 && c.time <= 8);
+  assert.strictEqual(ramp.length, 8); // 4 beats × 2 per beat
+  assert.strictEqual(ramp[ramp.length - 1].value, 112);
+  assert.ok(ramp[0].value > 64 && ramp[0].value < 112);
+});
+check('without a declared expression control no CCs are emitted', () => {
+  const { controls } = parsePlayFull(['1 2 3 4', { set: 'ff' }, '1 2 3 4'], { velocity: 64 });
+  assert.deepStrictEqual(controls, []);
+});
+
+console.log('\nrepeated-note legato:');
+check('a same-pitch restrike trims the earlier note instead of being cut', () => {
+  const tl = parsePlay('c c d d', { gate: 1.05 });
+  assert.strictEqual(tl[0].duration, 0.98); // released just before the restrike
+  assert.strictEqual(tl[1].duration, 1.05); // c→d overlap kept: cross-pitch slur
+  assert.strictEqual(tl[2].duration, 0.98);
+});
+check('different pitches keep their legato overlap untouched', () => {
+  const tl = parsePlay('c d e f', { gate: 1.05 });
+  assert.ok(tl.every((n) => n.duration === 1.05));
+});
+
+console.log('\nstrum (rolled chords):');
+check('`[c e g]~` rolls in written order, ending together', () => {
+  const tl = parsePlay('[c e g]~ ~ ~ ~');
+  assert.deepStrictEqual(times(tl), [0, 0.03, 0.06]);
+  assert.deepStrictEqual(midis(tl), [60, 64, 67]); // written order = bass first
+  const ends = tl.map((n) => n.time + n.duration);
+  assert.ok(Math.max(...ends) - Math.min(...ends) < 0.01);
+});
+check('written order controls direction — a down-strum', () => {
+  const tl = parsePlay('[g e c]~ ~ ~ ~');
+  assert.deepStrictEqual(midis(tl), [67, 64, 60]); // treble speaks first
+  assert.deepStrictEqual(times(tl), [0, 0.03, 0.06]);
+});
+check('`~~` doubles the spread; `strum` prop/set retunes it', () => {
+  assert.deepStrictEqual(times(parsePlay('[c e g]~~ ~ ~ ~')), [0, 0.06, 0.12]);
+  assert.deepStrictEqual(times(parsePlay('[c e g]~ ~ ~ ~', { strum: 0.1 })), [0, 0.1, 0.2]);
+  const { timeline } = parsePlayFull([{ set: 'strum 0.05' }, '[c e g]~ ~ ~ ~']);
+  assert.deepStrictEqual(times(timeline), [0, 0.05, 0.1]);
+});
+check('the roll clamps inside fast subdivisions', () => {
+  const tl = parsePlay('{[c e g]~ c c c} c c c', { strum: 0.5 });
+  const chord = tl.slice(0, 3);
+  assert.ok(chord[2].time <= 0.25 * 0.6 + 1e-9); // ≤ 60% of a 16th slot
+});
+check('an unmarked chord stays simultaneous; bare `~` is still a rest', () => {
+  assert.deepStrictEqual(times(parsePlay('[c e g] ~ ~ ~')), [0, 0, 0]);
+  assert.strictEqual(parsePlay('c ~ ~ ~').length, 1);
+});
+check('voices 2 breaks a rolled triple stop like a bow would', () => {
+  const tl = parsePlay('[c e g]~ _ _ _', { voices: 2 });
+  // the bass is short — released once the top note has landed…
+  assert.ok(tl[0].duration < 0.5);
+  // …but overlaps the note that displaces it long enough for a
+  // string-crossing model to voice them on separate strings.
+  const overlap = tl[0].time + tl[0].duration - tl[2].time;
+  assert.ok(overlap >= 0.08, `overlap ${overlap}`);
+  // The top pair sustains, and the following holds extend only them.
+  assert.ok(tl[1].duration > 3);
+  assert.ok(tl[2].duration > 3);
+});
+check('`tail` overrides the release: negative ends before the displacer', () => {
+  const tl = parsePlay('[c e g]~ _ _ _', { voices: 2, strum: 0.15, strumTail: -0.02 });
+  const bassEnd = tl[0].time + tl[0].duration;
+  assert.ok(bassEnd < tl[2].time, `bass ends ${bassEnd} before top at ${tl[2].time}`);
+  assert.strictEqual(parseSet('tail -0.02').strumTail, -0.02);
+  assert.strictEqual(parseSet('tail 0.3').strumTail, 0.3);
+});
+check('voices only applies to rolled chords; `voices all` clears it', () => {
+  const tl = parsePlay('[c e g] ~ ~ ~', { voices: 2 });
+  assert.ok(tl.every((n) => n.duration === 0.9)); // unrolled chord untouched
+  assert.strictEqual(parseSet('voices 2').voices, 2);
+  assert.strictEqual(parseSet('voices all').voices, 0);
+});
+check('strum combines with an accent: `[c e]>~`', () => {
+  const tl = parsePlay('[c e]>~ ~ ~ ~', { velocity: 80 });
+  assert.deepStrictEqual(times(tl), [0, 0.03]);
+  assert.deepStrictEqual(tl.map((n) => n.velocity), [96, 96]);
+});
+
+console.log('\ncontrol drifts:');
+check('a technique word with a span glides from the last value', () => {
+  const { controls } = parsePlayFull(
+    ['sul tasto', '1 2 3 4', 'sul ponticello over 2', '1 2 3 4', '1 2 3 4'],
+    {},
+  );
+  // sul tasto: one CC74=0 at beat 0; then 16 steps (8 beats × 2) rising to 114
+  assert.deepStrictEqual(controls[0], { time: 0, cc: 74, value: 0 });
+  const ramp = controls.slice(1);
+  assert.strictEqual(ramp.length, 16);
+  assert.strictEqual(ramp[ramp.length - 1].value, 114); // sul ponticello = 0.9
+  assert.ok(ramp[0].value > 0 && ramp[0].value < 114);
+  assert.strictEqual(ramp[ramp.length - 1].time, 12);
+});
+check('named control drift: "bow to 110 over 1"', () => {
+  const { controls } = parsePlayFull(
+    [{ set: 'bow 20' }, '1 2 3 4', { set: 'bow to 110 over 1' }, '1 2 3 4'],
+    {},
+  );
+  const ramp = controls.filter((c) => c.time > 4);
+  assert.strictEqual(ramp.length, 8);
+  assert.strictEqual(ramp[7].value, 110);
+});
+check('a drift with no prior value lands immediately at the target', () => {
+  const { controls } = parsePlayFull([{ set: 'vibrato over 2' }, '1 2 3 4', '1 2 3 4'], {});
+  assert.ok(controls.every((c) => c.value === 76)); // vibrato = 0.6 of 0..127
+});
+
+console.log('\nyaml anchors (repeats):');
+check('&anchor / *alias replays a measure', () => {
+  const doc = parseYaml('play:\n  - &theme "c d e d"\n  - "g g g g"\n  - *theme\n');
+  assert.strictEqual(doc.play[2], 'c d e d');
+  assert.strictEqual(compileDoc(doc).tracks[0].timeline.length, 12);
+});
+check('anchors work on numbered measures', () => {
+  const doc = parseYaml('play:\n  - 1: &a "c d e d"\n  - 2: *a\n');
+  assert.strictEqual((doc.play[1] as any)[2], 'c d e d');
+});
+check('an unknown alias throws', () => {
+  assert.throws(() => parseYaml('play:\n  - *nope\n'), /no &nope anchor/);
+});
+
 console.log('\nexample:');
 check('bundled example compiles', () => {
   const text = fs.readFileSync(path.join(__dirname, '../../examples/my-score.play.yaml'), 'utf8');

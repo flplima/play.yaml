@@ -15,6 +15,10 @@ type Source =
   | { kind: 'file'; name: string; handle: FileSystemFileHandle };
 
 const ROUTES_STORAGE_KEY = 'play.yaml:midi-routes';
+const OUTPUT_STORAGE_KEY = 'play.yaml:output-mode';
+
+/** Where playback goes: the bundled sampler/synth, or the WebMIDI routes. */
+type OutputMode = 'builtin' | 'midi';
 
 function loadRoutes(): RouteMap {
   try {
@@ -22,6 +26,10 @@ function loadRoutes(): RouteMap {
   } catch {
     return {};
   }
+}
+
+function loadOutputMode(): OutputMode {
+  return localStorage.getItem(OUTPUT_STORAGE_KEY) === 'midi' ? 'midi' : 'builtin';
 }
 
 function compile(text: string): { song: CompiledSong | null; error: string | null } {
@@ -57,6 +65,12 @@ export default function App() {
 
   const midi = useMidi();
   const [routes, setRoutes] = useState<RouteMap>(loadRoutes);
+  const [outputMode, setOutputMode] = useState<OutputMode>(loadOutputMode);
+
+  const selectOutputMode = (mode: OutputMode) => {
+    setOutputMode(mode);
+    localStorage.setItem(OUTPUT_STORAGE_KEY, mode);
+  };
 
   const { song, error } = useMemo(() => compile(text), [text]);
   const [lastGoodSong, setLastGoodSong] = useState<CompiledSong | null>(null);
@@ -154,7 +168,8 @@ export default function App() {
     if (!song) return;
     stop();
     const outputById = new Map(midi.outputs.map((o) => [o.id, o]));
-    const handle = await playSong(song, routes, outputById, {
+    // Built-in mode parks the MIDI routes: everything renders in the browser.
+    const handle = await playSong(song, outputMode === 'midi' ? routes : {}, outputById, {
       loop,
       metronome: () => metronomeRef.current,
     });
@@ -255,6 +270,36 @@ export default function App() {
 
         <div className="flex-1" />
 
+        <div
+          className="flex overflow-hidden rounded border border-zinc-700 text-xs"
+          role="group"
+          aria-label="Playback output"
+          title="Where playback goes: the bundled sampler & synth, or your MIDI devices"
+        >
+          <button
+            className={
+              outputMode === 'builtin'
+                ? 'bg-emerald-600/30 px-2.5 py-1 font-medium text-emerald-300'
+                : 'px-2.5 py-1 text-zinc-400 hover:bg-zinc-800'
+            }
+            aria-pressed={outputMode === 'builtin'}
+            onClick={() => selectOutputMode('builtin')}
+          >
+            ♪ Built-in
+          </button>
+          <button
+            className={
+              outputMode === 'midi'
+                ? 'bg-emerald-600/30 px-2.5 py-1 font-medium text-emerald-300'
+                : 'px-2.5 py-1 text-zinc-400 hover:bg-zinc-800'
+            }
+            aria-pressed={outputMode === 'midi'}
+            onClick={() => selectOutputMode('midi')}
+          >
+            ⌁ MIDI
+          </button>
+        </div>
+
         <button
           className={
             metronome
@@ -327,6 +372,7 @@ export default function App() {
             midi={midi}
             routes={routes}
             onRouteChange={handleRouteChange}
+            disabled={outputMode === 'builtin'}
           />
         )}
       </main>

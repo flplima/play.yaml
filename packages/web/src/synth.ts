@@ -8,6 +8,7 @@ const SAMPLE_PRESETS: Record<string, InstrumentPreset> = {
   keys: 'piano',
   bass: 'bass',
   strings: 'strings',
+  violin: 'strings', // oscillator fallback — normally the sampler takes over
   cello: 'strings',
   pad: 'strings',
   flute: 'flute',

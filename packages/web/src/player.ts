@@ -1,6 +1,7 @@
 import * as Tone from 'tone';
 import type { CompiledSong } from '@play.yaml/core';
 import { detectPreset, metronomeClick, playNote } from './synth';
+import { createTrackBus, loadViolin, TrackBus, ViolinSampler } from './sampler';
 
 /** Where a sample (the DSL's instrument name) should be routed. */
 export interface MidiRoute {
@@ -109,7 +110,16 @@ export async function playSong(
   const noteTimers = new Set<number>();
   const activeNotes = new Set<string>(); // "outputId,channel,note"
   const expressionByChannel = new Map<string, number>(); // "outputId,channel" → last CC value
+  const buses: TrackBus[] = [];
   let endBeat = 0;
+
+  // The sampled violin loads once (≈5 MB, then browser-cached) before the
+  // transport starts, so its first note isn't a fallback oscillator.
+  let violin: ViolinSampler | null = null;
+  const needsViolin = song.tracks.some(
+    (t) => t.sample?.toLowerCase() === 'violin' && !(routes[routeKey(t)] && midiOutputs.get(routes[routeKey(t)]!.outputId)),
+  );
+  if (needsViolin) violin = await loadViolin(ctx);
 
   for (const track of song.tracks) {
     const route = routes[routeKey(track)];
@@ -173,11 +183,32 @@ export async function playSong(
         }, atBeat(note.time + note.duration));
       }
     } else {
+      // Built-in rendering: every track gets a control bus so the score's CC
+      // stream (expression swells, bow-position drifts, vibrato, pizzicato)
+      // shapes the sound, whether sampled or synthesized.
       const preset = detectPreset(track);
+      const bus = createTrackBus(ctx, masterGain, {
+        hasExpression: (track.controls ?? []).some((c) => c.cc === 11),
+      });
+      buses.push(bus);
+      const sampled = track.sample?.toLowerCase() === 'violin' ? violin : null;
+
+      for (const control of track.controls ?? []) {
+        // Scheduled ahead of the notes at the same beat (insertion order), so
+        // articulation switches land before the note that needs them.
+        transport.schedule((time) => {
+          bus.applyCC(control.cc, control.value, time);
+        }, atBeat(control.time));
+      }
+
       for (const note of track.timeline) {
         endBeat = Math.max(endBeat, note.time + note.duration);
         transport.schedule((time) => {
-          playNote(ctx, masterGain, preset, note.midi, note.velocity, time, note.duration * secPerBeat);
+          if (sampled) {
+            sampled.play(bus, note.midi, note.velocity, time, note.duration * secPerBeat);
+          } else {
+            playNote(ctx, bus.input, preset, note.midi, note.velocity, time, note.duration * secPerBeat);
+          }
         }, atBeat(note.time));
       }
     }
@@ -205,7 +236,10 @@ export async function playSong(
     for (const output of usedOutputs) allNotesOff(output);
     // Fade the master bus out fast, then detach it.
     masterGain.gain.setTargetAtTime(0, ctx.currentTime, 0.03);
-    window.setTimeout(() => masterGain.disconnect(), 300);
+    window.setTimeout(() => {
+      masterGain.disconnect();
+      for (const bus of buses) bus.dispose();
+    }, 300);
     finished();
   };
 

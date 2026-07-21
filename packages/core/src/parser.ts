@@ -59,6 +59,28 @@ export interface TrackProps {
    * models such as SWAM are told to play a slur rather than re-attack.
    */
   gate?: number;
+  /**
+   * Roll spread for `~`-marked chords, in beats between successive notes.
+   * The chord rolls in written order, so `[1 5 12]~` speaks bass-first the
+   * way a string player breaks a triple stop, and `[12 5 1]~` strums the
+   * other way. `~~` doubles the spread for a slower, guitar-like strum.
+   */
+  strum?: number;
+  /**
+   * How many notes of a rolled chord keep sounding. A bow can sustain two
+   * strings, so `voices: 2` makes `[1 5 12]~` bow the bass into the roll and
+   * release it as the top pair lands — the way a cellist breaks a triple
+   * stop, and what physical models (SWAM) need to voice every note.
+   * Unset = all notes sustain (piano, guitar, samplers).
+   */
+  voices?: number;
+  /**
+   * How long a voices-limited note rings past the onset of the note that
+   * displaces it, in beats (`tail -0.02` as a set clause). Negative releases
+   * it just before, so a two-voice model never has to steal. Unset =
+   * max(3×strum, 0.09).
+   */
+  strumTail?: number;
   /** A dynamic or character mark ("mf", "dolce") — the worded form of `velocity`. */
   dynamic?: string;
   /** An articulation mark ("legato", "tenuto") — the worded form of `gate`. */
@@ -100,7 +122,7 @@ export interface TempoEvent {
  * measures can be labeled explicitly and gaps become silence.
  */
 export type PlayDirective = Pick<
-  TrackProps, 'scale' | 'octave' | 'velocity' | 'gate' | 'tempo'
+  TrackProps, 'scale' | 'octave' | 'velocity' | 'gate' | 'tempo' | 'measure' | 'strum' | 'voices'
 > & {
   set?: string | string[];
   [measure: number]: string | undefined;
@@ -161,6 +183,7 @@ export const DEFAULT_GATE = 0.9;
  */
 export const ARTICULATIONS: Record<string, number> = {
   staccatissimo: 0.25,
+  spiccato: 0.3, // off-the-string bounce; on SWAM set Bow Lift to "Off String"
   staccato: 0.4,
   short: 0.4,
   portato: 0.7,
@@ -226,6 +249,8 @@ export const EXPRESSIONS: Record<string, { velocity?: number; gate?: number }> =
   leggiero: { velocity: 56, gate: 0.6 }, // light and detached
   grazioso: { velocity: 68, gate: 0.9 },
   marcato: { velocity: 104, gate: 0.8 }, // marked, each note stressed
+  martele: { velocity: 112, gate: 0.55 }, // hammered strokes, biting attack
+  martellato: { velocity: 112, gate: 0.55 },
   pesante: { velocity: 104, gate: 0.98 }, // heavy
   maestoso: { velocity: 100, gate: 0.98 },
   agitato: { velocity: 100, gate: 0.75 },
@@ -269,6 +294,7 @@ export const CONTROL_TERMS: Record<string, { control: string; amount: number }> 
   'heavy bow': { control: 'pressure', amount: 0.85 },
   premuto: { control: 'pressure', amount: 0.9 }, // pressed
   pressed: { control: 'pressure', amount: 0.9 },
+  scratch: { control: 'pressure', amount: 1 }, // overpressure — SWAM shows "Scratch"
 
   // ── vibrato ──
   'senza vibrato': { control: 'vibrato', amount: 0 },
@@ -279,6 +305,43 @@ export const CONTROL_TERMS: Record<string, { control: string; amount: number }> 
   vibrato: { control: 'vibrato', amount: 0.6 },
   'molto vibrato': { control: 'vibrato', amount: 1 },
   'full vibrato': { control: 'vibrato', amount: 1 },
+  'slow vibrato': { control: 'vibrato_rate', amount: 0.25 },
+  'fast vibrato': { control: 'vibrato_rate', amount: 0.85 },
+
+  // ── play mode: how the string is set in motion ──
+  arco: { control: 'playmode', amount: 0 },
+  pizzicato: { control: 'playmode', amount: 0.5 },
+  pizz: { control: 'playmode', amount: 0.5 },
+  'col legno': { control: 'playmode', amount: 1 },
+
+  // ── bowed tremolo (the instrument's own, e.g. SWAM auto-tremolo) ──
+  'tremolo off': { control: 'tremolo', amount: 0 },
+  tremolo: { control: 'tremolo', amount: 0.5 },
+  'tremolo slow': { control: 'tremolo', amount: 0.5 },
+  'tremolo fast': { control: 'tremolo', amount: 1 },
+
+  // ── mute ──
+  'con sordino': { control: 'sordino', amount: 1 },
+  'senza sordino': { control: 'sordino', amount: 0 },
+
+  // ── bow lift: on the string (martelé) vs off the string (spiccato) ──
+  'off the string': { control: 'bowlift', amount: 0 },
+  'on the string': { control: 'bowlift', amount: 1 },
+
+  // ── left hand ──
+  'senza portamento': { control: 'portamento', amount: 0 },
+  portamento: { control: 'portamento', amount: 0.7 },
+  'molto portamento': { control: 'portamento', amount: 1 },
+  glissando: { control: 'portamento', amount: 1 },
+  'no harmonics': { control: 'harmonics', amount: 0 },
+  harmonics: { control: 'harmonics', amount: 0.4 }, // 2nd harmonic — one octave up
+  'high harmonics': { control: 'harmonics', amount: 0.9 }, // 3rd — octave and a fifth
+
+  // ── left-hand position (SWAM "Alternate Fingering"): where notes are
+  //    fingered, and whether open strings are allowed to ring ──
+  'mid position': { control: 'fingering', amount: 0 },
+  'high position': { control: 'fingering', amount: 0.5 }, // near the bridge
+  'open strings': { control: 'fingering', amount: 1 }, // near the nut + open
 };
 
 /** Resolve a named control to its CC and range, falling back to convention. */
@@ -290,6 +353,23 @@ export function resolveControl(
   const spec = typeof declared === 'number' ? { cc: declared } : declared ?? DEFAULT_CONTROLS[name];
   return spec && { min: 0, max: 127, ...spec };
 }
+
+/**
+ * Immediate relative tempo words → the ratio applied to the running tempo.
+ * Unlike the gradual words below these take effect at once, the way a player
+ * reads "più lento" at a section boundary.
+ */
+const TEMPO_RELATIVE: Record<string, number> = {
+  'piu lento': 0.75,
+  'meno mosso': 0.8,
+  'piu mosso': 1.25,
+};
+
+/** How much velocity one `>` accent adds to a note. */
+export const ACCENT_STEP = 16;
+
+/** Default roll spread for `~`-marked chords, in beats between notes. */
+export const DEFAULT_STRUM = 0.03;
 
 /** Gradual tempo words → the ratio they move the pulse by. */
 const TEMPO_GRADUAL: Record<string, number> = {
@@ -312,6 +392,7 @@ export const SAMPLE_PROGRAMS: Record<string, number> = {
   keys: 4,
   bass: 33,
   strings: 48,
+  violin: 40,
   cello: 42,
   pad: 89,
   flute: 73,
@@ -441,7 +522,22 @@ export interface SetPatch {
   tempo?: { bpm?: number; scale?: number; overMeasures: number };
   /** "a tempo" — return to the tempo the track started at. */
   aTempo?: boolean;
+  /** A time-signature change ("2/4") for the measures that follow. */
+  measure?: string;
+  /** Roll spread for `~` chords, in beats between successive notes. */
+  strum?: number;
+  /** Sustained-note limit inside rolled chords (0 = unlimited). */
+  voices?: number;
+  /**
+   * How long a voices-limited note rings past the onset of the note that
+   * displaces it, in beats. Negative releases it just before (avoids voice
+   * stealing on 2-voice models). Unset = max(3×strum, 0.09).
+   */
+  strumTail?: number;
   ccs?: { cc: number; value: number }[];
+  /** Control drifts: reach `to` over `overMeasures`, from wherever the
+   *  control last sat ("sul ponticello over 6", "bow to 110 over 4"). */
+  ccRamps?: { cc: number; to: number; overMeasures: number }[];
 }
 
 const NUM = String.raw`-?\d+(?:\.\d+)?`;
@@ -461,6 +557,7 @@ const NUM = String.raw`-?\d+(?:\.\d+)?`;
 export function parseSet(
   value: string | string[],
   controls: Record<string, number | ControlSpec> = {},
+  opts: { ignoreMissingControls?: boolean } = {},
 ): SetPatch {
   const patch: SetPatch = {};
   const clauses = (Array.isArray(value) ? value : [value])
@@ -490,7 +587,20 @@ export function parseSet(
       continue;
     }
 
-    const word = clause.toLowerCase().replace(/\.$/, ''); // "rit." → "rit"
+    // A time-signature change: "2/4", or "measure 2/4" if you prefer words.
+    const meter = /^(?:measure\s+)?(\d+\s*\/\s*\d+)$/i.exec(clause);
+    if (meter) {
+      patch.measure = meter[1].replace(/\s+/g, '');
+      continue;
+    }
+
+    const word = clause.toLowerCase().replace(/\.$/, '') // "rit." → "rit"
+      .replace(/ù/g, 'u').replace(/é/g, 'e'); // "più lento", "martelé"
+
+    if (TEMPO_RELATIVE[word] !== undefined) {
+      patch.tempo = { scale: TEMPO_RELATIVE[word], overMeasures: 0 };
+      continue;
+    }
 
     if (ARTICULATIONS[word] !== undefined) {
       patch.gate = ARTICULATIONS[word];
@@ -507,17 +617,38 @@ export function parseSet(
       continue;
     }
 
-    // Playing techniques: "sul tasto", "molto vibrato", "heavy bow".
+    // Playing techniques: "sul tasto", "molto vibrato", "pizzicato".
     if (CONTROL_TERMS[word] !== undefined) {
       const { control, amount } = CONTROL_TERMS[word];
       const spec = resolveControl(controls, control);
-      if (!spec) {
+      if (spec) {
+        addCc(spec.cc, spec.min! + (spec.max! - spec.min!) * amount);
+      } else if (!opts.ignoreMissingControls) {
         throw new Error(
           `"${clause}" needs a "${control}" control — add it under \`controls:\`, ` +
             `e.g. controls: { ${control}: 74 }.`,
         );
       }
-      addCc(spec.cc, spec.min! + (spec.max! - spec.min!) * amount);
+      continue;
+    }
+
+    // A technique word with a span drifts there instead of jumping:
+    // "sul ponticello over 6" glides the bow to the bridge across 6 measures.
+    const termRamp = new RegExp(`^(.+?)\\s+over\\s+(${NUM})$`).exec(word);
+    if (termRamp && CONTROL_TERMS[termRamp[1]] !== undefined) {
+      const { control, amount } = CONTROL_TERMS[termRamp[1]];
+      const spec = resolveControl(controls, control);
+      if (spec) {
+        (patch.ccRamps ??= []).push({
+          cc: spec.cc,
+          to: Math.round(spec.min! + (spec.max! - spec.min!) * amount),
+          overMeasures: Number(termRamp[2]),
+        });
+      } else if (!opts.ignoreMissingControls) {
+        throw new Error(
+          `"${clause}" needs a "${control}" control — add it under \`controls:\`.`,
+        );
+      }
       continue;
     }
 
@@ -584,11 +715,50 @@ export function parseSet(
       continue;
     }
 
+    const strum = new RegExp(`^strum\\s+(${NUM})$`, 'i').exec(clause);
+    if (strum) {
+      patch.strum = Number(strum[1]);
+      continue;
+    }
+
+    const voices = /^voices\s+(\d+|all)$/i.exec(clause);
+    if (voices) {
+      patch.voices = voices[1].toLowerCase() === 'all' ? 0 : parseInt(voices[1], 10);
+      continue;
+    }
+
+    const tail = new RegExp(`^tail\\s+(${NUM})$`, 'i').exec(clause);
+    if (tail) {
+      patch.strumTail = Number(tail[1]);
+      continue;
+    }
+
     const vel = new RegExp(`^velocity\\s+(${NUM})$`, 'i').exec(clause);
     if (vel) {
       patch.velocity = Number(vel[1]);
       continue;
     }
+
+    // Numeric control drifts: "bow to 110 over 4", "cc74 to 90 over 2".
+    const clamp127 = (v: number) => Math.max(0, Math.min(127, Math.round(v)));
+    const ccRamp = new RegExp(`^cc\\s*(\\d+)\\s+to\\s+(${NUM})\\s+over\\s+(${NUM})$`, 'i').exec(clause);
+    if (ccRamp) {
+      (patch.ccRamps ??= []).push({
+        cc: parseInt(ccRamp[1], 10), to: clamp127(Number(ccRamp[2])), overMeasures: Number(ccRamp[3]),
+      });
+      continue;
+    }
+    const namedRamp = new RegExp(`^([a-z][a-z0-9_]*)\\s+to\\s+(${NUM})\\s+over\\s+(${NUM})$`, 'i').exec(clause);
+    const namedRampSpec = namedRamp && resolveControl(controls, namedRamp[1].toLowerCase());
+    if (namedRampSpec) {
+      (patch.ccRamps ??= []).push({
+        cc: namedRampSpec.cc, to: clamp127(Number(namedRamp![2])), overMeasures: Number(namedRamp![3]),
+      });
+      continue;
+    }
+    // Classification mode: a "name value" clause may be a control the track
+    // declares but this caller can't see — treat it as a directive clause.
+    if (namedRamp && opts.ignoreMissingControls) continue;
 
     const rawCc = new RegExp(`^cc\\s*(\\d+)\\s+(${NUM})$`, 'i').exec(clause);
     if (rawCc) {
@@ -602,6 +772,7 @@ export function parseSet(
       addCc(namedSpec.cc, Number(named![2]));
       continue;
     }
+    if (named && opts.ignoreMissingControls) continue;
 
     try {
       parseScale(clause);
@@ -613,8 +784,9 @@ export function parseSet(
     throw new Error(
       `Unknown set clause "${clause}" — expected a dynamic ("mf", "dolce", ` +
         `"crescendo to f over 2"), a tempo ("allegro", "ritardando over 2", ` +
-        `"a tempo", "tempo 60"), an articulation ("legato", "staccato"), a scale ` +
-        `("g lydian"), an octave ("oct up"), or a control ("cc74 30").`,
+        `"a tempo", "tempo 60", "più lento"), an articulation ("legato", ` +
+        `"staccato"), a scale ("g lydian"), an octave ("oct up"), a meter ` +
+        `("2/4"), or a control ("cc74 30").`,
     );
   }
   return patch;
@@ -704,6 +876,10 @@ export function measureToBeats(measure: string | number | undefined): number {
 
 /** Could this token appear in a measure — a note, degree, rest, hold or group? */
 function isMeasureToken(token: string): boolean {
+  // Suffix marks (accents, strums) don't change what a token is — but a bare
+  // `~` is the rest, not a suffix.
+  const suffix = /([<>~]+)$/.exec(token);
+  if (suffix && suffix[1].length < token.length) token = token.slice(0, -suffix[1].length);
   if (token === '~' || token === HOLD) return true;
   if (token[0] === '{' || token[0] === '[') return true;
   if (isSetToken(token) || isScaleToken(token)) return true;
@@ -725,7 +901,9 @@ export function isDirectiveString(text: string): boolean {
   const tokens = splitTopLevel(trimmed);
   if (tokens.length > 0 && tokens.every(isMeasureToken)) return false;
   try {
-    parseSet(trimmed);
+    // Classification only — a technique word is a directive even when the
+    // track hasn't mapped its control yet (compilation stays strict).
+    parseSet(trimmed, {}, { ignoreMissingControls: true });
     return true;
   } catch {
     return false; // neither — leave it to the measure parser to complain
@@ -790,6 +968,12 @@ interface EmitCtx {
   octave: number;
   velocity: number;
   gate: number;
+  /** Beats between successive notes of a `~`-rolled chord. */
+  strum: number;
+  /** Sustained-note limit inside rolled chords (0 = unlimited). */
+  voices: number;
+  /** Release tail for voices-limited notes, in beats; undefined = auto. */
+  strumTail?: number;
   /** Active crescendo/diminuendo; notes inside the span interpolate. */
   velocityRamp?: { fromBeat: number; toBeat: number; from: number; to: number };
   /** The notes a `_` would prolong, and how much time they cover so far. */
@@ -810,10 +994,24 @@ function velocityAt(ctx: EmitCtx, beat: number): number {
 /**
  * Recursively place one token in [start, start+span):
  * rests emit nothing, chords stack, groups subdivide equally.
+ * `boost` carries an accent's extra velocity into chord members.
  */
-function placeToken(token: string, start: number, span: number, ctx: EmitCtx): void {
-  const tok = token.trim();
+function placeToken(token: string, start: number, span: number, ctx: EmitCtx, boost = 0): void {
+  let tok = token.trim();
   if (!tok) return;
+
+  // Suffix marks: `>` accents, `<` softens (both stackable), and `~` rolls a
+  // chord (arpeggiando) — `[1 5 12]~`. The bare `~` rest stays untouched
+  // because a suffix needs something to sit on.
+  let strumMarks = 0;
+  const suffix = /([<>~]+)$/.exec(tok);
+  if (suffix && suffix[1].length < tok.length) {
+    for (const ch of suffix[1]) {
+      if (ch === '~') strumMarks += 1;
+      else boost += ch === '>' ? ACCENT_STEP : -ACCENT_STEP;
+    }
+    tok = tok.slice(0, -suffix[1].length);
+  }
 
   // A rest cuts the sound off, so nothing can be prolonged across it.
   if (tok === '~') {
@@ -834,12 +1032,39 @@ function placeToken(token: string, start: number, span: number, ctx: EmitCtx): v
 
   if (tok[0] === '[' && tok[tok.length - 1] === ']') {
     const before = ctx.events.length;
-    for (const part of splitTopLevel(tok.slice(1, -1))) {
-      placeToken(part, start, span, ctx);
-    }
-    // The whole chord is prolonged together.
+    const parts = splitTopLevel(tok.slice(1, -1));
+    // A `~` rolls the chord in WRITTEN order: each note starts a little after
+    // the previous and everything still ends together, like a broken triple
+    // stop or a guitar strum. The spread is clamped so fast subdivisions
+    // never roll past their own slot.
+    const spread = strumMarks
+      ? Math.min(strumMarks * ctx.strum, (span * 0.6) / Math.max(1, parts.length - 1))
+      : 0;
+    parts.forEach((part, i) => {
+      const offset = round(i * spread);
+      placeToken(part, start + offset, span - offset, ctx, boost);
+    });
     const chord = ctx.events.slice(before);
-    ctx.held = chord.length ? { events: chord, span } : null;
+    // With a `voices` limit, a rolled chord is played the way a bow breaks
+    // it: each earlier note releases after the roll moves past the
+    // instrument's polyphony. The release tail overlaps the displacing note
+    // generously — that overlap is what tells a string-crossing model
+    // (SWAM) the next note lives on another string, and it is how long a
+    // broken bass genuinely rings under the top of the chord.
+    let sustained = chord;
+    if (strumMarks && ctx.voices > 0 && chord.length > ctx.voices) {
+      const cut = chord.length - ctx.voices;
+      const tail = ctx.strumTail ?? Math.max(3 * spread, 0.09);
+      for (let i = 0; i < cut; i++) {
+        const releaseAt = chord[i + ctx.voices].time + tail;
+        chord[i].duration = round(
+          Math.min(Math.max(0.01, releaseAt - chord[i].time), span * ctx.gate),
+        );
+      }
+      sustained = chord.slice(cut);
+    }
+    // The (sustaining part of the) chord is prolonged together.
+    ctx.held = sustained.length ? { events: sustained, span } : null;
     return;
   }
 
@@ -847,7 +1072,7 @@ function placeToken(token: string, start: number, span: number, ctx: EmitCtx): v
     const parts = splitTopLevel(tok.slice(1, -1));
     if (parts.length === 0) return;
     const sub = span / parts.length;
-    parts.forEach((part, i) => placeToken(part, start + i * sub, sub, ctx));
+    parts.forEach((part, i) => placeToken(part, start + i * sub, sub, ctx, boost));
     return;
   }
 
@@ -866,7 +1091,7 @@ function placeToken(token: string, start: number, span: number, ctx: EmitCtx): v
     time: round(start),
     pitch: midiToName(midi),
     duration: round(span * ctx.gate),
-    velocity: velocityAt(ctx, start),
+    velocity: clampVelocity(velocityAt(ctx, start) + boost),
     midi,
   };
   ctx.events.push(event);
@@ -923,6 +1148,8 @@ export interface PlayResult {
   timeline: TimelineEvent[];
   controls: ControlEvent[];
   tempos: TempoEvent[];
+  /** Where the last sounding measure ends, in beats — honours meter changes. */
+  lengthBeats: number;
 }
 
 /**
@@ -932,7 +1159,7 @@ export interface PlayResult {
  * events at the beat where they appear, without advancing time.
  */
 export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResult {
-  const measureBeats = measureToBeats(props.measure);
+  let measureBeats = measureToBeats(props.measure);
   const controlAliases = props.controls ?? {};
   const baseTempo = props.tempo ?? DEFAULT_TEMPO;
   let runningTempo = baseTempo;
@@ -946,9 +1173,38 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
     octave: props.octave ?? DEFAULT_OCTAVE,
     velocity: clampVelocity(props.velocity ?? worded.velocity ?? DEFAULT_VELOCITY),
     gate: props.gate ?? worded.gate ?? DEFAULT_GATE,
+    strum: props.strum ?? DEFAULT_STRUM,
+    voices: props.voices ?? 0,
+    strumTail: props.strumTail,
   };
   const controls: ControlEvent[] = [];
   const tempos: TempoEvent[] = [];
+  /** Last value emitted per CC, so a drift knows where it starts. */
+  const lastCc = new Map<number, number>();
+
+  // Physical models (SWAM and friends) take their loudness from a continuous
+  // expression controller, not from note velocity. When a track declares an
+  // `expression` control, dynamic marks also drive it: immediate changes emit
+  // one CC, hairpins a ramp of CCs at eighth-note resolution.
+  const exprSpec = controlAliases.expression !== undefined
+    ? resolveControl(controlAliases, 'expression')
+    : undefined;
+  const exprValue = (velocity: number) =>
+    Math.round(exprSpec!.min! + (exprSpec!.max! - exprSpec!.min!) * (clampVelocity(velocity) / 127));
+  const emitExpression = (at: number, velocity: number) => {
+    if (exprSpec) controls.push({ time: round(at), cc: exprSpec.cc, value: exprValue(velocity) });
+  };
+  const emitExpressionRamp = (fromBeat: number, toBeat: number, from: number, to: number) => {
+    if (!exprSpec || toBeat <= fromBeat) return;
+    const steps = Math.max(1, Math.ceil((toBeat - fromBeat) * 2)); // one per eighth
+    for (let s = 1; s <= steps; s++) {
+      const t = s / steps;
+      emitExpression(fromBeat + (toBeat - fromBeat) * t, from + (to - from) * t);
+    }
+  };
+
+  // A physical model is silent until expression moves — open it at the start.
+  emitExpression(0, ctx.velocity);
 
   const setTempo = (bpm: number, overMeasures: number, at: number) => {
     runningTempo = bpm;
@@ -963,15 +1219,18 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
     if (patch.scale) ctx.scale = parseScale(patch.scale);
     if (patch.octave !== undefined) ctx.octave = patch.octave;
     if (patch.octaveDelta) ctx.octave += patch.octaveDelta;
+    if (patch.measure) measureBeats = measureToBeats(patch.measure);
 
     // A new dynamic cancels any hairpin still in progress.
     if (patch.velocity !== undefined) {
       ctx.velocity = clampVelocity(patch.velocity);
       ctx.velocityRamp = undefined;
+      emitExpression(at, ctx.velocity);
     }
     if (patch.velocityDelta) {
       ctx.velocity = clampVelocity(ctx.velocity + patch.velocityDelta);
       ctx.velocityRamp = undefined;
+      emitExpression(at, ctx.velocity);
     }
     if (patch.velocityRamp) {
       const from = velocityAt(ctx, at);
@@ -985,9 +1244,13 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
         to,
       };
       ctx.velocity = to; // where the music sits once the hairpin has landed
+      emitExpressionRamp(at, ctx.velocityRamp.toBeat, from, to);
     }
 
     if (patch.gate !== undefined) ctx.gate = patch.gate;
+    if (patch.strum !== undefined) ctx.strum = patch.strum;
+    if (patch.voices !== undefined) ctx.voices = patch.voices;
+    if (patch.strumTail !== undefined) ctx.strumTail = patch.strumTail;
 
     if (patch.aTempo) setTempo(baseTempo, 0, at);
     if (patch.tempo) {
@@ -997,20 +1260,41 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
 
     for (const c of patch.ccs ?? []) {
       controls.push({ time: round(at), cc: c.cc, value: c.value });
+      lastCc.set(c.cc, c.value);
+    }
+    // Drifts glide from wherever the control last sat, one step per eighth.
+    for (const r of patch.ccRamps ?? []) {
+      const from = lastCc.get(r.cc) ?? r.to;
+      const toBeat = at + r.overMeasures * measureBeats;
+      const steps = Math.max(1, Math.ceil((toBeat - at) * 2));
+      for (let s = 1; s <= steps; s++) {
+        const t = s / steps;
+        controls.push({
+          time: round(at + (toBeat - at) * t),
+          cc: r.cc,
+          value: Math.round(from + (r.to - from) * t),
+        });
+      }
+      lastCc.set(r.cc, r.to);
     }
   };
 
   const applySet = (value: string | string[], at: number) =>
     applyPatch(parseSet(value, controlAliases), at);
 
+  // `beat` is the cursor where the next measure starts. `m` counts measures
+  // so numbered keys can jump; with meter changes in play, a jump over unseen
+  // measures assumes they carry the meter running at that point.
   let m = 0;
+  let beat = 0;
+  let endBeat = 0;
   const compileMeasure = (raw: string) => {
     const measure = raw.trim();
     if (!measure) return;
     // A bare expression mark ("legato", "allargando over 2") sits between
     // measures like a marking in a score, and takes no time.
     if (isDirectiveString(measure)) {
-      applySet(measure, m * measureBeats);
+      applySet(measure, beat);
       return;
     }
     const tokens = splitTopLevel(measure);
@@ -1020,14 +1304,14 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
       // A directive-only line changes state but is not a measure.
       for (const tok of tokens) {
         if (isScaleToken(tok)) ctx.scale = parseScale(setTokenBody(tok));
-        else applySet(setTokenBody(tok), m * measureBeats);
+        else applySet(setTokenBody(tok), beat);
       }
       return;
     }
     const step = measureBeats / noteTokens.length;
     let slot = 0;
     for (const tok of tokens) {
-      const at = m * measureBeats + slot * step;
+      const at = beat + slot * step;
       if (isScaleToken(tok)) {
         // `==Dm7==` / `==C mixolydian==` — re-key the degrees that follow.
         ctx.scale = parseScale(setTokenBody(tok));
@@ -1039,23 +1323,34 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
       }
     }
     m++;
+    beat = round(beat + measureBeats);
+    endBeat = Math.max(endBeat, beat);
+  };
+
+  const jumpTo = (target: number) => {
+    if (target === m) return;
+    beat = round(beat + (target - m) * measureBeats);
+    m = target;
   };
 
   for (const item of playItems(play)) {
     if (item && typeof item === 'object') {
-      const at = m * measureBeats;
       if (item.scale !== undefined) ctx.scale = parseScale(item.scale);
       if (item.octave !== undefined) ctx.octave = item.octave;
       if (item.velocity !== undefined) {
         ctx.velocity = Math.max(1, Math.min(127, item.velocity));
+        emitExpression(beat, ctx.velocity);
       }
       if (item.gate !== undefined) ctx.gate = item.gate;
-      if (item.tempo !== undefined) tempos.push({ time: round(at), bpm: item.tempo, rampBeats: 0 });
-      if (item.set !== undefined) applySet(item.set, at);
+      if (item.strum !== undefined) ctx.strum = item.strum;
+      if (item.voices !== undefined) ctx.voices = item.voices;
+      if (item.measure !== undefined) measureBeats = measureToBeats(item.measure);
+      if (item.tempo !== undefined) tempos.push({ time: round(beat), bpm: item.tempo, rampBeats: 0 });
+      if (item.set !== undefined) applySet(item.set, beat);
       for (const [key, value] of Object.entries(item)) {
         if (/^\d+$/.test(key) && typeof value === 'string') {
           const target = parseInt(key, 10) - 1;
-          if (target >= 0) m = target; // numbered measure: jump to its slot
+          if (target >= 0) jumpTo(target); // numbered measure: jump to its slot
           compileMeasure(value);
         }
       }
@@ -1065,9 +1360,22 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
   }
 
   ctx.events.sort((a, b) => a.time - b.time || a.midi - b.midi);
+
+  // A legato gate makes notes overlap — but when the SAME pitch repeats, the
+  // earlier note's late Note-Off would cut the restruck note short. Trim the
+  // earlier one to release just before the restrike instead.
+  const lastByPitch = new Map<number, TimelineEvent>();
+  for (const e of ctx.events) {
+    const prev = lastByPitch.get(e.midi);
+    if (prev && prev.time < e.time && prev.time + prev.duration > e.time) {
+      prev.duration = round(Math.max(0.01, e.time - prev.time - 0.02));
+    }
+    lastByPitch.set(e.midi, e);
+  }
+
   controls.sort((a, b) => a.time - b.time);
   tempos.sort((a, b) => a.time - b.time);
-  return { timeline: ctx.events, controls, tempos };
+  return { timeline: ctx.events, controls, tempos, lengthBeats: endBeat };
 }
 
 /** Compile one track's measures to its note timeline. */
@@ -1081,7 +1389,7 @@ export function parsePlay(play: PlayInput, props: TrackProps = {}): TimelineEven
 
 const INHERITED: (keyof TrackProps)[] = [
   'tempo', 'measure', 'sample', 'scale', 'octave', 'channel', 'program', 'velocity',
-  'gate', 'dynamic', 'articulation', 'controls',
+  'gate', 'dynamic', 'articulation', 'controls', 'strum', 'voices', 'strumTail',
 ];
 
 function effectiveProps(node: TrackNode, inherited: TrackProps): TrackProps {
@@ -1100,15 +1408,6 @@ function effectiveProps(node: TrackNode, inherited: TrackProps): TrackProps {
     // in compileDoc — see the `set` handling in walk().
   }
   return props;
-}
-
-/** Length in measures — the furthest slot a sounding measure occupies. */
-function playedMeasureCount(play: PlayInput): number {
-  let max = 0;
-  for (const e of playMeasureEntries(play)) {
-    if (splitTopLevel(e.text).some((t) => !isSetToken(t) && !isScaleToken(t))) max = Math.max(max, e.index + 1);
-  }
-  return max;
 }
 
 /**
@@ -1137,12 +1436,11 @@ export function compileDoc(doc: SongDoc): CompiledSong {
     const props = node === doc ? rootProps : effectiveProps(node, inherited);
 
     if (node.play != null) {
-      const { timeline, controls, tempos } = parsePlayFull(node.play, props);
+      const { timeline, controls, tempos, lengthBeats: trackBeats } = parsePlayFull(node.play, props);
       // A `set:` on the track itself opens the instrument at beat 0.
       const opening = (node.set !== undefined ? parseSet(node.set, props.controls).ccs ?? [] : [])
         .map((c) => ({ time: 0, cc: c.cc, value: c.value }));
-      const measureBeats = measureToBeats(props.measure);
-      lengthBeats = Math.max(lengthBeats, playedMeasureCount(node.play) * measureBeats);
+      lengthBeats = Math.max(lengthBeats, trackBeats);
       const sample = props.sample ?? DEFAULT_SAMPLE;
       // Tempo belongs to the song, not a voice — merge every track's changes.
       tempoMap.push(...tempos);

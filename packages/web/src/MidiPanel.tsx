@@ -13,11 +13,13 @@ interface MidiPanelProps {
   midi: MidiState;
   routes: RouteMap;
   onRouteChange: (sample: string, route: MidiRoute | undefined) => void;
+  /** When the output selector is on Built-in, routing is parked. */
+  disabled?: boolean;
 }
 
 const CHANNELS = Array.from({ length: 16 }, (_, i) => i + 1);
 
-export default function MidiPanel({ samples, midi, routes, onRouteChange }: MidiPanelProps) {
+export default function MidiPanel({ samples, midi, routes, onRouteChange, disabled }: MidiPanelProps) {
   const outputById = new Map(midi.outputs.map((o) => [o.id, o]));
 
   // WebMIDI names ports from the browser's side: what it calls an "output" is
@@ -39,9 +41,15 @@ export default function MidiPanel({ samples, midi, routes, onRouteChange }: Midi
           Send each instrument to a MIDI in. Unrouted ones play on the built-in synth.
         </p>
         {status && <p className="mt-2 text-xs text-amber-400">{status}</p>}
+        {disabled && (
+          <p className="mt-2 rounded border border-emerald-900 bg-emerald-950/40 px-2 py-1.5 text-xs text-emerald-400">
+            Output is set to Built-in — everything plays on the bundled sampler
+            &amp; synth. Switch the header toggle to MIDI to use these routes.
+          </p>
+        )}
       </div>
 
-      <div className="flex-1 px-4 py-3">
+      <div className={disabled ? 'pointer-events-none flex-1 px-4 py-3 opacity-40' : 'flex-1 px-4 py-3'}>
         {samples.length === 0 ? (
           <p className="text-xs text-zinc-500">No instruments in the current score.</p>
         ) : (

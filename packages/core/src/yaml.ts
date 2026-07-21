@@ -161,6 +161,27 @@ export function parseYaml(src: string): any {
   const toks = tokenize(foldBlockScalars(src));
   let pos = 0;
 
+  // `&name` anchors a value, `*name` repeats it — the YAML-native way to
+  // write a musical repeat once and play it again.
+  const anchors: Record<string, any> = {};
+
+  function parseValue(text: string): any {
+    const anchor = /^&([\w-]+)\s+([\s\S]+)$/.exec(text);
+    if (anchor) {
+      const value = parseScalar(anchor[2].trim());
+      anchors[anchor[1]] = value;
+      return value;
+    }
+    const alias = /^\*([\w-]+)$/.exec(text);
+    if (alias) {
+      if (!(alias[1] in anchors)) {
+        throw new Error(`Unknown YAML alias "*${alias[1]}" — no &${alias[1]} anchor before it.`);
+      }
+      return anchors[alias[1]];
+    }
+    return parseScalar(text);
+  }
+
   function parseNode(indent: number): any {
     const t = toks[pos];
     if (!t) return null;
@@ -173,7 +194,7 @@ export function parseYaml(src: string): any {
       const { key, rest } = splitKey(toks[pos].text);
       pos++;
       if (rest !== '') {
-        map[key] = parseScalar(rest);
+        map[key] = parseValue(rest);
       } else if (pos < toks.length && toks[pos].indent > indent) {
         map[key] = parseNode(toks[pos].indent);
       } else {
@@ -196,7 +217,7 @@ export function parseYaml(src: string): any {
         toks[pos] = { indent: contentIndent, text: after }; // re-anchor the dash line as a map key
         arr.push(parseMap(contentIndent));
       } else {
-        arr.push(parseScalar(after));
+        arr.push(parseValue(after));
         pos++;
       }
     }
