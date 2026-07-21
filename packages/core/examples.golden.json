@@ -1,0 +1,98 @@
+{
+  "bwv1007.play.yaml": {
+    "tracks": 1,
+    "notes": 656,
+    "lengthBeats": 168,
+    "sha256": "9588523ee5d04e7e9665315cf00511ec145f6eb8933227068f553474d2d96e8e"
+  },
+  "bwv881.play.yaml": {
+    "tracks": 2,
+    "notes": 375,
+    "lengthBeats": 96,
+    "sha256": "adf7d3338b8036c088a8ccb6dcf9e8ff3c4fa3272d077d0d1744891d42381ae3"
+  },
+  "corridors-of-time.play.yaml": {
+    "tracks": 3,
+    "notes": 612,
+    "lengthBeats": 128,
+    "sha256": "13d1c0d65ed8515c9abe3d52401f93dde42ce15499a196744804515b063420b1"
+  },
+  "experiments-cello.play.yaml": {
+    "tracks": 2,
+    "notes": 47,
+    "lengthBeats": 32,
+    "sha256": "a1d245504688be9ab4df06e5c96f0001020ba303af4bb2c0e79d4c9f761306b5"
+  },
+  "lost-woods-vst.play.yaml": {
+    "tracks": 4,
+    "notes": 227,
+    "lengthBeats": 72,
+    "sha256": "d0ed8206e6772897b1a250b2753994e86abcc9de2d202d99c208037f0b89c845"
+  },
+  "lost-woods.play.yaml": {
+    "tracks": 3,
+    "notes": 191,
+    "lengthBeats": 72,
+    "sha256": "e6800c3db4b5def1ed00e68e6ba4ded3074d3f6f5b358ae2fe5f928ab5f4d5ad"
+  },
+  "my-score.play.yaml": {
+    "tracks": 2,
+    "notes": 28,
+    "lengthBeats": 16,
+    "sha256": "ceba51585f0e5d6245455b15f880c8d9c786bb7285526ce3090c887bc9f42f78"
+  },
+  "preciso-me-encontrar-vst.play.yaml": {
+    "tracks": 2,
+    "notes": 271,
+    "lengthBeats": 52,
+    "sha256": "95ef57eb886c6899b3e4aee959d48d33dae1f23e03ff9ec91ad38076be5d61ec"
+  },
+  "preciso-me-encontrar.play.yaml": {
+    "tracks": 2,
+    "notes": 271,
+    "lengthBeats": 52,
+    "sha256": "c8ca5fb5b2e65dd8161f27b5e81b5d94da6863313e2665bc2f7e75f0c47f8530"
+  },
+  "severance.play.yaml": {
+    "tracks": 1,
+    "notes": 44,
+    "lengthBeats": 48,
+    "sha256": "dc3e36753cf4901546195224e7c00aa9eb27cc12da50fdb033debad51eb69666"
+  },
+  "showcase.play.yaml": {
+    "tracks": 5,
+    "notes": 74,
+    "lengthBeats": 16,
+    "sha256": "d51b87f2ec604981a63900f5365b106d79c51434a8426f5500d209281a9b534a"
+  },
+  "sur-le-fil-cello-vst.play.yaml": {
+    "tracks": 1,
+    "notes": 1435,
+    "lengthBeats": 410,
+    "sha256": "b66ce6d68ba75aee359fc8d026f7c010d14d286d88e8fa2e653737e801dce867"
+  },
+  "sur-le-fil.play.yaml": {
+    "tracks": 1,
+    "notes": 1555,
+    "lengthBeats": 410,
+    "sha256": "ff12c892879647a3e33c5abdbfa32a9e1b191771bf9d5b66062f83ba0f474d2f"
+  },
+  "swam-chord-lab.play.yaml": {
+    "tracks": 1,
+    "notes": 53,
+    "lengthBeats": 136,
+    "sha256": "372e6b74d5891e76933515ba01b69c10eabe6615d19dace71d0891946ed67178"
+  },
+  "take-5.play.yaml": {
+    "tracks": 2,
+    "notes": 188,
+    "lengthBeats": 160,
+    "sha256": "f9d42c8a86184c25c31f43bffaf6a6460b354415c4edab8b5cdf85e9ed98ba98"
+  },
+  "twinkle.play.yaml": {
+    "tracks": 1,
+    "notes": 14,
+    "lengthBeats": 16,
+    "sha256": "6e958d1300fbc0bccfcffc65c26cf623d7436f9baa1fe45bb8eabbe3b92428f6"
+  }
+}

@@ -1,7 +1,8 @@
 'use strict';
 
 /**
- * exporter.ts — Timeline Matrix → Standard MIDI File in TypeScript.
+ * exporter.ts — compiled timelines → Standard MIDI File bytes. Pure and
+ * environment-free: returns a Uint8Array, so it runs in Node and browsers.
  */
 
 import {
@@ -102,7 +103,7 @@ function buildTrackBytes(
     });
   }
   if (name) {
-    const bytes = [...Buffer.from(String(name), 'utf8')];
+    const bytes = [...new TextEncoder().encode(String(name))];
     events.push({ tick: 0, order: 0, data: [0xff, 0x03, bytes.length, ...bytes] });
   }
   if (program != null) {
@@ -153,37 +154,46 @@ export interface EncodeMidiOptions {
   channel?: number;
 }
 
+export type EncodeMidiInput = TimelineEvent[] | CompiledSong | CompiledTrack[];
+
+/** Accept a flat timeline, a track list, or a whole song — normalize to a song. */
+function normalizeInput(input: EncodeMidiInput, opts: EncodeMidiOptions): {
+  tracks: CompiledTrack[];
+  bpm: number;
+  tempoMap: TempoEvent[];
+} {
+  if (!Array.isArray(input)) {
+    return {
+      tracks: input.tracks ?? [],
+      bpm: opts.bpm || input.bpm || DEFAULT_BPM,
+      tempoMap: input.tempoMap ?? [],
+    };
+  }
+  const bpm = opts.bpm || DEFAULT_BPM;
+  const isTimeline = input.length === 0 || (input[0] as TimelineEvent).pitch !== undefined;
+  if (isTimeline) {
+    return {
+      tracks: [{
+        name: 'Track 1',
+        channel: opts.channel || 1,
+        timeline: input as TimelineEvent[],
+        controls: [],
+      }],
+      bpm,
+      tempoMap: [],
+    };
+  }
+  return { tracks: input as CompiledTrack[], bpm, tempoMap: [] };
+}
+
 /**
  * Encode into a complete .mid byte buffer. Accepts either a single flat
  * timeline (→ format 0) or a multitrack song (→ format 1 with a conductor
  * track carrying the tempo, then one MTrk per song track on its own channel).
  */
-export function encodeMidi(input: TimelineEvent[] | CompiledSong | CompiledTrack[], opts: EncodeMidiOptions = {}): Buffer {
+export function encodeMidi(input: EncodeMidiInput, opts: EncodeMidiOptions = {}): Uint8Array {
   const tpqn = opts.tpqn || DEFAULT_TPQN;
-  
-  let bpm = opts.bpm || DEFAULT_BPM;
-  if ('bpm' in input) {
-    bpm = opts.bpm || (input as CompiledSong).bpm || DEFAULT_BPM;
-  }
-
-  // Normalize to a list of { name?, channel, program?, timeline }.
-  let tracks: CompiledTrack[];
-  if (Array.isArray(input)) {
-    if (input.length === 0 || (input[0] && (input[0] as any).pitch !== undefined)) {
-      tracks = [{
-        name: 'Track 1',
-        channel: opts.channel || 1,
-        timeline: input as TimelineEvent[],
-        controls: [],
-      }];
-    } else {
-      tracks = input as CompiledTrack[];
-    }
-  } else {
-    tracks = (input as CompiledSong).tracks || [];
-  }
-
-  const tempoMap = (!Array.isArray(input) && (input as CompiledSong).tempoMap) || [];
+  const { tracks, bpm, tempoMap } = normalizeInput(input, opts);
 
   if (tracks.length <= 1) {
     const t = tracks[0] || { name: 'Track 1', channel: 1, timeline: [], controls: [] };
@@ -197,7 +207,7 @@ export function encodeMidi(input: TimelineEvent[] | CompiledSong | CompiledTrack
       program: t.program,
       channel: ((t.channel || 1) - 1) & 0x0f,
     });
-    return Buffer.from([...mthd(0, 1, tpqn), ...mtrk(bytes)]);
+    return Uint8Array.from([...mthd(0, 1, tpqn), ...mtrk(bytes)]);
   }
 
   // Format 1: conductor track (tempo) + one MTrk per song track.
@@ -219,5 +229,5 @@ export function encodeMidi(input: TimelineEvent[] | CompiledSong | CompiledTrack
       ),
     );
   }
-  return Buffer.from([...mthd(1, tracks.length + 1, tpqn), ...chunks.flat()]);
+  return Uint8Array.from([...mthd(1, tracks.length + 1, tpqn), ...chunks.flat()]);
 }

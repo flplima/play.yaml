@@ -1,4 +1,5 @@
 import assert from 'assert';
+import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -8,15 +9,23 @@ import {
 } from './src/parser';
 import { encodeMidi } from './src/exporter';
 import { parseYaml } from './src/yaml';
+import { tempoSegments, beatsToSeconds } from './src/time';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 let passed = 0;
+const failed: string[] = [];
 function check(name: string, fn: () => void) {
-  fn();
-  passed++;
-  console.log(`  ✓ ${name}`);
+  try {
+    fn();
+    passed++;
+    console.log(`  ✓ ${name}`);
+  } catch (error) {
+    failed.push(name);
+    console.error(`  ✗ ${name}`);
+    console.error(String(error instanceof Error ? error.message : error).replace(/^/gm, '      '));
+  }
 }
 
 function times(tl: TimelineEvent[]): number[] {
@@ -453,7 +462,7 @@ check('tempo changes are merged across tracks and sorted', () => {
 check('exported .mid carries the extra tempo meta-events', () => {
   const plain = encodeMidi(compileDoc({ play: ['c ~ ~ ~', 'c ~ ~ ~'] }));
   const ramped = encodeMidi(compileDoc({ play: ['c ~ ~ ~', { set: 'tempo 60 over 1' }, 'c ~ ~ ~'] }));
-  const countTempo = (b: Buffer) => {
+  const countTempo = (b: Uint8Array) => {
     let n = 0;
     for (let i = 0; i < b.length - 2; i++) if (b[i] === 0xff && b[i + 1] === 0x51) n++;
     return n;
@@ -923,12 +932,85 @@ check('an unknown alias throws', () => {
   assert.throws(() => parseYaml('play:\n  - *nope\n'), /no &nope anchor/);
 });
 
-console.log('\nexample:');
+console.log('\nset patches on tracks and directives:');
+check('track-level set: applies strum, voices and tail', () => {
+  const song = compileDoc({ set: 'strum 0.05, voices 2, tail -0.02', play: '[c e g]~ _ _ _' });
+  const tl = song.tracks[0].timeline;
+  assert.deepStrictEqual(tl.map((n) => n.time), [0, 0.05, 0.1]);
+  const bassEnd = tl[0].time + tl[0].duration;
+  assert.ok(bassEnd < tl[2].time, 'negative tail releases the bass before the top lands');
+});
+check('a tempo: directive updates the running tempo for later rits', () => {
+  const song = compileDoc({
+    tempo: 120,
+    play: ['c ~ ~ ~', { tempo: 90 }, 'c ~ ~ ~', { set: 'ritardando over 1' }, 'c ~ ~ ~'],
+  });
+  // The rit must ramp from 90 (the directive), not from the stale 120.
+  assert.deepStrictEqual(song.tempoMap.map((t) => t.bpm), [90, 72]);
+});
+check('a velocity: directive cancels an in-flight hairpin', () => {
+  const tl = parsePlay(['c c c c', { set: 'p, crescendo to f over 2' }, 'c c c c',
+    { velocity: 40 }, 'c c c c']);
+  assert.ok(tl.slice(8).every((n) => n.velocity === 40));
+});
+
+console.log('\ntempo timing (beats → seconds):');
+check('constant tempo is a straight line', () => {
+  const segs = tempoSegments(120);
+  assert.strictEqual(beatsToSeconds(segs, 0), 0);
+  assert.strictEqual(beatsToSeconds(segs, 4), 2); // 120 bpm = 0.5 s per beat
+});
+check('an immediate change bends the line at its beat', () => {
+  const segs = tempoSegments(120, [{ time: 4, bpm: 60, rampBeats: 0 }]);
+  assert.strictEqual(beatsToSeconds(segs, 4), 2);
+  assert.strictEqual(beatsToSeconds(segs, 6), 4); // 60 bpm after the change
+});
+check('a ramp lands between the flat extremes', () => {
+  const ramped = tempoSegments(120, [{ time: 0, bpm: 60, rampBeats: 4 }]);
+  const end = beatsToSeconds(ramped, 4);
+  assert.ok(end > 2 && end < 4, `ramp end ${end} sits between all-120 (2s) and all-60 (4s)`);
+  // After the ramp the new tempo holds.
+  assert.ok(Math.abs(beatsToSeconds(ramped, 6) - (end + 2)) < 1e-9);
+});
+
+console.log('\nexamples (golden):');
 check('bundled example compiles', () => {
   const text = fs.readFileSync(path.join(__dirname, '../../examples/my-score.play.yaml'), 'utf8');
   const song = compileDoc(parseYaml(text));
   assert.strictEqual(song.tracks.length, 2);
   assert.ok(song.tracks[0].timeline.length > 0);
 });
+check('every example matches its golden digest', () => {
+  // Strudel-style repertoire snapshots: the whole examples/ directory is the
+  // regression suite. On an intentional change to compiled output, regenerate
+  // with:  UPDATE_GOLDEN=1 npm test -w @play.yaml/core
+  const goldenPath = path.join(__dirname, 'examples.golden.json');
+  const examplesDir = path.join(__dirname, '../../examples');
+  const digests: Record<string, { tracks: number; notes: number; lengthBeats: number; sha256: string }> = {};
+  for (const file of fs.readdirSync(examplesDir).filter((f) => f.endsWith('.play.yaml')).sort()) {
+    const song = compileDoc(parseYaml(fs.readFileSync(path.join(examplesDir, file), 'utf8')));
+    digests[file] = {
+      tracks: song.tracks.length,
+      notes: song.tracks.reduce((n, t) => n + t.timeline.length, 0),
+      lengthBeats: song.lengthBeats,
+      sha256: crypto.createHash('sha256').update(JSON.stringify(song)).digest('hex'),
+    };
+  }
+  if (process.env.UPDATE_GOLDEN || !fs.existsSync(goldenPath)) {
+    fs.writeFileSync(goldenPath, JSON.stringify(digests, null, 2) + '\n');
+    console.log(`    (golden file ${fs.existsSync(goldenPath) ? 'written' : 'created'}: ${Object.keys(digests).length} examples)`);
+    return;
+  }
+  const golden = JSON.parse(fs.readFileSync(goldenPath, 'utf8'));
+  assert.deepStrictEqual(
+    digests,
+    golden,
+    'compiled examples drifted from examples.golden.json — if intentional, rerun with UPDATE_GOLDEN=1',
+  );
+});
 
+if (failed.length > 0) {
+  console.error(`\n${passed} passed, ${failed.length} FAILED:\n  ${failed.join('\n  ')}`);
+  process.exit(1);
+}
 console.log(`\n${passed} checks passed.`);
