@@ -72,9 +72,9 @@ export interface TrackProps {
    * track's tokens from pitches to drum names: `bd hh sd hh` instead of
    * notes. Kit tracks default to MIDI channel 10 (GM percussion) and take no
    * program change. A `~` suffix rolls a hit (`sd~` = snare roll); scale and
-   * octave are ignored.
+   * octave are ignored. (`kit: 808` arrives as a YAML number — both work.)
    */
-  kit?: string;
+  kit?: string | number;
   /**
    * Named MIDI controls: alias → CC number, or → { cc, min, max } when the
    * instrument's mapping uses a narrower band or runs the other way round
@@ -700,7 +700,8 @@ export function compileDoc(doc: SongDoc): CompiledSong {
         name,
         channel: props.channel ?? (props.kit != null ? 10 : nextChannel++),
         sample,
-        kit: props.kit,
+        // `kit: 808` reads as a YAML number — normalize so consumers compare strings.
+        kit: props.kit != null ? String(props.kit) : undefined,
         program: props.kit != null ? undefined
           : props.program ?? SAMPLE_PROGRAMS[sample.toLowerCase()],
         timeline,

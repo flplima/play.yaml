@@ -1,0 +1,102 @@
+# Drum Lab — a tour of `kit:` tracks.
+#
+#   A track with `kit:` reads drum names instead of notes: bd (kick), sd
+#   (snare), hh/oh (closed/open hi-hat), cy (crash), rd (ride), cp (clap),
+#   toms ft lt mt ht — plus longhand aliases (kick, snare, clap...). The
+#   usual grammar applies: {} subdivides (fills!), [] stacks, > accents,
+#   < ghosts, _ lets a hit ring, and a ~ suffix ROLLS it (sd~ = snare roll).
+#   Kits: acoustic (sampled), percussion (sampled hand drums), 808 (synth).
+#
+#   Section A (mm.1-8)   acoustic kit groove, ghost notes, a fill each 4th bar
+#   Section B (mm.9-16)  son clave + congas + shaker over the kick
+#   Section C (mm.17-24) the synthesized 808: trap hats, claps, hat rolls
+
+title: Drum Lab
+tempo: 96
+kit: acoustic
+
+tracks:
+  kick-snare:
+    play:
+      - 1: &groove "bd ~ sd ~ {~ bd} bd sd ~"
+      - 2: *groove
+      - 3: *groove
+      - 4: "bd ~ sd ~ bd ~ {sd sd} {mt ft}"       # a little fill into the repeat
+      - 5: *groove
+      - 6: *groove
+      - 7: *groove
+      - 8: "bd ~ sd~ ~ [cy bd] _ _ _"             # snare roll, crash rings out
+      # Section B: the kit thins to kick and cross-stick under the percussion.
+      - 9: &sonKick "bd ~ ~ rim ~ bd rim ~"
+      - 10: *sonKick
+      - 11: *sonKick
+      - 12: *sonKick
+      - 13: *sonKick
+      - 14: *sonKick
+      - 15: *sonKick
+      - 16: "bd ~ ~ rim ~ ~ {rim rim} tumba"
+
+  hats:
+    velocity: 72
+    play:
+      - 1: &hatline "hh> hh hh hh hh> hh {hh hh} hh"
+      - 2: *hatline
+      - 3: *hatline
+      - 4: "hh> hh hh hh hh> hh oh ~"
+      - 5: &rideline "rd> rd rd rd rd> rd {rd rd} rb"   # to the ride, bell at the turn
+      - 6: *rideline
+      - 7: *rideline
+      - 8: "rd> rd rd rd oh _ ~ ~"
+
+  percussion:
+    kit: percussion
+    velocity: 84
+    play:
+      # 3-2 son clave, written in 16ths with {} groups.
+      - 9: &clave "{clave ~ ~ clave} {~ ~ clave ~} {~ ~ clave ~} {clave ~ ~ ~}"
+      - 10: *clave
+      - 11: *clave
+      - 12: *clave
+      - 13: *clave
+      - 14: *clave
+      - 15: *clave
+      - 16: "{clave ~ ~ clave} {~ ~ clave ~} guiro ~"
+
+  congas:
+    kit: percussion
+    velocity: 76
+    play:
+      - 9: &tumbao "~ ~ conga< ~ ~ ~ {conga conga} tumba"
+      - 10: *tumbao
+      - 11: *tumbao
+      - 12: "~ ~ conga< ~ {conga quinto} {quinto conga} tumba tumba"
+      - 13: *tumbao
+      - 14: *tumbao
+      - 15: *tumbao
+      - 16: "shaker shaker shaker shaker shaker shaker {quinto conga} tumba"
+
+  machine:
+    kit: 808
+    play:
+      - 17: &trap "bd ~ ~ {~ bd} cp ~ bd ~"
+      - 18: *trap
+      - 19: *trap
+      - 20: "bd ~ ~ bd cp ~ {bd bd} ~"
+      - 21: *trap
+      - 22: *trap
+      - 23: *trap
+      - 24: "bd ~ ~ ~ [cp cy] _ _ _"
+
+  machine-hats:
+    kit: 808
+    velocity: 64
+    play:
+      - 17: &traphats "{hh hh hh hh} {hh hh hh hh} {hh hh hh hh} {hh hh oh ~}"
+      - 18: *traphats
+      - 19: "{hh hh hh hh} {hh hh hh hh} hh~ {hh hh oh ~}"    # a hat roll
+      - 20: *traphats
+      - 21: *traphats
+      - 22: *traphats
+      - 23: "{hh hh hh hh} {hh hh hh hh} hh~~ oh"             # ~~ rolls twice as fast
+      - 24: "crescendo to f over 1"
+      - 24: "{hh hh hh hh} {hh hh hh hh} {hh hh hh hh} {hh hh hh hh}"

@@ -1022,6 +1022,11 @@ check('a drum measure is a measure, not a directive', () => {
   const song = compileDoc({ kit: '808', play: ['bd hh sd hh', 'bd hh sd oh'] });
   assert.strictEqual(song.lengthBeats, 8);
 });
+check('kit: 808 as a bare YAML number normalizes to a string', () => {
+  const song = compileDoc(parseYaml('kit: 808\nplay: "bd ~ sd ~"\n'));
+  assert.strictEqual(song.tracks[0].kit, '808');
+  assert.strictEqual(song.tracks[0].channel, 10);
+});
 
 console.log('\ntempo timing (beats → seconds):');
 check('constant tempo is a straight line', () => {

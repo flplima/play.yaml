@@ -17,6 +17,12 @@
     "lengthBeats": 128,
     "sha256": "13d1c0d65ed8515c9abe3d52401f93dde42ce15499a196744804515b063420b1"
   },
+  "drum-lab.play.yaml": {
+    "tracks": 6,
+    "notes": 389,
+    "lengthBeats": 96,
+    "sha256": "cdd415ef8dd3a74cc33fdca6cdb25e4c0280c2bfb223ae88f2d755f59c14ebaa"
+  },
   "experiments-cello.play.yaml": {
     "tracks": 2,
     "notes": 47,
