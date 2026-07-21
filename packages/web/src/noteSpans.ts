@@ -17,9 +17,15 @@ interface Element {
   to: number;
 }
 
+/** Is this element an inline mark (`||…||` set or `==…==` scale) — no time slot? */
+function isMarkElement(text: string): boolean {
+  return text.startsWith('||') || text.startsWith('==');
+}
+
 /**
  * Split on whitespace at bracket depth 0, keeping absolute offsets. A `||…||`
- * set directive is one element regardless of the spaces inside it.
+ * set directive or `==…==` scale mark is one element regardless of the
+ * spaces inside it.
  */
 function elementsWithOffsets(text: string, baseOffset: number): Element[] {
   const out: Element[] = [];
@@ -27,8 +33,9 @@ function elementsWithOffsets(text: string, baseOffset: number): Element[] {
   let start = -1;
   for (let i = 0; i <= text.length; i++) {
     const ch = i < text.length ? text[i] : ' ';
-    if (depth === 0 && start === -1 && ch === '|' && text[i + 1] === '|') {
-      const close = text.indexOf('||', i + 2);
+    const fence = ch === '|' && text[i + 1] === '|' ? '||' : ch === '=' && text[i + 1] === '=' ? '==' : null;
+    if (depth === 0 && start === -1 && fence) {
+      const close = text.indexOf(fence, i + 2);
       const end = close === -1 ? text.length : close + 2;
       out.push({ text: text.slice(i, end), from: baseOffset + i, to: baseOffset + end });
       i = end - 1;
@@ -106,12 +113,12 @@ export function buildNoteSpans(text: string): NoteSpan[] {
         cursor = idx + m.length;
 
         const tokens = elementsWithOffsets(m, idx);
-        const noteCount = tokens.filter((t) => !t.text.startsWith('||')).length;
+        const noteCount = tokens.filter((t) => !isMarkElement(t.text)).length;
         if (noteCount === 0) continue;
         const step = measureBeats / noteCount;
         let slot = 0;
         for (const tok of tokens) {
-          if (tok.text.startsWith('||')) continue;
+          if (isMarkElement(tok.text)) continue;
           if (tok.text !== '~') {
             const startBeat = mi * measureBeats + slot * step;
             spans.push({ from: tok.from, to: tok.to, startBeat, endBeat: startBeat + step, kind: 'beat' });

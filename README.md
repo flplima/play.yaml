@@ -6,8 +6,9 @@ A project dedicated to the `play.yaml` format — a human-readable, developer-fr
 
 This is a monorepo managed with npm workspaces:
 
-- `packages/core/`: The core `play.yaml` interpreter. It parses the DSL tracks, handles scales/chords/dynamics/subdivisions, and converts YAML documents to Standard MIDI Files (`.mid`) or flat timeline matrices of MIDI events.
-- `packages/cli/`: Command-line player that compiles and synthesizes `play.yaml` songs directly to your system speakers via the Web Audio API using `webaudio-node`.
+- `packages/core/`: The `play.yaml` engine — dependency-free and environment-free (no Node or DOM APIs), so it runs identically in Node and browsers. Layered as: `theory` (pitch/scale/meter math) → `vocabulary` (dynamics, articulations, tempo marks, techniques, named controls) → `set` (the `set:` shorthand) → `tokens` (measure tokenizing) → `song` (the compiler), plus the zero-dep YAML subset (`yaml`), the `.mid` encoder (`exporter`), beat→seconds tempo mapping (`time`) and the shared Web Audio instrument presets (`synth`). Everything re-exports from the package root.
+- `packages/cli/`: Command-line tools built on core: `play-yaml` exports scores to `.mid`; `play-yaml-play` plays them through the speakers (via `webaudio-node`) or streams live MIDI — notes, the score's CC automation and the tempo map — to a virtual MIDI port.
+- `packages/web/`: The browser studio (Vite/React): CodeMirror editor with played-note highlighting, Tone.js transport playback with the built-in sampler & synth, and per-instrument WebMIDI routing. Consumes core by source, so core edits hot-reload without a rebuild.
 
 ## Getting Started
 

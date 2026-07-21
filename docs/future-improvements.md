@@ -2,6 +2,8 @@
 
 This document outlines planned improvements, architecture roadmaps, and feature suggestions for the `play.yaml` notation and playback engine.
 
+Shipped items are moved to the bottom so the top of the file is always the live wishlist.
+
 ---
 
 ## 1. MIDI Polyphonic Expression (MPE) Support
@@ -12,61 +14,49 @@ Adding MPE support will cycle notes through a pool of MIDI channels, allowing pe
 ### Proposed YAML Syntax:
 ```yaml
 tracks:
-  - name: "Expressive Pad (ROLI)"
+  expressive-pad:
     mpe:
       enabled: true
       globalChannel: 1
       memberChannels: [2, 10] # Pool of channels rotated per note
-    measures:
-      - "[C4,Eb4,G4] [D4,F4,Ab4]"
+    play:
+      - "[c4 eb4 g4] [d4 f4 ab4]"
 ```
 
 ### Proposed Playback Logic:
-Implement an `MpeChannelAllocator` class in the player engine to:
+Implement an `MpeChannelAllocator` in the player engine to:
 * Assign a unique, idle member channel to each new `noteon` event.
 * Send subsequent per-note CC curves or pitch bends to that assigned member channel.
 * Release the channel back to the pool on `noteoff`.
 
 ---
 
-## 2. Continuous Controller (CC) Automation Curves
-Currently, `play.yaml` only supports notes, chords, and static CC initialization. Expressive physical modeling plugins (such as **SWAM VariFlute** and **Cello**) require continuous parameter changes (e.g., breath or bow pressure) over time to sound realistic.
-
-We propose adding an `automation` block to tracks to write linear, exponential, or bezier CC automation curves.
-
-### Proposed YAML Syntax:
-```yaml
-tracks:
-  - name: "Flute (SWAM)"
-    channel: 4
-    measures:
-      - "C4- D4- E4- F4-"
-    automation:
-      - controller: 11 # Expression (Breath)
-        time: 0.0      # Start beat
-        duration: 4.0  # Duration in beats
-        type: linear
-        startValue: 40
-        endValue: 110
-```
-
----
-
-## 3. Export to Standard MIDI File (.mid)
-To allow seamless integration with DAWs (like Ardour, Ableton Live, or Logic Pro), the CLI should support exporting a `play.yaml` song into a standard multi-track `.mid` binary file.
-
-This would let composers write drafts in YAML and then easily drag-and-drop the generated MIDI file into their DAW for final mixing and sound design.
-
-### Proposed CLI Syntax:
-```bash
-node packages/cli/dist/cli.js examples/lost-woods.play.yaml --export output.mid
-```
-
----
-
-## 4. Live Interactive Playback Controls
+## 2. Live Interactive Playback Controls
 During CLI playback, it would be useful to have real-time console controls:
 * **Space**: Pause / Resume playback.
 * **R**: Restart song from the beginning.
 * **Left / Right Arrows**: Adjust tempo (BPM) on the fly.
 * **Up / Down Arrows**: Transpose the pitch of all tracks dynamically.
+
+---
+
+## 3. Download .mid from the web studio
+Core's `encodeMidi` is environment-free (returns a `Uint8Array`), so the web app
+can offer a "Download .mid" button with a few lines of Blob + anchor code. No
+engine work needed — just UI.
+
+---
+
+## Shipped
+
+* **Continuous Controller (CC) automation** — covered by the `set` vocabulary
+  rather than a separate `automation` block: named controls (`controls:`),
+  technique words ("sul ponticello", "molto vibrato"), raw `cc74 30` clauses,
+  and drifts ("bow to 110 over 4", "sul ponticello over 6") that emit CC
+  staircases at eighth-note steps from the control's last value. Declared
+  `expression` controls mirror dynamics and hairpins as CC ramps.
+* **Standard MIDI File export** — `play-yaml -i song.play.yaml -o song.mid`
+  writes format 0/1 SMF with a conductor track, tempo ramps (stepped),
+  program changes and the full CC stream.
+* **Tempo map everywhere** — tempo words, ramps and `a tempo` play back in the
+  web transport, the CLI (both synth and `--midi`), and the .mid export.
