@@ -90,10 +90,10 @@
     "sha256": "372e6b74d5891e76933515ba01b69c10eabe6615d19dace71d0891946ed67178"
   },
   "take-5.play.yaml": {
-    "tracks": 2,
-    "notes": 188,
-    "lengthBeats": 160,
-    "sha256": "f9d42c8a86184c25c31f43bffaf6a6460b354415c4edab8b5cdf85e9ed98ba98"
+    "tracks": 4,
+    "notes": 2284,
+    "lengthBeats": 355,
+    "sha256": "981c0aedf71633df45dc40439b93422bf6b8eb755ff73fae149a24b90425be0a"
   },
   "twinkle.play.yaml": {
     "tracks": 1,
