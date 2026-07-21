@@ -17,6 +17,7 @@ type Source =
 
 const ROUTES_STORAGE_KEY = 'play.yaml:midi-routes';
 const OUTPUT_STORAGE_KEY = 'play.yaml:output-mode';
+const EXAMPLE_STORAGE_KEY = 'play.yaml:example';
 
 /** Where playback goes: the bundled sampler/synth, or the WebMIDI routes. */
 type OutputMode = 'builtin' | 'midi';
@@ -44,7 +45,10 @@ function compile(text: string): { song: CompiledSong | null; error: string | nul
 const canOpenFiles = 'showOpenFilePicker' in window;
 
 export default function App() {
-  const firstExample = EXAMPLES[0];
+  // The last selected example survives reloads. (Opened files can't — the
+  // File System Access handle doesn't fit in localStorage.)
+  const firstExample =
+    EXAMPLES.find((e) => e.name === localStorage.getItem(EXAMPLE_STORAGE_KEY)) ?? EXAMPLES[0];
   const [source, setSource] = useState<Source>({ kind: 'example', name: firstExample?.name ?? '' });
   const [text, setText] = useState(firstExample?.content ?? '');
   const [dirty, setDirty] = useState(false);
@@ -113,6 +117,7 @@ export default function App() {
     stop();
     const example = EXAMPLES.find((e) => e.name === name);
     if (!example) return;
+    localStorage.setItem(EXAMPLE_STORAGE_KEY, name);
     setSource({ kind: 'example', name });
     setText(exampleEdits.current.get(name) ?? example.content);
     setDirty(false);
