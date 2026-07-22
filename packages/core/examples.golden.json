@@ -100,5 +100,11 @@
     "notes": 14,
     "lengthBeats": 16,
     "sha256": "6e958d1300fbc0bccfcffc65c26cf623d7436f9baa1fe45bb8eabbe3b92428f6"
+  },
+  "songs/bachianas-brasileiras-5/bachianas-brasileiras-5.play.yaml": {
+    "tracks": 4,
+    "notes": 947,
+    "lengthBeats": 149,
+    "sha256": "71d63491cd34f3c79eddda832b2ea95433310f3061ef1c6158cbc4d67ec932fa"
   }
 }
