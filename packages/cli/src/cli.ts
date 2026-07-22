@@ -57,15 +57,18 @@ async function main() {
 
     const compiled = compileDoc(doc);
 
-    // Play the compiled song
+    // Play the compiled song. In loop mode, passes after the first restart
+    // from the song's forever-loop point (sections), or from the top.
     if (loop) {
       console.log('Loop playback enabled. Press Ctrl+C to stop.');
+      let fromBeat = 0;
       while (true) {
         if (useMidi) {
-          await playSongMidi(compiled, midiPort);
+          await playSongMidi(compiled, midiPort, { fromBeat });
         } else {
-          await playSong(compiled);
+          await playSong(compiled, { fromBeat });
         }
+        fromBeat = compiled.loopStartBeats ?? 0;
       }
     } else {
       if (useMidi) {

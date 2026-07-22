@@ -1,4 +1,4 @@
-import { parseYaml, playMeasureEntries, measureToBeats } from '@play.yaml/core';
+import { expandSections, parseYaml, playMeasureEntries, measureToBeats } from '@play.yaml/core';
 import type { TrackNode } from '@play.yaml/core';
 
 /** A token's character range in the document and its time span in beats. */
@@ -85,7 +85,9 @@ function emitGroupSpans(token: Element, startBeat: number, endBeat: number, span
 export function buildNoteSpans(text: string): NoteSpan[] {
   let doc: TrackNode;
   try {
-    doc = parseYaml(text);
+    // Sections documents expand to per-track numbered plays, so the measure
+    // slots below line up with the compiled beats.
+    doc = expandSections(parseYaml(text)).doc;
   } catch {
     return [];
   }

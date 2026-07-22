@@ -300,9 +300,11 @@ export async function playSong(
 
   // Loop over whole measures (falling back to the last note when a track
   // overhangs); otherwise let the final release ring briefly, then clean up.
+  // A sections document with a forever-loop plays its intro once and cycles
+  // from loopStartBeats; classic documents cycle the whole song.
   const songEnd = Math.max(song.lengthBeats || 0, endBeat);
   if (opts.loop && songEnd > 0) {
-    transport.loopStart = 0;
+    transport.loopStart = atBeat(Math.min(song.loopStartBeats ?? 0, songEnd));
     transport.loopEnd = atBeat(songEnd);
     transport.loop = true;
   } else {

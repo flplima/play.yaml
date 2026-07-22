@@ -145,6 +145,54 @@ tracks:
       - "c c ~ ~ c c ~ ~"        # 8 tokens → eighth notes
 ```
 
+### Sections & song form
+
+Instead of one long `play:` per track, a song can declare its **form** as named
+sections that play in declaration order, with the parallel instrument parts
+*inside* each section:
+
+```yaml
+tracks:                # the instruments — props only, no music here
+  sax: { sample: flute, dynamic: mf }
+  drums: { kit: acoustic }
+
+sections:
+  intro:
+    loop: false        # plays once
+    drums: { play: ["bd hh sd hh"] }
+    sax:
+      wait: 3          # rests 3 measures, then enters — the pickup bar
+      play: ["~ ~ ~ {1 _ 3}"]
+  theme:               # loop: true is the default…
+    sax: { play: ["5 _ 3 _", "4 _ 2 _"] }
+    drums: { play: ["bd hh sd hh", "bd hh sd oh"] }
+  chorus:              # …so theme + chorus cycle forever
+    sax: { play: ["8 _ 6 _", "5 _ _ _"] }
+    drums: { play: ["bd hh sd hh", "bd hh sd {sd sd}"] }
+```
+
+- **`loop`**: `true` (default) marks the part of the song that repeats forever —
+  those sections must be the tail of the file, and playback cycles them after
+  everything before plays once. `loop: N` plays a section N times in a row
+  (`0` skips it, handy for muting); `loop: false` plays it once.
+- **`wait: N`** (on a section or a track inside one): rest N measures before
+  entering. Waits apply **once** — on `loop: N` only the first pass waits, and
+  a forever-loop with waits compiles the waited pass *before* the loop point so
+  the cycle itself is clean. Staggered intros stop being bar arithmetic.
+- A section's length is its longest part (waits included); tracks absent from
+  a section simply rest through it. Numbered measures inside a section are
+  **section-relative**.
+- Per-section overrides are allowed for the directive props (`velocity`,
+  `gate`, `scale`, `octave`, `tempo`, `measure`, `strum`, `voices`, `set`) —
+  instrument identity (`sample`, `kit`, `channel`, `controls`) stays on the
+  top-level track.
+- The compiled song carries `loopStartBeats`: the web player loops the cycle
+  (intro plays once; turn Loop off for a single pass), the CLI's `--loop`
+  restarts from it, and `.mid` exports write a `loopStart` marker meta-event.
+
+See `examples/take-5.play.yaml`: intro with staggered `wait` entries, then
+theme + chorus looping forever.
+
 Built-in samples: `piano`, `keys`, `bass`, `strings`, `violin`, `cello`, `pad`, `flute`, `ocarina`, `lead` — each maps to a General MIDI program for `.mid` export. In the web studio, `piano`, `violin`, `cello`, `flute`/`ocarina` and `bass` play on **real recorded samples** (VSCO 2 CE / VCSL, all CC0, lazily loaded); everything else — and every instrument when samples can't load — renders on the built-in synth presets (`keys` is an FM electric piano, `lead` a sawtooth, …).
 
 ### Drums & percussion (`kit:` tracks)

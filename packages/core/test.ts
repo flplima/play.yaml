@@ -1028,6 +1028,134 @@ check('kit: 808 as a bare YAML number normalizes to a string', () => {
   assert.strictEqual(song.tracks[0].channel, 10);
 });
 
+console.log('\nsections:');
+check('sections play in order; parallel tracks align; absent tracks rest', () => {
+  const song = compileDoc({
+    tracks: { bass: { sample: 'bass' } },
+    sections: {
+      intro: { loop: false, lead: { play: ['c ~ ~ ~'] } },
+      groove: { loop: false, lead: { play: ['e ~ ~ ~'] }, bass: { play: ['g2 ~ ~ ~'] } },
+    },
+  } as any);
+  const lead = song.tracks.find((t) => t.name === 'lead')!;
+  const bass = song.tracks.find((t) => t.name === 'bass')!;
+  assert.deepStrictEqual(lead.timeline.map((n) => n.time), [0, 4]);
+  assert.deepStrictEqual(bass.timeline.map((n) => n.time), [4]); // silent through the intro
+  assert.strictEqual(song.lengthBeats, 8);
+  assert.strictEqual(song.loopStartBeats, undefined);
+});
+check('top-level tracks declare the instrument; sections carry the music', () => {
+  const song = compileDoc({
+    tracks: { drums: { kit: 'acoustic' } },
+    sections: { a: { loop: false, drums: { play: ['bd ~ sd ~'] } } },
+  } as any);
+  assert.strictEqual(song.tracks[0].kit, 'acoustic');
+  assert.strictEqual(song.tracks[0].channel, 10);
+});
+check('section length is the longest track (waits included)', () => {
+  const song = compileDoc({
+    sections: {
+      a: {
+        loop: false,
+        lead: { play: ['c ~ ~ ~', 'd ~ ~ ~'] },
+        late: { wait: 3, play: ['e ~ ~ ~'] },
+      },
+      b: { loop: false, lead: { play: ['g ~ ~ ~'] } },
+    },
+  } as any);
+  const late = song.tracks.find((t) => t.name === 'late')!;
+  assert.deepStrictEqual(late.timeline.map((n) => n.time), [12]); // 3 bars wait
+  // section a spans 4 bars (wait 3 + 1), so section b starts at bar 5
+  assert.deepStrictEqual(song.tracks[0].timeline.map((n) => n.time), [0, 4, 16]);
+});
+check('loop: N unrolls; the wait applies only to the first pass', () => {
+  const song = compileDoc({
+    sections: {
+      riff: { loop: 2, lead: { wait: 1, play: ['c ~ ~ ~'] } },
+      tail: { loop: false, lead: { play: ['g ~ ~ ~'] } },
+    },
+  } as any);
+  // pass 1: wait 1 bar + play (bars 1-2); pass 2: no wait (bar 3); tail bar 4
+  assert.deepStrictEqual(song.tracks[0].timeline.map((n) => n.time), [4, 8, 12]);
+  assert.strictEqual(song.loopStartBeats, undefined); // no forever loop declared
+});
+check('loop: 0 skips a section', () => {
+  const song = compileDoc({
+    sections: {
+      muted: { loop: 0, lead: { play: ['c ~ ~ ~'] } },
+      a: { loop: false, lead: { play: ['e ~ ~ ~'] } },
+    },
+  } as any);
+  assert.deepStrictEqual(song.tracks[0].timeline.map((n) => n.midi), [64]);
+  assert.strictEqual(song.lengthBeats, 4);
+});
+check('loop defaults to true: the tail cycles and sets loopStartBeats', () => {
+  const song = compileDoc({
+    sections: {
+      intro: { loop: false, lead: { play: ['c ~ ~ ~'] } },
+      theme: { lead: { play: ['e ~ ~ ~'] } },
+      chorus: { lead: { play: ['g ~ ~ ~'] } },
+    },
+  } as any);
+  assert.strictEqual(song.loopStartBeats, 4); // after the 1-bar intro
+  assert.strictEqual(song.lengthBeats, 12);
+});
+check('a waited pickup into the loop plays once, before the loop point', () => {
+  const song = compileDoc({
+    sections: {
+      theme: { lead: { wait: 1, play: ['c ~ ~ ~'] }, pad: { play: ['e ~ ~ ~', 'f ~ ~ ~'] } },
+    },
+  } as any);
+  // pass 1 with waits (bars 1-2), then the clean pass (bars 3-4) that loops
+  assert.strictEqual(song.loopStartBeats, 8);
+  const lead = song.tracks.find((t) => t.name === 'lead')!;
+  assert.deepStrictEqual(lead.timeline.map((n) => n.time), [4, 8]); // waited, then clean at loop start
+  assert.strictEqual(song.lengthBeats, 16);
+});
+check('directives inside sections land at the section\'s bars', () => {
+  const song = compileDoc({
+    sections: {
+      a: { loop: false, lead: { play: ['c ~ ~ ~'] } },
+      b: { loop: false, lead: { velocity: 40, play: [{ set: 'tempo 60' }, 'e ~ ~ ~'] } },
+    },
+  } as any);
+  assert.deepStrictEqual(song.tracks[0].timeline.map((n) => n.velocity), [90, 40]);
+  assert.deepStrictEqual(song.tempoMap, [{ time: 4, bpm: 60, rampBeats: 0 }]);
+});
+check('sections misuse fails loud', () => {
+  assert.throws(
+    () => compileDoc({ play: 'c', sections: { a: { lead: { play: ['c'] } } } } as any),
+    /not both/,
+  );
+  assert.throws(
+    () => compileDoc({ tracks: { lead: { play: 'c' } }, sections: { a: { lead: { play: ['c'] } } } } as any),
+    /instrument only/,
+  );
+  assert.throws(
+    () => compileDoc({ sections: { a: { lead: { play: ['c'] } }, b: { loop: false, lead: { play: ['c'] } } } } as any),
+    /forever-looping tail/,
+  );
+  assert.throws(
+    () => compileDoc({ sections: { a: { loop: false, lead: { sample: 'bass', play: ['c'] } } } } as any),
+    /declare it on the top-level track/,
+  );
+});
+check('the exported .mid carries a loopStart marker', () => {
+  const song = compileDoc({
+    sections: {
+      intro: { loop: false, lead: { play: ['c ~ ~ ~'] } },
+      theme: { lead: { play: ['e ~ ~ ~'] } },
+    },
+  } as any);
+  const buf = encodeMidi(song);
+  const marker = [0xff, 0x06, 9, ...'loopStart'.split('').map((c) => c.charCodeAt(0))];
+  let found = false;
+  for (let i = 0; i < buf.length - marker.length; i++) {
+    if (marker.every((b, j) => buf[i + j] === b)) found = true;
+  }
+  assert.ok(found, 'expected a loopStart marker meta event');
+});
+
 console.log('\ntempo timing (beats → seconds):');
 check('constant tempo is a straight line', () => {
   const segs = tempoSegments(120);

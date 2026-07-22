@@ -8,9 +8,11 @@ import {
  * presets via webaudio-node. Honours the song's tempo map (ramps stepped the
  * same way the .mid export steps them).
  */
-export async function playSong(song: CompiledSong): Promise<void> {
+export async function playSong(song: CompiledSong, opts: { fromBeat?: number } = {}): Promise<void> {
   const ctx = new AudioContext() as any;
   const segments = tempoSegments(song.bpm || 120, song.tempoMap);
+  const fromBeat = opts.fromBeat ?? 0;
+  const skip = beatsToSeconds(segments, fromBeat);
   const lead = 0.2; // scheduling offset to prevent clicks/jitter
   const now: number = ctx.currentTime;
 
@@ -21,8 +23,9 @@ export async function playSong(song: CompiledSong): Promise<void> {
     const preset = track.kit ? null : detectPreset(track);
     console.log(`  Track: "${track.name}" | ${track.kit ? `Kit: [${track.kit}]` : `Preset: [${preset}]`} | ${track.timeline.length} notes`);
     for (const note of track.timeline) {
-      const startSec = now + lead + beatsToSeconds(segments, note.time);
-      const endSec = now + lead + beatsToSeconds(segments, note.time + note.duration);
+      if (note.time < fromBeat) continue;
+      const startSec = now + lead + beatsToSeconds(segments, note.time) - skip;
+      const endSec = now + lead + beatsToSeconds(segments, note.time + note.duration) - skip;
       end = Math.max(end, endSec);
       if (preset) {
         playNote(ctx, ctx.destination, preset, note.midi, note.velocity, startSec, endSec - startSec);
@@ -54,7 +57,11 @@ interface MidiMessage {
  * compiled event goes out: notes, the score's control changes (expression
  * ramps, technique CCs) and the tempo map, on each track's compiled channel.
  */
-export async function playSongMidi(song: CompiledSong, portName = 'play.yaml Output'): Promise<void> {
+export async function playSongMidi(
+  song: CompiledSong,
+  portName = 'play.yaml Output',
+  opts: { fromBeat?: number } = {},
+): Promise<void> {
   const easymidi = (await import('easymidi')).default;
 
   let output: InstanceType<typeof easymidi.Output>;
@@ -72,7 +79,9 @@ export async function playSongMidi(song: CompiledSong, portName = 'play.yaml Out
   }
 
   const segments = tempoSegments(song.bpm || 120, song.tempoMap);
-  const ms = (beat: number) => beatsToSeconds(segments, beat) * 1000;
+  const fromBeat = opts.fromBeat ?? 0;
+  const skipMs = beatsToSeconds(segments, fromBeat) * 1000;
+  const ms = (beat: number) => beatsToSeconds(segments, beat) * 1000 - skipMs;
   const events: MidiMessage[] = [];
 
   for (const track of song.tracks) {
@@ -85,13 +94,24 @@ export async function playSongMidi(song: CompiledSong, portName = 'play.yaml Out
     for (const [controller, value] of [[7, 100], [11, 100], [1, 64]]) {
       events.push({ ms: -1, order: 1, kind: 'cc', payload: { controller, value, channel } });
     }
+    // When starting mid-song (loop pass), replay the latest value of every CC
+    // set before the entry point, so the instrument state carries over.
+    const carried = new Map<number, number>();
     for (const c of track.controls) {
+      if (c.time < fromBeat) {
+        carried.set(c.cc & 0x7f, c.value & 0x7f);
+        continue;
+      }
       events.push({
         ms: ms(c.time), order: 1, kind: 'cc',
         payload: { controller: c.cc & 0x7f, value: c.value & 0x7f, channel },
       });
     }
+    for (const [controller, value] of carried) {
+      events.push({ ms: -1, order: 2, kind: 'cc', payload: { controller, value, channel } });
+    }
     for (const n of track.timeline) {
+      if (n.time < fromBeat) continue;
       events.push({ ms: ms(n.time), order: 2, kind: 'noteon', payload: { note: n.midi, velocity: n.velocity, channel } });
       events.push({ ms: ms(n.time + n.duration), order: 0, kind: 'noteoff', payload: { note: n.midi, velocity: 0, channel } });
     }

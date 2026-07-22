@@ -43,6 +43,8 @@ interface BuildTrackOptions {
   controls?: ControlEvent[];
   /** Tempo changes for the conductor track, in beats. */
   tempoMap?: TempoEvent[];
+  /** Forever-loop start, in beats — written as a "loopStart" marker. */
+  loopStartBeats?: number;
 }
 
 /** A ramped tempo change becomes this many stepped meta-events in the file. */
@@ -66,13 +68,24 @@ interface MidiInternalEvent {
  */
 function buildTrackBytes(
   timeline: TimelineEvent[],
-  { tpqn, bpm, channel, tempo, name, program, controls, tempoMap }: BuildTrackOptions,
+  { tpqn, bpm, channel, tempo, name, program, controls, tempoMap, loopStartBeats }: BuildTrackOptions,
 ): number[] {
   const events: MidiInternalEvent[] = [];
 
   if (tempo) {
     // Tempo meta at the very start (conductor / single-track use).
     events.push({ tick: 0, order: 0, data: tempoMeta(bpm) });
+
+    if (loopStartBeats != null) {
+      // SMF has no loop notion — a "loopStart" marker is the widespread
+      // convention (samplers, trackers, game engines).
+      const bytes = [...new TextEncoder().encode('loopStart')];
+      events.push({
+        tick: Math.round(loopStartBeats * tpqn),
+        order: 0,
+        data: [0xff, 0x06, bytes.length, ...bytes],
+      });
+    }
 
     // Later changes; ramps become a staircase, since SMF has no tempo glide.
     let running = bpm;
@@ -161,12 +174,14 @@ function normalizeInput(input: EncodeMidiInput, opts: EncodeMidiOptions): {
   tracks: CompiledTrack[];
   bpm: number;
   tempoMap: TempoEvent[];
+  loopStartBeats?: number;
 } {
   if (!Array.isArray(input)) {
     return {
       tracks: input.tracks ?? [],
       bpm: opts.bpm || input.bpm || DEFAULT_BPM,
       tempoMap: input.tempoMap ?? [],
+      loopStartBeats: input.loopStartBeats,
     };
   }
   const bpm = opts.bpm || DEFAULT_BPM;
@@ -193,7 +208,7 @@ function normalizeInput(input: EncodeMidiInput, opts: EncodeMidiOptions): {
  */
 export function encodeMidi(input: EncodeMidiInput, opts: EncodeMidiOptions = {}): Uint8Array {
   const tpqn = opts.tpqn || DEFAULT_TPQN;
-  const { tracks, bpm, tempoMap } = normalizeInput(input, opts);
+  const { tracks, bpm, tempoMap, loopStartBeats } = normalizeInput(input, opts);
 
   if (tracks.length <= 1) {
     const t = tracks[0] || { name: 'Track 1', channel: 1, timeline: [], controls: [] };
@@ -202,6 +217,7 @@ export function encodeMidi(input: EncodeMidiInput, opts: EncodeMidiOptions = {})
       bpm,
       tempo: true,
       tempoMap,
+      loopStartBeats,
       controls: t.controls,
       name: t.name,
       program: t.program,
@@ -212,7 +228,9 @@ export function encodeMidi(input: EncodeMidiInput, opts: EncodeMidiOptions = {})
 
   // Format 1: conductor track (tempo) + one MTrk per song track.
   const chunks = [
-    mtrk(buildTrackBytes([], { tpqn, bpm, tempo: true, tempoMap, channel: 0, name: 'Conductor' })),
+    mtrk(buildTrackBytes([], {
+      tpqn, bpm, tempo: true, tempoMap, loopStartBeats, channel: 0, name: 'Conductor',
+    })),
   ];
   for (const t of tracks) {
     chunks.push(

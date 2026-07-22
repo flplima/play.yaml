@@ -120,7 +120,35 @@ export interface TrackNode extends TrackProps {
   tracks?: Record<string, TrackNode>;
 }
 
-export type SongDoc = TrackNode;
+/**
+ * One instrument's part inside a section: a `play` list, an optional `wait`
+ * (measures of silence before it enters — first pass only), plus any of the
+ * directive-expressible props (velocity, gate, scale, octave, …) to override
+ * for this section's span.
+ */
+export interface SectionTrack extends Pick<
+  TrackProps, 'scale' | 'octave' | 'velocity' | 'gate' | 'tempo' | 'measure' | 'strum' | 'voices'
+> {
+  /** Measures to rest before entering the section. Applies once, never on loops. */
+  wait?: number;
+  set?: string | string[];
+  play?: PlayInput;
+}
+
+/**
+ * A named section of the song. Sections play in declaration order.
+ * `loop: true` (the default) marks the part of the song that repeats forever
+ * — those sections must be the tail of the document. `loop: N` plays the
+ * section N times in a row (0 skips it); `loop: false` plays it once.
+ * All other keys are instrument tracks.
+ */
+export type SectionNode =
+  Record<string, SectionTrack | boolean | number | undefined> & {
+    loop?: boolean | number;
+    wait?: number;
+  };
+
+export type SongDoc = TrackNode & { sections?: Record<string, SectionNode> };
 
 export interface CompiledTrack {
   name: string;
@@ -140,6 +168,12 @@ export interface CompiledSong {
   measureBeats: number;
   /** Song length in beats — the longest track, whole measures. */
   lengthBeats: number;
+  /**
+   * Where the forever-loop begins, in beats, when the document's sections
+   * declare one (everything before it — the intro — plays once). Undefined =
+   * no loop declared; players fall back to looping the whole song.
+   */
+  loopStartBeats?: number;
   /** Tempo changes in beat order; empty when the song holds one tempo. */
   tempoMap: TempoEvent[];
   tracks: CompiledTrack[];
@@ -629,6 +663,177 @@ export function parsePlay(play: PlayInput, props: TrackProps = {}): TimelineEven
 }
 
 // ---------------------------------------------------------------------------
+// Sections — named song parts with parallel instrument tracks inside
+// ---------------------------------------------------------------------------
+
+/** Keys of a section mapping that are NOT instrument tracks. */
+const SECTION_KEYS = new Set(['loop', 'wait']);
+
+/** Section-track props that compile into play directives. */
+const SECTION_DIRECTIVE_PROPS = [
+  'scale', 'octave', 'velocity', 'gate', 'tempo', 'measure', 'strum', 'voices',
+] as const;
+
+const SECTION_TRACK_KEYS = new Set(['wait', 'set', 'play', ...SECTION_DIRECTIVE_PROPS]);
+
+/** Does this measure string occupy a bar slot (vs a directive that takes none)? */
+function occupiesBar(text: string): boolean {
+  return text.trim() !== '' && !isDirectiveString(text) &&
+    splitTopLevel(text).some((t) => !isSetToken(t) && !isScaleToken(t));
+}
+
+/** Bars a play list spans (numbered keys included). */
+function measureSpan(play: PlayInput | undefined): number {
+  if (play == null) return 0;
+  let span = 0;
+  for (const entry of playMeasureEntries(play)) span = Math.max(span, entry.index + 1);
+  return span;
+}
+
+/**
+ * Expand a `sections:` document into an equivalent classic per-track one:
+ * every instrument gets a synthesized play list whose numbered measures place
+ * each section pass at its absolute bars. Returns the bar where the
+ * forever-loop begins (null when no section loops).
+ *
+ * Waits apply exactly once. For a looping tail that contains waits, the tail
+ * is compiled twice: a first pass with the waits before the loop point, then
+ * a clean pass that becomes the body repeated forever.
+ */
+export function expandSections(doc: SongDoc): { doc: SongDoc; loopStartBar: number | null } {
+  if (!doc.sections || typeof doc.sections !== 'object') return { doc, loopStartBar: null };
+  if (doc.play != null) {
+    throw new Error('Use either a top-level "play:" or "sections:", not both.');
+  }
+  for (const [name, node] of Object.entries(doc.tracks ?? {})) {
+    if (node && typeof node === 'object' && (node.play != null || node.tracks)) {
+      throw new Error(
+        `With "sections:", the top-level track "${name}" declares the instrument only ` +
+          `(sample, kit, controls…) — its music lives inside the sections.`,
+      );
+    }
+  }
+
+  const lists = new Map<string, (string | PlayDirective)[]>();
+  const order: string[] = [];
+  const listFor = (name: string) => {
+    let list = lists.get(name);
+    if (!list) {
+      list = [];
+      lists.set(name, list);
+      order.push(name);
+    }
+    return list;
+  };
+
+  let cursor = 0; // absolute bar (0-based) where the next section starts
+  let loopStartBar: number | null = null;
+
+  const sectionTracks = (name: string, section: SectionNode): [string, SectionTrack][] =>
+    Object.entries(section)
+      .filter(([key]) => !SECTION_KEYS.has(key))
+      .map(([trackName, node]) => {
+        if (!node || typeof node !== 'object') {
+          throw new Error(`Section "${name}": track "${trackName}" must be a mapping with a "play:".`);
+        }
+        for (const key of Object.keys(node)) {
+          if (!SECTION_TRACK_KEYS.has(key)) {
+            throw new Error(
+              `Section "${name}", track "${trackName}": "${key}" can't change per section — ` +
+                `declare it on the top-level track.`,
+            );
+          }
+        }
+        return [trackName, node as SectionTrack];
+      });
+
+  /** Write one pass of a section into every participating track's list. */
+  const emit = (name: string, section: SectionNode, withWaits: boolean) => {
+    const sectionWait = withWaits ? Math.max(0, section.wait ?? 0) : 0;
+    const tracks = sectionTracks(name, section);
+    let length = 0;
+    for (const [, node] of tracks) {
+      const wait = sectionWait + (withWaits ? Math.max(0, node.wait ?? 0) : 0);
+      length = Math.max(length, wait + measureSpan(node.play));
+    }
+    for (const [trackName, node] of tracks) {
+      const list = listFor(trackName);
+      const startBar = cursor + sectionWait + (withWaits ? Math.max(0, node.wait ?? 0) : 0);
+      // An empty numbered measure syncs the beat cursor to the entry bar, so
+      // leading directives (tempo words, prop overrides) land at the right time.
+      list.push({ [startBar + 1]: '' });
+      const overrides: PlayDirective = {};
+      for (const key of SECTION_DIRECTIVE_PROPS) {
+        if (node[key] !== undefined) (overrides as Record<string, unknown>)[key] = node[key];
+      }
+      if (node.set !== undefined) overrides.set = node.set;
+      if (Object.keys(overrides).length) list.push(overrides);
+
+      let rel = 0; // section-relative bar of the next plain measure string
+      for (const item of playItems(node.play ?? [])) {
+        if (item && typeof item === 'object') {
+          const rekeyed: PlayDirective = {};
+          for (const [key, value] of Object.entries(item)) {
+            if (/^\d+$/.test(key)) {
+              // Numbered measures inside a section are section-relative.
+              const target = parseInt(key, 10);
+              rekeyed[startBar + target] = value as string | undefined;
+              rel = target - 1;
+              if (typeof value === 'string' && occupiesBar(value)) rel++;
+            } else {
+              (rekeyed as Record<string, unknown>)[key] = value;
+            }
+          }
+          list.push(rekeyed);
+          continue;
+        }
+        const text = String(item);
+        list.push({ [startBar + rel + 1]: text });
+        if (occupiesBar(text)) rel++;
+      }
+    }
+    cursor += length;
+  };
+
+  const entries = Object.entries(doc.sections);
+  const cycle: [string, SectionNode][] = [];
+  for (const [name, raw] of entries) {
+    const section = raw ?? {};
+    const loop = section.loop ?? true;
+    if (loop === true) {
+      cycle.push([name, section]);
+      continue;
+    }
+    if (cycle.length) {
+      throw new Error(
+        `Section "${name}" comes after the forever-looping tail of the song — ` +
+          `give it "loop: true" or move it before the loop.`,
+      );
+    }
+    const times = loop === false ? 1 : Math.max(0, Math.floor(loop));
+    for (let pass = 0; pass < times; pass++) emit(name, section, pass === 0);
+  }
+  if (cycle.length) {
+    // Waits inside the looping tail play once: compile a waited pass before
+    // the loop point, then the clean pass that repeats forever.
+    const hasWaits = cycle.some(([name, section]) =>
+      (section.wait ?? 0) > 0 ||
+      sectionTracks(name, section).some(([, node]) => (node.wait ?? 0) > 0));
+    if (hasWaits) for (const [name, section] of cycle) emit(name, section, true);
+    loopStartBar = cursor;
+    for (const [name, section] of cycle) emit(name, section, !hasWaits);
+  }
+
+  const baseTracks = doc.tracks ?? {};
+  const tracks: Record<string, TrackNode> = {};
+  for (const name of order) {
+    tracks[name] = { ...(baseTracks[name] ?? {}), play: lists.get(name)! };
+  }
+  const { sections: _sections, ...rest } = doc;
+  return { doc: { ...rest, tracks }, loopStartBar };
+}
+
+// ---------------------------------------------------------------------------
 // Document compilation (recursive tracks with inheritance)
 // ---------------------------------------------------------------------------
 
@@ -663,8 +868,11 @@ function effectiveProps(node: TrackNode, inherited: TrackProps): TrackProps {
  */
 export function compileDoc(doc: SongDoc): CompiledSong {
   if (!doc || typeof doc !== 'object') {
-    throw new Error('Score must be a mapping with a "play:" or "tracks:" key.');
+    throw new Error('Score must be a mapping with a "play:", "sections:" or "tracks:" key.');
   }
+
+  const { doc: expanded, loopStartBar } = expandSections(doc);
+  doc = expanded;
 
   // velocity and gate are deliberately left unset here so that their worded
   // forms (`dynamic:` / `articulation:`) can supply them.
@@ -731,6 +939,11 @@ export function compileDoc(doc: SongDoc): CompiledSong {
     bpm: rootProps.tempo ?? DEFAULT_TEMPO,
     measureBeats: measureToBeats(rootProps.measure),
     lengthBeats,
+    // Loop markers assume the root meter at the cycle boundary (numbered
+    // jumps make the same assumption).
+    loopStartBeats: loopStartBar != null
+      ? round(loopStartBar * measureToBeats(rootProps.measure))
+      : undefined,
     tempoMap: [...byTime.values()].sort((a, b) => a.time - b.time),
     tracks,
   };
