@@ -106,5 +106,11 @@
     "notes": 947,
     "lengthBeats": 149,
     "sha256": "71d63491cd34f3c79eddda832b2ea95433310f3061ef1c6158cbc4d67ec932fa"
+  },
+  "songs/bibo-no-aozora/bibo-no-aozora.play.yaml": {
+    "tracks": 4,
+    "notes": 576,
+    "lengthBeats": 180,
+    "sha256": "5ed6466aba2777165c7309642d8d382c47d5909b32b6097a36a94f6da23fab75"
   }
 }
