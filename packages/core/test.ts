@@ -1140,6 +1140,32 @@ check('sections misuse fails loud', () => {
     /declare it on the top-level track/,
   );
 });
+check('a play-list loop: item repeats measures inline', () => {
+  const tl = parsePlay(['c ~ ~ ~', { loop: 3, play: 'd ~ ~ ~' }, 'e ~ ~ ~'] as any);
+  assert.deepStrictEqual(tl.map((n) => [n.time, n.midi]),
+    [[0, 60], [4, 62], [8, 62], [12, 62], [16, 64]]);
+});
+check('loop: items take lists, nest, and 0 skips', () => {
+  const tl = parsePlay([
+    { loop: 2, play: [{ loop: 2, play: 'c ~ ~ ~' }, 'g ~ ~ ~'] },
+    { loop: 0, play: 'b ~ ~ ~' },
+  ] as any);
+  assert.deepStrictEqual(tl.map((n) => n.midi), [60, 60, 67, 60, 60, 67]);
+});
+check('loop: items work inside sections and directives repeat with them', () => {
+  const song = compileDoc({
+    sections: {
+      a: { loop: false, lead: { play: [{ loop: 4, play: ['c ~ ~ ~'] }] } },
+    },
+  } as any);
+  assert.deepStrictEqual(song.tracks[0].timeline.map((n) => n.time), [0, 4, 8, 12]);
+});
+check('loop: item misuse fails loud', () => {
+  assert.throws(() => parsePlay([{ loop: true, play: 'c' }] as any), /number of times/);
+  assert.throws(() => parsePlay([{ loop: 2 }] as any), /needs a "play:"/);
+  assert.throws(() => parsePlay([{ loop: 2, play: [{ 3: 'c ~ ~ ~' }] }] as any), /Numbered measures/);
+});
+
 check('the exported .mid carries a loopStart marker', () => {
   const song = compileDoc({
     sections: {
