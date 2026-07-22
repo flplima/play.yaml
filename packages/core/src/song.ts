@@ -15,7 +15,9 @@ import {
   drumName, resolveControl, resolveDrum,
 } from './vocabulary';
 import { SetPatch, parseSet } from './set';
-import { HOLD, isDirectiveString, isScaleToken, isSetToken, setTokenBody, splitTopLevel } from './tokens';
+import {
+  HOLD, isDirectiveString, isScaleToken, isSetToken, setTokenBody, splitTopLevel, tokenWeight,
+} from './tokens';
 
 export interface TimelineEvent {
   time: number; // in quarter-note beats
@@ -249,15 +251,19 @@ function placeToken(token: string, start: number, span: number, ctx: EmitCtx, bo
   let tok = token.trim();
   if (!tok) return;
 
-  // Suffix marks: `>` accents, `<` softens (both stackable), and `~` rolls a
-  // chord (arpeggiando) — `[1 5 12]~`. The bare `~` rest stays untouched
-  // because a suffix needs something to sit on.
+  // Suffix marks: `>` accents, `<` softens (both stackable), `~` rolls a
+  // chord (arpeggiando) — `[1 5 12]~` — and `.`/`:` weight the duration
+  // (consumed by the caller's division; ignored here). The bare `~` rest
+  // stays untouched because a suffix needs something to sit on.
   let strumMarks = 0;
-  const suffix = /([<>~]+)$/.exec(tok);
+  // A weighted rest (`~:`) is all suffix characters — peel it to a bare rest.
+  if (/^~[<>:.]+$/.test(tok)) tok = '~';
+  const suffix = /([<>~:.]+)$/.exec(tok);
   if (suffix && suffix[1].length < tok.length) {
     for (const ch of suffix[1]) {
       if (ch === '~') strumMarks += 1;
-      else boost += ch === '>' ? ACCENT_STEP : -ACCENT_STEP;
+      else if (ch === '>') boost += ACCENT_STEP;
+      else if (ch === '<') boost -= ACCENT_STEP;
     }
     tok = tok.slice(0, -suffix[1].length);
   }
@@ -320,8 +326,16 @@ function placeToken(token: string, start: number, span: number, ctx: EmitCtx, bo
   if (tok[0] === '{' && tok[tok.length - 1] === '}') {
     const parts = splitTopLevel(tok.slice(1, -1));
     if (parts.length === 0) return;
-    const sub = span / parts.length;
-    parts.forEach((part, i) => placeToken(part, start + i * sub, sub, ctx, boost));
+    // The group's span is shared proportionally to the parts' duration
+    // weights (`.` ×1.5, `:` ×2) — equal division when no weights appear.
+    const weights = parts.map(tokenWeight);
+    const total = weights.reduce((a, b) => a + b, 0) || 1;
+    let offset = 0;
+    parts.forEach((part, i) => {
+      const sub = (span * weights[i]) / total;
+      placeToken(part, start + offset, sub, ctx, boost);
+      offset += sub;
+    });
     return;
   }
 
@@ -633,18 +647,22 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
       }
       return;
     }
-    const step = measureBeats / noteTokens.length;
-    let slot = 0;
+    // The measure divides proportionally to the tokens' duration weights
+    // (`.` ×1.5, `:` ×2, stackable) — plain equal division when unweighted.
+    const totalWeight = noteTokens.reduce((sum, t) => sum + tokenWeight(t), 0) || 1;
+    const unit = measureBeats / totalWeight;
+    let pos = 0; // beats consumed within the measure
     for (const tok of tokens) {
-      const at = beat + slot * step;
+      const at = beat + pos;
       if (isScaleToken(tok)) {
         // `==Dm7==` / `==C mixolydian==` — re-key the degrees that follow.
         ctx.scale = parseScale(setTokenBody(tok));
       } else if (isSetToken(tok)) {
         applySet(setTokenBody(tok), at);
       } else {
-        placeToken(tok, at, step, ctx);
-        slot++;
+        const span = unit * tokenWeight(tok);
+        placeToken(tok, at, span, ctx);
+        pos += span;
       }
     }
     m++;

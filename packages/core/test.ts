@@ -1028,6 +1028,43 @@ check('kit: 808 as a bare YAML number normalizes to a string', () => {
   assert.strictEqual(song.tracks[0].channel, 10);
 });
 
+console.log('\nduration weights (`.` and `:` suffixes):');
+check('`:` doubles a note\'s share: "c: d c" is half + two quarters', () => {
+  const tl = parsePlay('c: d c');
+  assert.deepStrictEqual(times(tl), [0, 2, 3]);
+  assert.deepStrictEqual(tl.map((n) => n.duration), [1.8, 0.9, 0.9]);
+});
+check('`.` is a dot (×1.5); suffixes stack and combine: `c:.` = 3 beats', () => {
+  const tl = parsePlay('c:. d');
+  assert.deepStrictEqual(times(tl), [0, 3]);
+  assert.deepStrictEqual(tl.map((n) => n.duration), [2.7, 0.9]);
+  const stacked = parsePlay('c:: e', { measure: 5 });
+  assert.deepStrictEqual(times(stacked), [0, 4]); // 4+1 weights in 5 beats
+});
+check('dotted pairs in other meters: "c. d." fills 3/4 evenly', () => {
+  const tl = parsePlay('c. d.', { measure: '3/4' });
+  assert.deepStrictEqual(times(tl), [0, 1.5]);
+});
+check('weights work inside groups', () => {
+  const tl = parsePlay('{c: d} e ~ ~');
+  assert.deepStrictEqual(times(tl), [0, 0.666667, 1]);
+});
+check('rests and holds take weights too', () => {
+  const rested = parsePlay('c ~: d');
+  assert.deepStrictEqual(times(rested), [0, 3]);
+  const held = parsePlay('c _: d');
+  assert.strictEqual(held[0].duration, 2.7); // c prolonged through the double hold
+  assert.strictEqual(held[1].time, 3);
+});
+check('duration weights combine with accents and rolls', () => {
+  const tl = parsePlay('[c e]:>~ d d', { velocity: 80 });
+  assert.deepStrictEqual(times(tl), [0, 0.03, 2, 3]);
+  assert.ok(tl[0].velocity === 96 && tl[1].velocity === 96);
+});
+check('unweighted measures are untouched (equal division)', () => {
+  assert.deepStrictEqual(times(parsePlay('c d e d')), [0, 1, 2, 3]);
+});
+
 console.log('\nsections:');
 check('sections play in order; parallel tracks align; absent tracks rest', () => {
   const song = compileDoc({

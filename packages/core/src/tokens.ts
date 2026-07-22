@@ -63,11 +63,32 @@ export function splitTopLevel(text: string): string[] {
   return out;
 }
 
+/**
+ * Duration weight of a measure token from its suffix: each `.` multiplies by
+ * 1.5 (a dot), each `:` by 2, stackable (`c4:.` = 3, `c4::` = 4). Tokens in
+ * a measure (or group) share the available time proportionally to their
+ * weights — `"c4: d4 c4"` in 4/4 is a half note and two quarters.
+ */
+export function tokenWeight(token: string): number {
+  // A weighted rest: `~` is itself a suffix character, so `~:` needs the
+  // leading rest peeled off explicitly.
+  const rest = /^~([<>:.]+)$/.exec(token);
+  const suffix = rest ? rest[1] : (/([<>~:.]+)$/.exec(token)?.[1] ?? '');
+  if (!rest && (suffix.length === 0 || suffix.length >= token.length)) return 1;
+  let weight = 1;
+  for (const ch of suffix) {
+    if (ch === ':') weight *= 2;
+    else if (ch === '.') weight *= 1.5;
+  }
+  return weight;
+}
+
 /** Could this token appear in a measure — a note, degree, rest, hold or group? */
 export function isMeasureToken(token: string): boolean {
-  // Suffix marks (accents, strums) don't change what a token is — but a bare
-  // `~` is the rest, not a suffix.
-  const suffix = /([<>~]+)$/.exec(token);
+  // Suffix marks (accents, strums, durations) don't change what a token is —
+  // but a bare `~` is the rest, not a suffix.
+  if (/^~[<>:.]+$/.test(token)) return true; // a weighted rest, e.g. `~:`
+  const suffix = /([<>~:.]+)$/.exec(token);
   if (suffix && suffix[1].length < token.length) token = token.slice(0, -suffix[1].length);
   if (token === '~' || token === HOLD) return true;
   if (token[0] === '{' || token[0] === '[') return true;

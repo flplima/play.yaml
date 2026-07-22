@@ -1,4 +1,4 @@
-import { expandSections, parseYaml, playMeasureEntries, measureToBeats } from '@play.yaml/core';
+import { expandSections, parseYaml, playMeasureEntries, measureToBeats, tokenWeight } from '@play.yaml/core';
 import type { TrackNode } from '@play.yaml/core';
 
 /** A token's character range in the document and its time span in beats. */
@@ -20,6 +20,14 @@ interface Element {
 /** Is this element an inline mark (`||…||` set or `==…==` scale) — no time slot? */
 function isMarkElement(text: string): boolean {
   return text.startsWith('||') || text.startsWith('==');
+}
+
+/** Is this element a rest (a bare `~`, possibly duration-weighted `~:`)? */
+function isRestElement(text: string): boolean {
+  if (text === '~' || /^~[<>:.]+$/.test(text)) return true;
+  const suffix = /([<>~:.]+)$/.exec(text);
+  const core = suffix && suffix[1].length < text.length ? text.slice(0, -suffix[1].length) : text;
+  return core === '~';
 }
 
 /**
@@ -60,14 +68,18 @@ function elementsWithOffsets(text: string, baseOffset: number): Element[] {
  * traversed but not emitted — the top-level 'beat' span already covers them.
  */
 function emitGroupSpans(token: Element, startBeat: number, endBeat: number, spans: NoteSpan[]): void {
-  if (!(token.text.startsWith('{') && token.text.endsWith('}'))) return;
-  const inner = elementsWithOffsets(token.text.slice(1, -1), token.from + 1);
+  const text = token.text.replace(/([<>~:.]+)$/, (m) => (m.length < token.text.length ? '' : m));
+  if (!(text.startsWith('{') && text.endsWith('}'))) return;
+  const inner = elementsWithOffsets(text.slice(1, -1), token.from + 1);
   if (inner.length === 0) return;
-  const step = (endBeat - startBeat) / inner.length;
-  inner.forEach((el, i) => {
-    if (el.text === '~') return;
-    const s = startBeat + i * step;
-    if (el.text.startsWith('{') && el.text.endsWith('}')) {
+  const total = inner.reduce((sum, el) => sum + tokenWeight(el.text), 0) || 1;
+  let pos = startBeat;
+  inner.forEach((el) => {
+    const step = ((endBeat - startBeat) * tokenWeight(el.text)) / total;
+    const s = pos;
+    pos += step;
+    if (isRestElement(el.text)) return;
+    if (el.text.startsWith('{')) {
       emitGroupSpans(el, s, s + step, spans);
     } else {
       spans.push({ from: el.from, to: el.to, startBeat: s, endBeat: s + step, kind: 'note' });
@@ -115,18 +127,20 @@ export function buildNoteSpans(text: string): NoteSpan[] {
         cursor = idx + m.length;
 
         const tokens = elementsWithOffsets(m, idx);
-        const noteCount = tokens.filter((t) => !isMarkElement(t.text)).length;
-        if (noteCount === 0) continue;
-        const step = measureBeats / noteCount;
-        let slot = 0;
+        const noteTokens = tokens.filter((t) => !isMarkElement(t.text));
+        if (noteTokens.length === 0) continue;
+        const totalWeight = noteTokens.reduce((sum, t) => sum + tokenWeight(t.text), 0) || 1;
+        const unit = measureBeats / totalWeight;
+        let pos = 0;
         for (const tok of tokens) {
           if (isMarkElement(tok.text)) continue;
-          if (tok.text !== '~') {
-            const startBeat = mi * measureBeats + slot * step;
+          const step = unit * tokenWeight(tok.text);
+          if (!isRestElement(tok.text)) {
+            const startBeat = mi * measureBeats + pos;
             spans.push({ from: tok.from, to: tok.to, startBeat, endBeat: startBeat + step, kind: 'beat' });
             emitGroupSpans(tok, startBeat, startBeat + step, spans);
           }
-          slot++;
+          pos += step;
         }
       }
     }
