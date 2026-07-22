@@ -182,14 +182,13 @@ sections:
 - A section's length is its longest part (waits included); tracks absent from
   a section simply rest through it. Numbered measures inside a section are
   **section-relative**.
-- **Inline repeats** (any `play:` list, sections or not): a `loop:` item plays
+- **Inline repeats** (any `play:` list, sections or not): an `Nx:` item plays
   its measures N times, so a vamp is written once —
 
   ```yaml
   play:
-    - &vamp "{eb2 _ [gb3 bb3 eb4]} {~ ~ eb2} [gb3 bb3 eb4] bb2 [f3 ab3 db4]"
-    - loop: 7
-      play: *vamp        # one measure or a list; loop items nest
+    - 8x: "{eb2 _ [gb3 bb3 eb4]} {~ ~ eb2} [gb3 bb3 eb4] bb2 [f3 ab3 db4]"
+    - 2x: ["1 2 3 4", "5 4 3 2"]   # a list works too; repeats nest; 0x skips
   ```
 - Per-section overrides are allowed for the directive props (`velocity`,
   `gate`, `scale`, `octave`, `tempo`, `measure`, `strum`, `voices`, `set`) —

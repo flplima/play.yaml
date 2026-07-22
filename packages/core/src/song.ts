@@ -113,20 +113,18 @@ export type PlayDirective = Pick<
 
 /**
  * An inline repeat inside a `play` list — sugar that expands before
- * compilation:
+ * compilation. The count lives in the key, the measures in the value:
  *
- *   - &pv "{eb2 _ [gb3 bb3 eb4]} …"
- *   - loop: 7
- *     play: *pv           # one measure, or a list; loop items nest
+ *   - 8x: "{eb2 _ [gb3 bb3 eb4]} {~ ~ eb2} [gb3 bb3 eb4] bb2 [f3 ab3 db4]"
+ *   - 2x: ["1 2 3 4", "5 4 3 2"]     # a list works too; repeats nest
+ *
+ * `0x:` skips its content. The forever loop belongs to `sections:`.
  */
-export interface PlayLoop {
-  /** How many times the content plays (0 skips it). Numbers only — the
-   *  forever loop belongs to `sections:`. */
-  loop: number;
-  play: PlayInput;
+export interface PlayRepeat {
+  [times: `${number}x`]: PlayInput | undefined;
 }
 
-export type PlayInput = string | (string | PlayDirective | PlayLoop)[];
+export type PlayInput = string | (string | PlayDirective | PlayRepeat)[];
 
 export interface TrackNode extends TrackProps {
   title?: string; // meaningful at the root
@@ -390,9 +388,11 @@ function placeToken(token: string, start: number, span: number, ctx: EmitCtx, bo
 // Play lists
 // ---------------------------------------------------------------------------
 
+const REPEAT_KEY = /^(\d+)x$/;
+
 /**
- * Flatten a `play` value into its items, expanding inline `loop:` repeats
- * (recursively — loop items may nest). Every consumer of a play list goes
+ * Flatten a `play` value into its items, expanding inline `Nx:` repeats
+ * (recursively — repeats may nest). Every consumer of a play list goes
  * through here, so repeats work identically for compiling, measure counting,
  * sections and editor highlighting.
  */
@@ -400,25 +400,25 @@ function playItems(play: PlayInput): (string | PlayDirective)[] {
   const raw = Array.isArray(play) ? play : String(play).split('\n');
   const out: (string | PlayDirective)[] = [];
   for (const item of raw) {
-    if (item && typeof item === 'object' && 'loop' in item) {
-      const times = (item as PlayLoop).loop;
-      if (typeof times !== 'number' || !Number.isFinite(times)) {
-        throw new Error(
-          'A play-list "loop:" item takes a number of times — the forever loop is declared on a section.',
-        );
-      }
-      if ((item as PlayLoop).play == null) {
-        throw new Error('A play-list "loop:" item needs a "play:" with the measures to repeat.');
-      }
-      const inner = playItems((item as PlayLoop).play);
-      for (const entry of inner) {
-        if (entry && typeof entry === 'object' && Object.keys(entry).some((k) => /^\d+$/.test(k))) {
-          throw new Error(
-            'Numbered measures can\'t sit inside a "loop:" item — a repeat has no fixed bar to anchor them to.',
-          );
+    if (item && typeof item === 'object' && Object.keys(item).some((k) => REPEAT_KEY.test(k))) {
+      for (const [key, content] of Object.entries(item)) {
+        const match = REPEAT_KEY.exec(key);
+        if (!match) {
+          throw new Error(`A repeat item ("${Object.keys(item).find((k) => REPEAT_KEY.test(k))}:") can't mix with "${key}" — put other keys in their own list item.`);
         }
+        if (content == null) {
+          throw new Error(`"${key}:" needs the measures to repeat as its value.`);
+        }
+        const inner = playItems(content as PlayInput);
+        for (const entry of inner) {
+          if (entry && typeof entry === 'object' && Object.keys(entry).some((k) => /^\d+$/.test(k))) {
+            throw new Error(
+              `Numbered measures can't sit inside a "${key}:" repeat — a repeat has no fixed bar to anchor them to.`,
+            );
+          }
+        }
+        for (let pass = 0; pass < parseInt(match[1], 10); pass++) out.push(...inner);
       }
-      for (let pass = 0; pass < Math.max(0, Math.floor(times)); pass++) out.push(...inner);
       continue;
     }
     out.push(item as string | PlayDirective);
