@@ -25,7 +25,7 @@ tracks:
       - 5: *groove
       - 6: *groove
       - 7: *groove
-      - 8: "bd ~ sd~ ~ [cy bd] _ _ _"             # snare roll, crash rings out
+      - 8: "bd ~ sd~ ~ [cy bd]::"             # snare roll, crash rings out
       # Section B: the kit thins to kick and cross-stick under the percussion.
       - 9: &sonKick "bd ~ ~ rim ~ bd rim ~"
       - 10: *sonKick
@@ -85,7 +85,7 @@ tracks:
       - 21: *trap
       - 22: *trap
       - 23: *trap
-      - 24: "bd ~ ~ ~ [cp cy] _ _ _"
+      - 24: "bd ~ ~ ~ [cp cy]::"
 
   machine-hats:
     kit: 808
