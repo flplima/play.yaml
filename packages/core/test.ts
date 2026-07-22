@@ -1211,10 +1211,24 @@ check('every example matches its golden digest', () => {
   // with:  UPDATE_GOLDEN=1 npm test -w @play.yaml/core
   const goldenPath = path.join(__dirname, 'examples.golden.json');
   const examplesDir = path.join(__dirname, '../../examples');
+  const songsDir = path.join(__dirname, '../../songs');
+  const scores: [string, string][] = fs.readdirSync(examplesDir)
+    .filter((f) => f.endsWith('.play.yaml')).sort()
+    .map((f) => [f, path.join(examplesDir, f)]);
+  // Song projects (songs/<slug>/<slug>.play.yaml — see docs/song-workflow.md).
+  if (fs.existsSync(songsDir)) {
+    for (const dir of fs.readdirSync(songsDir).sort()) {
+      const full = path.join(songsDir, dir);
+      if (!fs.statSync(full).isDirectory()) continue;
+      for (const f of fs.readdirSync(full).filter((f) => f.endsWith('.play.yaml')).sort()) {
+        scores.push([`songs/${dir}/${f}`, path.join(full, f)]);
+      }
+    }
+  }
   const digests: Record<string, { tracks: number; notes: number; lengthBeats: number; sha256: string }> = {};
-  for (const file of fs.readdirSync(examplesDir).filter((f) => f.endsWith('.play.yaml')).sort()) {
-    const song = compileDoc(parseYaml(fs.readFileSync(path.join(examplesDir, file), 'utf8')));
-    digests[file] = {
+  for (const [key, file] of scores) {
+    const song = compileDoc(parseYaml(fs.readFileSync(file, 'utf8')));
+    digests[key] = {
       tracks: song.tracks.length,
       notes: song.tracks.reduce((n, t) => n + t.timeline.length, 0),
       lengthBeats: song.lengthBeats,
