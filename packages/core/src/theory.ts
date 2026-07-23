@@ -46,9 +46,12 @@ const CHORD_SCALES: [RegExp, string][] = [
   [/^(dim7?|°7?|o7)$/i, 'diminished'],
   [/^(m|min|-)(maj|M)7$/i, 'harmonic minor'],
   [/^(m|min|-)(6|69|7|9|11|13)/i, 'dorian'], // m7 and m6 are dorian territory
-  [/^(m|min|-)/i, 'aeolian'],
+  // The maj family must outrank the bare-minor catch-all: case-insensitive
+  // /^(m…)/ would otherwise swallow "maj7" and turn every major-seventh
+  // chord aeolian.
   [/^(maj|M|Δ)(7|9|13)?(#11)$/i, 'lydian'],
   [/^(maj|M|Δ)(7|9|13)/i, 'ionian'],
+  [/^(m|min|-)/i, 'aeolian'],
   [/^(aug|\+)/i, 'whole tone'],
   [/^(7|9|11|13|sus|7sus)/i, 'mixolydian'],
   [/^(6|69|add9|)$/i, 'ionian'], // plain triad or 6/add9

@@ -116,6 +116,13 @@ check('a chord symbol implies its chord-scale', () => {
   assert.deepStrictEqual(midis(parsePlay('6 ~ ~ ~', { scale: 'Dm7', octave: 3 })), [59]);
   assert.deepStrictEqual(midis(parsePlay('6 ~ ~ ~', { scale: 'Dm', octave: 3 })), [58]);
 });
+check('maj7/maj9 are ionian — not swallowed by the bare-minor pattern', () => {
+  // Regression: case-insensitive /^(m…)/ used to match "maj7" first, turning
+  // every major-seventh chord aeolian (b3/b6/b7).
+  assert.deepStrictEqual(midis(parsePlay('1 3 5 7', { scale: 'Cmaj7', octave: 4 })), [60, 64, 67, 71]);
+  assert.deepStrictEqual(midis(parsePlay('3 ~ ~ ~', { scale: 'Dbmaj9', octave: 4 })), [65]);
+  assert.deepStrictEqual(midis(parsePlay('4 ~ ~ ~', { scale: 'Fmaj7#11', octave: 4 })), [71]); // lydian
+});
 check('half-diminished, diminished and augmented qualities', () => {
   assert.deepStrictEqual(midis(parsePlay('1 3 5 7', { scale: 'Em7b5', octave: 3 })), [52, 55, 58, 62]);
   assert.deepStrictEqual(midis(parsePlay('1 3 5 7', { scale: 'G#dim7', octave: 2 })), [44, 47, 50, 53]);
