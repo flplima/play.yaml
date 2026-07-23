@@ -80,6 +80,24 @@ npm run dev:stop     # stop the dev server
 
 It offers a YAML editor with syntax highlighting, the bundled example scores (editable in-session, never persisted), opening/saving local `.play.yaml` files via the File System Access API, playback through a built-in Web Audio engine, and per-instrument routing to your MIDI devices via WebMIDI (with a per-mapping test note). A header toggle picks the output: **Built-in** renders everything in the browser, **MIDI** uses the panel's routes. The **⬇ MP3** button renders the score offline with the built-in sounds (tempo map included) and downloads it as an MP3.
 
+To play the studio through real VST instruments (Pianoteq, SWAM, …),
+`scripts/vst-rack.py` runs a tiny headless [Carla](https://kx.studio/Applications:Carla)
+host that scans the machine for instrument plugins (VST2/VST3, AU dirs on
+macOS), loads each behind a MIDI channel filter, and exposes **one MIDI
+input port — one instrument per channel** (`ch 1 → instrument 1`, up to 16):
+
+```bash
+sudo apt install carla pipewire-jack   # Linux; on macOS: Carla.app in /Applications
+python3 scripts/vst-rack.py            # discover, wire, print the channel map, run
+python3 scripts/vst-rack.py --list     # just show what was found
+```
+
+On Linux it auto-wires itself through PipeWire (the browser reaches it via
+the kernel's "Midi Through Port-0" — pick that device in the MIDI panel);
+on macOS Carla's CoreMIDI port shows up directly. Then: **⌁ MIDI** toggle,
+route each track's instrument to the port on its channel, play. The channel
+map is also saved to `~/.cache/play.yaml/vst-rack-channels.json`.
+
 Two studio behaviors worth knowing:
 
 - **Live editing (hot-swap)**: edit the score *while it plays* — any change that compiles splices into the running transport at an upcoming bar boundary, Sonic-Pi-style, with no Stop→Play. The status bar reports the bar the update landed on; held MIDI notes from the old take are released on the barline.
