@@ -112,5 +112,11 @@
     "notes": 576,
     "lengthBeats": 180,
     "sha256": "b2093340c60fe191fa402426fb6d64bd985ec8ac99c514ad2a93df48550c6793"
+  },
+  "songs/tema-para-ana/tema-para-ana.play.yaml": {
+    "tracks": 3,
+    "notes": 516,
+    "lengthBeats": 165,
+    "sha256": "10dc7de7d46546d0b9f81b6a1543367fd7b40a88c03d796729b0cc1d061c0c8c"
   }
 }
