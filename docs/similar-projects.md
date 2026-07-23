@@ -115,10 +115,13 @@ production; beats had YAML sections but only drums.
 1. **Hot-swap editing** (Sonic Pi's most-loved feature): recompile on edit
    and splice the new timeline at the next bar boundary instead of requiring
    Stop→Play. Our compile is already fast and pure; the transport work is the
-   hard part. Highest studio-feel payoff on this list.
+   hard part. Highest studio-feel payoff on this list. *Shipped 2026-07-22
+   (generation-based splicing in `packages/web/src/player.ts`).*
 2. **Shareable URLs** (Strudel): encode the score (compressed) in the URL
    hash so any song links without a server. Near-free with our source-string
-   model, and the best distribution move for an open-source launch.
+   model, and the best distribution move for an open-source launch. *Shipped
+   2026-07-22 (`packages/web/src/share.ts` — clean-room over web-standard
+   CompressionStream, no Strudel code).*
 3. **Euclidean rhythms** (Tidal/Strudel `bd(3,8)`): one token suffix that
    drummers and live-coders both expect; expands in `placeToken` like our
    roll suffix does.

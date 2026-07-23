@@ -10,10 +10,12 @@ import { buildNoteSpans, NoteSpan } from './noteSpans';
 import { playingNoteExtension, setPlayingNotes } from './highlight';
 import { useMidi } from './useMidi';
 import MidiPanel, { SampleEntry } from './MidiPanel';
+import { clearShareHash, decodeShareHash, encodeShareHash, isShareHash } from './share';
 
 type Source =
   | { kind: 'example'; name: string }
-  | { kind: 'file'; name: string; handle: FileSystemFileHandle };
+  | { kind: 'file'; name: string; handle: FileSystemFileHandle }
+  | { kind: 'shared' };
 
 const ROUTES_STORAGE_KEY = 'play.yaml:midi-routes';
 const OUTPUT_STORAGE_KEY = 'play.yaml:output-mode';
@@ -108,20 +110,74 @@ export default function App() {
   const handleEdit = (value: string) => {
     setText(value);
     if (source.kind === 'example') exampleEdits.current.set(source.name, value);
-    else setDirty(true);
+    else if (source.kind === 'file') setDirty(true);
+    clearShareHash(); // an edited score no longer matches the link in the address bar
     // Re-anchor highlights to the edited text so they stay accurate mid-playback.
     if (playback.current) noteSpans.current = buildNoteSpans(value);
   };
+
+  // Hot-swap: while playing, an edit that compiles cleanly splices into the
+  // running transport at an upcoming bar boundary — no Stop→Play. Debounced
+  // so a burst of keystrokes schedules one splice.
+  const liveSong = useRef<CompiledSong | null>(null);
+  useEffect(() => {
+    const handle = playback.current;
+    if (!handle || !song || song === liveSong.current) return;
+    const timer = window.setTimeout(() => {
+      if (playback.current !== handle) return;
+      liveSong.current = song;
+      void handle.update(song).then((bar) => {
+        if (bar != null && playback.current === handle) setStatus(`↻ live update from bar ${bar}`);
+      });
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [song]);
 
   const selectExample = (name: string) => {
     stop();
     const example = EXAMPLES.find((e) => e.name === name);
     if (!example) return;
+    clearShareHash();
     localStorage.setItem(EXAMPLE_STORAGE_KEY, name);
     setSource({ kind: 'example', name });
     setText(exampleEdits.current.get(name) ?? example.content);
     setDirty(false);
     setStatus(null);
+  };
+
+  // A share link carries the whole score in its hash — load it on arrival
+  // (initial visit or a hash pasted into the running tab).
+  useEffect(() => {
+    const loadFromHash = async () => {
+      if (!isShareHash()) return;
+      try {
+        const shared = await decodeShareHash(location.hash);
+        if (shared == null) return;
+        stop();
+        setSource({ kind: 'shared' });
+        setText(shared);
+        setDirty(false);
+        setStatus('Loaded score from share link');
+      } catch {
+        setStatus('Could not read the share link — it may be truncated');
+      }
+    };
+    void loadFromHash();
+    const onHashChange = () => void loadFromHash();
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, [stop]);
+
+  const shareLink = async () => {
+    const hash = await encodeShareHash(text);
+    const url = `${location.origin}${location.pathname}${hash}`;
+    history.replaceState(null, '', hash);
+    try {
+      await navigator.clipboard.writeText(url);
+      setStatus(`Share link copied (${url.length.toLocaleString()} chars)`);
+    } catch {
+      setStatus('Share link is in the address bar (clipboard unavailable)');
+    }
   };
 
   const openFile = async () => {
@@ -137,6 +193,7 @@ export default function App() {
       const file = await handle.getFile();
       const content = await file.text();
       stop();
+      clearShareHash();
       setSource({ kind: 'file', name: file.name, handle });
       setText(content);
       setDirty(false);
@@ -263,6 +320,7 @@ export default function App() {
             onChange={(e) => selectExample(e.target.value)}
           >
             {source.kind === 'file' && <option value="">— {source.name} —</option>}
+            {source.kind === 'shared' && <option value="">— shared link —</option>}
             {EXAMPLES.map((e) => (
               <option key={e.name} value={e.name}>
                 {e.name}
@@ -376,6 +434,15 @@ export default function App() {
           title="Render the song offline with the built-in sounds and download it as MP3"
         >
           {rendering ? '… Rendering' : '⬇ MP3'}
+        </button>
+
+        <button
+          className="rounded border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-200 hover:bg-zinc-800 disabled:opacity-40"
+          onClick={() => void shareLink()}
+          disabled={!text}
+          title="Copy a link that carries this whole score in the URL — no server involved"
+        >
+          🔗 Share
         </button>
 
         <button

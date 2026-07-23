@@ -80,6 +80,11 @@ npm run dev:stop     # stop the dev server
 
 It offers a YAML editor with syntax highlighting, the bundled example scores (editable in-session, never persisted), opening/saving local `.play.yaml` files via the File System Access API, playback through a built-in Web Audio engine, and per-instrument routing to your MIDI devices via WebMIDI (with a per-mapping test note). A header toggle picks the output: **Built-in** renders everything in the browser, **MIDI** uses the panel's routes. The **⬇ MP3** button renders the score offline with the built-in sounds (tempo map included) and downloads it as an MP3.
 
+Two studio behaviors worth knowing:
+
+- **Live editing (hot-swap)**: edit the score *while it plays* — any change that compiles splices into the running transport at an upcoming bar boundary, Sonic-Pi-style, with no Stop→Play. The status bar reports the bar the update landed on; held MIDI notes from the old take are released on the barline.
+- **🔗 Share**: copies a link that carries the whole score in the URL fragment (deflate-compressed, base64url) — no server, nothing uploaded; opening the link restores the score exactly. Editing after sharing clears the stale hash from the address bar.
+
 The built-in engine is expressive: every track gets a control bus that performs
 the score's CC stream — expression (CC11) swells through held notes, vibrato
 depth/rate drive a real LFO, bow position (CC74) morphs the tone from
