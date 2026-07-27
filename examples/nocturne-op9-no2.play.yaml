@@ -1,0 +1,110 @@
+# Frédéric Chopin — Nocturne in E-flat major, Op. 9 No. 2 (1830-32)
+# 12/8, Andante. The singing right-hand melody over a rocking left-hand
+# broken-chord accompaniment; the reprises are increasingly ornamented and the
+# coda opens into a cadenza — hence the bars that slip into 6/4 and 2/4 before
+# the final 12/8 (the meter changes are written inline as bare "N/D" directives).
+# The 15 ornamental grace notes / small-note fioriture are omitted; every full-size
+# note matches. Tempo is quarter=66 (the ♪=132 tradition).
+#
+# Auto-transcribed from the MuseTrainer public-domain library (musetrainer.github.io/library),
+# which re-hosts community MuseScore engravings. The .mxl was parsed to notes
+# and this score verifies NOTE-IDENTICAL against it (every onset+pitch matches;
+# reproduce with scripts/musicxml-to-play.py). The music itself is public domain.
+
+title: "Nocturne in E-flat major, Op. 9 No. 2"
+tempo: 66
+measure: 12/8
+
+tracks:
+  rh: { sample: piano }
+  lh: { sample: piano }
+
+sections:
+  piece:
+    loop: false
+    rh:
+      play:
+        - "bb4 ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~"
+        - "g5 _ _ _ f5 g5 f5 _ _ eb5 _ bb4"
+        - "g5 _ c5 c6 _ g5 bb5 _ _ ab5 _ g5"
+        - "f5 _ _ g5 _ d5 eb5 _ _ c5 _ _"
+        - "bb4 d6 c6 {bb5 ab5} {g5 ab5} {c5 d5} eb5 _ _ ~ ~ bb4"
+        - "g5 _ _ {f5 g5} {f5 e5} {f5 g5} f5 eb5 _ {_ f5} {eb5 d5} {eb5 f5}"
+        - "{g5 b4} {c5 db5} {c5 f5} {e5 ab5} {g5 db6} {c6 g5} bb5 _ _ ab5 _ g5"
+        - "f5 _ _ g5 g5 d5 eb5 _ _ c5 _ _"
+        - "bb4 d6 c6 {bb5 ab5} {g5 ab5} {c5 d5} eb5 _ _ _ d5 eb5"
+        - "f5 _ _ g5 _ f5 f5 _ _ c5 _ _"
+        - "eb5 eb5 eb5 eb5 {d5 eb5} {f5 _ _ eb5} eb5 _ _ bb4 _ _"
+        - "bb5 _ _ a5 _ g5 [a4 f5] _ _ [bb4 d5] _ _"
+        - "[g4 eb5] _ _ [a4 d5] [a4 c5] [a4 d5] [f4 bb4] [f#4 b4] [e4 b4] [e4 bb4 c5] [f4 a4 c5] [ab4 d5]"
+        - "g5 _ {a4 bb4} {cb5 bb4} {c#5 d5} {g5 _ _ f5} f5 _ eb5 {_ f5} {eb5 d5} {eb5 f5}"
+        - "{g5 b4} {c5 db5} {c5 f5} {e5 ab5} {g5 db6} {c6 g5} bb5 _ _ ab5 _ g5"
+        - "f5 _ _ g5 g5 d5 eb5 _ _ c5 _ _"
+        - "bb4 d6 db6 {c6 b5 bb5 a5} {ab5 f5 d5 cb5} {bb4 _ _ d5 _ _ g5 _ f5 _ eb5 _} eb5 _ _ _ d5 eb5"
+        - "f5 _ _ g5 _ f5 f5 _ _ c5 _ _"
+        - "{eb5 _ _ eb5} {_ eb5} {_ eb5 _ _} eb5 {d5 eb5} {f5 _ _ eb5} eb5 _ _ bb4 _ _"
+        - "bb5 _ _ a5 _ g5 [a4 f5] _ _ [bb4 d5] _ _"
+        - "[g4 eb5] _ _ [a4 d5] [a4 c5] [a4 d5] [f4 bb4] [f#4 b4] [e4 b4] [e4 bb4 c5] [f4 a4 c5] [ab4 d5]"
+        - "g5 _ {a4 bb4} {cb5 bb4} {c#5 d5} {g5 _ _ f5} f5 _ eb5 {eb5 f5} {eb5 d5} {eb5 f5}"
+        - "{g5 b4} {c5 db5} {c5 f5} {e5 ab5} {g5 db6} {c6 g5} bb5 _ _ ab5 _ g5"
+        - "f5 _ _ g5 g5 d5 eb5 _ _ c5 _ _"
+        - "{bb4 d6} {_ c#6} {c6 b5} {bb5 a5} {ab5 _ _ a4 bb4 c5} {c#5 _ _ d5 _ _ g5 _ f5 _ eb5 _} eb5 _ _ _ _ _"
+        - "eb5 _ _ f5 eb5 f5 g5 _ _ _ _ _"
+        - "eb5 _ _ {_ f5} {eb5 f5} {eb5 f5} g5 _ eb5 eb6 d6 c6"
+        - "bb5 _ a5 ab5 c5 d5 eb5 {f5 eb5} {d5 eb5} g6 {f6 eb6} {d6 c6}"
+        - "cb6 bb5 a5 {a5 ab5} {ab5 g5} {g5 _ _ f5} eb5 _ _ _ _ _"
+        - "eb5 _ _ {_ _ _ f5 _ _ eb5 _} {_ f5 _ _ eb5 _ _ f5} {_ _ eb5 _ _ f5 _ _} eb5 _ _ _ _ _"
+        - "eb5 {ab4 bb4} {ab4 g4} {ab4 cb5} {eb5 ab5} {eb6 _ ~ f6} g6 eb6 [eb6 eb7] _ [d6 d7] [c6 c7]"
+        - "[cb6 cb7] [bb5 bb6] [a5 a6] [ab5 ab6] [g5 g6] [d5 d6] [eb5 eb6] [eb6 eb7] _ _ [f5 f6] [c6 c7]"
+        - "[cb6 cb7] _ _ _ _ _ [bb5 bb6] _ _ _ _ _"
+        - "6/4"
+        - "{cb7 bb6 c7 a6 cb7 bb6 c7 a6} {cb7 bb6 c7 a6 cb7 bb6 c7 a6} {cb7 bb6 c7 a6 cb7 bb6 c7 a6} ~ ~ ~"
+        - "{cb7 bb6 c7 a6 cb7 bb6 c7 a6} {cb7 bb6 c7 a6 cb7 bb6 c7 a6} {cb7 bb6 c7 a6 cb7 bb6 c7 a6} ~ ~ ~"
+        - "2/4"
+        - "{cb7 bb6 d7 c7 bb6 a6 ab6 g6} {f6 d6 eb6 c6 bb5 ab5 c5 d5}"
+        - "12/8"
+        - "[g4 eb5] bb4 g5 [g4 eb5] bb4 g5 [g4 eb5] bb4 g5 [g4 eb5] bb4 g5"
+        - "[g4 eb5] _ _ [g5 eb6] _ _ [g3 eb4] _ _ _ _ _"
+    lh:
+      play:
+        - "~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~"
+        - "eb2 [g3 eb4] [bb3 eb4 g4] eb3 [ab3 d4] [cb4 d4 ab4] eb2 [g3 eb4] [bb3 eb4 g4] d2 [g3 eb4] [bb3 eb4 g4]"
+        - "c2 [g3 e4] [bb3 e4 g4] c3 [g3 e4] [c4 e4 bb4] f2 [f3 db4] [bb3 db4 e4] f2 [f3 c4] [ab3 c4 f4]"
+        - "bb2 [f3 d4] [bb3 d4 ab4] b2 [g3 f4] [d4 f4 g4] c3 [g3 eb4] [c4 eb4 g4] a2 [gb3 eb4] [c4 eb4 gb4]"
+        - "bb2 [f3 eb4] [bb3 eb4 ab4] bb1 [f3 d4] [bb3 ab4] eb2 [g3 eb4] [bb3 eb4 g4] eb3 [g3 eb4] [bb3 eb4 g4]"
+        - "eb3 [g3 eb4] [bb3 eb4 g4] eb3 [ab3 d4] [cb4 d4 ab4] eb3 [g3 eb4] [bb3 eb4 g4] d3 [g3 eb4] [bb3 eb4 g4]"
+        - "c3 [g3 e4] [bb3 e4 g4] c3 [g3 e4] [c4 e4 bb4] f2 [f3 db4] [bb3 db4 e4] f2 [f3 c4] [ab3 c4 f4]"
+        - "bb2 [f3 d4] [bb3 d4 ab4] b2 [g3 f4] [d4 f4 g4] c3 [g3 eb4] [c4 eb4 g4] a2 [gb3 eb4] [c4 eb4 gb4]"
+        - "bb2 [f3 eb4] [bb3 eb4 ab4] bb1 [f3 d4] [bb3 ab4] eb2 [g3 eb4] [bb3 eb4 g4] eb3 [g3 eb4] [bb3 eb4 g4]"
+        - "bb2 [f3 d4] [bb3 d4 f4] bb2 [f3 d4] [bb3 d4 f4] a2 [f3 c4] [c4 f4] a2 [f3 c4] [c4 f4]"
+        - "ab2 [eb3 c4] [ab3 c4 eb4] ab1 [eb3 cb4] [ab3 cb4 eb4] eb2 [g3 eb4] [bb3 eb4 g4] eb3 [g3 eb4] [bb3 eb4 g4]"
+        - "e2 [e3 db4] [bb3 db4 g4] e2 [e3 c4] [bb3 c4 g4] f2 [f3 eb4] [c4 eb4 a4] g2 [g3 d4] [bb3 d4 bb4]"
+        - "c2 [g3 eb4] [c4 eb4 g4] f2 [f3 eb4] [c4 eb4 f4] [bb3 d4] [a3 d#4] g#3 g3 [f3 c4 eb4] [bb3 f4]"
+        - "eb2 [g3 eb4] [bb3 eb4 g4] eb3 [ab3 d4] [bb3 d4 ab4] eb3 [g3 eb4] [bb3 eb4 g4] d3 [g3 eb4] [bb3 eb4 g4]"
+        - "c3 [g3 e4] [bb3 e4 g4] c3 [g3 e4] [c4 e4 bb4] f2 [f3 db4] [bb3 db4 e4] f2 [f3 c4] [ab3 c4 f4]"
+        - "bb2 [f3 d4] [bb3 d4 ab4] b2 [g3 f4] [d4 f4 g4] c3 [g3 eb4] [c4 eb4 g4] a2 [gb3 eb4] [c4 eb4 gb4]"
+        - "bb2 [f3 eb4] [bb3 eb4 ab4] bb1 [f3 d4] [bb3 d4 ab4] eb2 [g3 eb4] [bb3 eb4 g4] eb3 [g3 eb4] [bb3 eb4 g4]"
+        - "bb2 [f3 d4] [bb3 d4 f4] bb2 [f3 d4] [bb3 d4 f4] a2 [f3 c4] [c4 f4] a2 [f3 c4] [c4 f4]"
+        - "ab2 [eb3 c4] [ab3 c4 eb4] ab1 [eb3 cb4] [ab3 cb4 eb4] [eb2 eb3] [g3 eb4] [bb3 eb4 g4] [eb2 eb3] [g3 eb4] [bb3 eb4 g4]"
+        - "e2 [e3 db4] [bb3 db4 g4] e2 [e3 c4] [bb3 c4 g4] f2 [f3 eb4] [c4 eb4 a4] g2 [g3 d4] [bb3 d4 bb4]"
+        - "c2 [g3 eb4] [c4 eb4 g4] f2 [f3 eb4] [c4 eb4 f4] [bb3 d4] [a3 d#4] g#3 g3 [f3 c4 eb4] [bb3 f4]"
+        - "eb2 [g3 eb4] [bb3 eb4 g4] eb3 [ab3 d4] [bb3 d4 ab4] eb3 [g3 eb4] [bb3 eb4 g4] d3 [g3 eb4] [bb3 eb4 g4]"
+        - "c3 [g3 e4] [bb3 e4 g4] c3 [g3 e4] [c4 e4 bb4] f2 [f3 db4] [bb3 db4 e4] f2 [f3 c4] [ab3 c4 f4]"
+        - "bb2 [f3 d4] [bb3 d4 ab4] b2 [g3 f4] [d4 f4 g4] c3 [g3 eb4] [c4 eb4 g4] a2 [gb3 eb4] [c4 eb4 gb4]"
+        - "bb2 [f3 eb4] [bb3 eb4 ab4] bb1 [f3 d4] [bb3 d4 ab4] eb2 [g3 eb4] [bb3 eb4 g4] eb3 [g3 eb4] [bb3 eb4 g4]"
+        - "eb2 [ab3 cb4 eb4] [cb4 eb4 ab4] eb3 [ab3 cb4 eb4] [cb4 eb4 ab4] eb2 [g3 eb4] [bb3 eb4 g4] eb3 [g3 eb4] [bb3 eb4 g4]"
+        - "eb2 [ab3 cb4 eb4] [cb4 eb4 ab4] eb3 [ab3 cb4 eb4] [cb4 eb4 ab4] eb2 [g3 bb3 eb4] [bb3 eb4 g4] eb3 [g3 eb4] [bb3 eb4 g4]"
+        - "eb3 [f3 d4] [bb3 ab4] eb3 [f3 d4] [bb3 ab4] eb3 [g3 eb4] [bb3 g4] a2 [f3 eb4] [c4 eb4 f4]"
+        - "bb2 [f3 eb4] [bb3 eb4 ab4] bb1 [f3 d4] [bb3 d4 ab4] eb2 [g3 eb4] [bb3 eb4 g4] eb3 [g3 eb4] [bb3 eb4 g4]"
+        - "ab1 [eb3 ab3 cb4] [ab3 cb4 eb4] [cb4 eb4 ab4] [ab3 cb4 eb4] [eb3 ab3 cb4] eb2 [g3 eb4] [bb3 eb4 g4] eb3 [g3 eb4] [bb3 eb4 g4]"
+        - "ab1 [eb3 ab3] [ab3 cb4 eb4] [cb4 eb4 ab4] [ab3 cb4 eb4] [eb3 ab3 cb4] eb2 [g3 eb4] [bb3 eb4 g4] a2 [g3 eb4] [c4 eb4 f4]"
+        - "bb2 [f3 bb3 eb4] [bb3 eb4 ab4] b2 [g3 f4] [d4 f4 g4] c3 [g3 eb4] [c4 g4] a2 [f3 c4 eb4] [c4 eb4 f4]"
+        - "{bb1 _ _ bb2} {_ f3} {_ ab3 _ _} {d4 _ _ bb3} {_ f4} {_ ab4 _ _} d5 _ _ _ _ _"
+        - "6/4"
+        - "~ ~ ~ ~ ~ ~"
+        - "~ ~ ~ ~ ~ ~"
+        - "2/4"
+        - "~ ~"
+        - "12/8"
+        - "eb2 bb3 bb2 eb3 bb3 bb2 eb2 bb3 bb2 eb3 bb3 bb2"
+        - "[eb3 bb3] _ _ [eb4 bb4] _ _ [eb2 bb2] _ _ _ _ _"

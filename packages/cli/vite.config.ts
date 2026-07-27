@@ -8,6 +8,7 @@ export default defineConfig({
         index: resolve(__dirname, 'src/index.ts'),
         cli: resolve(__dirname, 'src/cli.ts'),
         export: resolve(__dirname, 'src/export.ts'),
+        fidelity: resolve(__dirname, 'src/fidelity.ts'),
       },
       formats: ['cjs', 'es'],
       fileName: (format, entryName) => {
@@ -29,7 +30,7 @@ export default defineConfig({
       ],
       output: {
         banner: (chunk) => {
-          if (chunk.name === 'cli' || chunk.name === 'export') {
+          if (chunk.name === 'cli' || chunk.name === 'export' || chunk.name === 'fidelity') {
             return '#!/usr/bin/env node\n';
           }
           return '';

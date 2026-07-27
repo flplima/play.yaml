@@ -6,7 +6,8 @@
   "main": "./dist/index.js",
   "bin": {
     "play-yaml": "./dist/export.js",
-    "play-yaml-play": "./dist/cli.js"
+    "play-yaml-play": "./dist/cli.js",
+    "play-yaml-fidelity": "./dist/fidelity.js"
   },
   "exports": {
     ".": {

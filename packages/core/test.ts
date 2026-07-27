@@ -8,6 +8,7 @@ import {
   DEFAULT_TEMPO, DEFAULT_SAMPLE,
 } from './src/parser';
 import { encodeMidi } from './src/exporter';
+import { decodeMidi, compareMidi } from './src/fidelity';
 import { parseYaml } from './src/yaml';
 import { tempoSegments, beatsToSeconds } from './src/time';
 
@@ -1290,6 +1291,106 @@ check('every example matches its golden digest', () => {
     golden,
     'compiled examples drifted from examples.golden.json — if intentional, rerun with UPDATE_GOLDEN=1',
   );
+});
+
+console.log('\nfidelity (decodeMidi / compareMidi):');
+
+// A small three-track song we can encode, perturb and re-score.
+const fidSong = compileDoc(
+  parseYaml(`
+title: fidelity fixture
+tempo: 90
+measure: 4/4
+tracks:
+  lead: { velocity: 100 }
+  mid: { velocity: 80 }
+  low: { velocity: 80 }
+sections:
+  a:
+    loop: false
+    lead: { play: ["c4 e4 g4 c5", "b4 g4 e4 c4", "d4 f4 a4 d5", "c4 e4 g4 c5"] }
+    mid:  { play: ["e3 g3 c4 e4", "d4 b3 g3 e3", "f3 a3 d4 f4", "e3 g3 c4 e4"] }
+    low:  { play: ["c2 c2 g2 g2", "g2 g2 c2 c2", "d2 d2 a2 a2", "c2 c2 g2 g2"] }
+`),
+);
+
+check('decodeMidi round-trips note count and tempo from encodeMidi', () => {
+  const bytes = encodeMidi(fidSong, { bpm: fidSong.bpm });
+  const parsed = decodeMidi(bytes);
+  const noteCount = fidSong.tracks.reduce((n, t) => n + t.timeline.length, 0);
+  assert.strictEqual(parsed.notes.length, noteCount, 'decoded note count matches');
+  assert.strictEqual(Math.round(parsed.tempoMap[0].bpm), 90, 'decoded tempo matches');
+});
+
+check('a MIDI compared to itself scores 100%', () => {
+  const bytes = encodeMidi(fidSong, { bpm: fidSong.bpm });
+  const r = compareMidi(bytes, bytes);
+  assert.strictEqual(r.transpose, 0, 'no transposition needed');
+  assert.strictEqual(r.offsetBeats, 0, 'no offset needed');
+  assert.ok(r.harmony > 0.999, `harmony ~1 (got ${r.harmony})`);
+  assert.ok(r.pitch > 0.999, `pitch ~1 (got ${r.pitch})`);
+  assert.ok(r.coverage > 0.999, `full coverage (got ${r.coverage})`);
+  assert.ok(r.score > 99.5, `score ~100 (got ${r.score.toFixed(1)})`);
+});
+
+check('detects a whole-song transposition and still matches the harmony', () => {
+  const bytes = encodeMidi(fidSong, { bpm: fidSong.bpm });
+  // Same music a major third up: chroma still matches once the key is found.
+  const up = {
+    ...fidSong,
+    tracks: fidSong.tracks.map((t) => ({
+      ...t,
+      timeline: t.timeline.map((n) => ({ ...n, midi: n.midi + 4 })),
+    })),
+  };
+  // gen is the +4 rendition, orig is the reference — so orig is shifted +4 to match.
+  const r = compareMidi(encodeMidi(up, { bpm: fidSong.bpm }), bytes);
+  assert.strictEqual(r.transpose, 4, `found +4 semitones (got ${r.transpose})`);
+  assert.ok(r.harmony > 0.999, `harmony recovered after transposing (got ${r.harmony})`);
+});
+
+check('a different tempo does not hurt harmony but shows in the tempo score', () => {
+  const a = encodeMidi(fidSong, { bpm: 90 });
+  const b = encodeMidi(fidSong, { bpm: 135 }); // same notes/beats, +50% tempo
+  const r = compareMidi(a, b);
+  assert.ok(r.harmony > 0.999, `harmony unaffected by tempo (got ${r.harmony})`);
+  assert.ok(r.tempo < 0.5, `tempo score penalizes 90 vs 135 (got ${r.tempo.toFixed(2)})`);
+});
+
+check('a wrong (scrambled) rendition scores far below a faithful one', () => {
+  const ref = encodeMidi(fidSong, { bpm: fidSong.bpm });
+  // Push every pitch to an unrelated, key-clashing value.
+  const junk = {
+    ...fidSong,
+    tracks: fidSong.tracks.map((t) => ({
+      ...t,
+      timeline: t.timeline.map((n, i) => ({ ...n, midi: 30 + ((n.midi * 7 + i * 5) % 40) })),
+    })),
+  };
+  const good = compareMidi(ref, ref).score;
+  const bad = compareMidi(encodeMidi(junk, { bpm: fidSong.bpm }), ref).score;
+  assert.ok(bad < good - 20, `scrambled (${bad.toFixed(1)}) well under faithful (${good.toFixed(1)})`);
+});
+
+check('flags the bar we corrupt as a weakest window', () => {
+  const ref = encodeMidi(fidSong, { bpm: fidSong.bpm });
+  // Wreck only the third bar (beats 8..12) of the lead line.
+  const broken = {
+    ...fidSong,
+    tracks: fidSong.tracks.map((t) =>
+      t.name !== 'lead'
+        ? t
+        : {
+            ...t,
+            timeline: t.timeline.map((n) =>
+              n.time >= 8 && n.time < 12 ? { ...n, midi: n.midi + 6 } : n,
+            ),
+          },
+    ),
+  };
+  const r = compareMidi(encodeMidi(broken, { bpm: fidSong.bpm }), ref, { windowBeats: 4 });
+  const worstWin = r.worst[0];
+  assert.ok(worstWin.startBeat >= 8 && worstWin.startBeat < 12, `worst window is bar 3 (got beat ${worstWin.startBeat})`);
 });
 
 if (failed.length > 0) {

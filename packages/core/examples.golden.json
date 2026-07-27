@@ -5,11 +5,23 @@
     "lengthBeats": 168,
     "sha256": "9588523ee5d04e7e9665315cf00511ec145f6eb8933227068f553474d2d96e8e"
   },
+  "bwv846.play.yaml": {
+    "tracks": 3,
+    "notes": 533,
+    "lengthBeats": 136,
+    "sha256": "cc4fd7785cb38561de713a0799223dc424a67c41da51682646803713db84beca"
+  },
   "bwv881.play.yaml": {
     "tracks": 2,
     "notes": 375,
     "lengthBeats": 96,
     "sha256": "adf7d3338b8036c088a8ccb6dcf9e8ff3c4fa3272d077d0d1744891d42381ae3"
+  },
+  "clair-de-lune.play.yaml": {
+    "tracks": 9,
+    "notes": 1608,
+    "lengthBeats": 324,
+    "sha256": "a905d4bc871c0cd624b35512e5786d5f2111a70c507dc6dca2a481e5294102af"
   },
   "corridors-of-time.play.yaml": {
     "tracks": 3,
@@ -29,6 +41,12 @@
     "lengthBeats": 32,
     "sha256": "a1d245504688be9ab4df06e5c96f0001020ba303af4bb2c0e79d4c9f761306b5"
   },
+  "fur-elise.play.yaml": {
+    "tracks": 2,
+    "notes": 901,
+    "lengthBeats": 159,
+    "sha256": "cd1f12a0cdcf9234c092465708332aec215cd6f9948363e1e6f694698a61ac6c"
+  },
   "lost-woods-vst.play.yaml": {
     "tracks": 4,
     "notes": 227,
@@ -46,6 +64,12 @@
     "notes": 28,
     "lengthBeats": 16,
     "sha256": "ceba51585f0e5d6245455b15f880c8d9c786bb7285526ce3090c887bc9f42f78"
+  },
+  "nocturne-op9-no2.play.yaml": {
+    "tracks": 2,
+    "notes": 1231,
+    "lengthBeats": 224,
+    "sha256": "1e3da05aa473cfe18bcc7e61f2063ce41605f2cc20cc74a4070913186505764b"
   },
   "preciso-me-encontrar-vst.play.yaml": {
     "tracks": 2,

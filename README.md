@@ -6,8 +6,8 @@ A project dedicated to the `play.yaml` format — a human-readable, developer-fr
 
 This is a monorepo managed with npm workspaces:
 
-- `packages/core/`: The `play.yaml` engine — dependency-free and environment-free (no Node or DOM APIs), so it runs identically in Node and browsers. Layered as: `theory` (pitch/scale/meter math) → `vocabulary` (dynamics, articulations, tempo marks, techniques, named controls) → `set` (the `set:` shorthand) → `tokens` (measure tokenizing) → `song` (the compiler), plus the zero-dep YAML subset (`yaml`), the `.mid` encoder (`exporter`), beat→seconds tempo mapping (`time`) and the shared Web Audio instrument presets (`synth`). Everything re-exports from the package root.
-- `packages/cli/`: Command-line tools built on core: `play-yaml` exports scores to `.mid`; `play-yaml-play` plays them through the speakers (via `webaudio-node`) or streams live MIDI — notes, the score's CC automation and the tempo map — to a virtual MIDI port.
+- `packages/core/`: The `play.yaml` engine — dependency-free and environment-free (no Node or DOM APIs), so it runs identically in Node and browsers. Layered as: `theory` (pitch/scale/meter math) → `vocabulary` (dynamics, articulations, tempo marks, techniques, named controls) → `set` (the `set:` shorthand) → `tokens` (measure tokenizing) → `song` (the compiler), plus the zero-dep YAML subset (`yaml`), the `.mid` encoder (`exporter`), the `.mid` decoder + musical fidelity comparator (`fidelity`), beat→seconds tempo mapping (`time`) and the shared Web Audio instrument presets (`synth`). Everything re-exports from the package root.
+- `packages/cli/`: Command-line tools built on core: `play-yaml` exports scores to `.mid`; `play-yaml-play` plays them through the speakers (via `webaudio-node`) or streams live MIDI — notes, the score's CC automation and the tempo map — to a virtual MIDI port; `play-yaml-fidelity` scores a `.play.yaml` against a reference `.mid` and flags where they diverge.
 - `packages/web/`: The browser studio (Vite/React): CodeMirror editor with played-note highlighting, Tone.js transport playback with the built-in sampler & synth, and per-instrument WebMIDI routing. Consumes core by source, so core edits hot-reload without a rebuild.
 
 ## Getting Started
@@ -66,6 +66,24 @@ Or run the preconfigured sample song play command:
 ```bash
 npm run play -w @play.yaml/cli
 ```
+
+#### Score a `play.yaml` against a reference recording
+
+`play-yaml-fidelity` renders a score to MIDI, compares it against a reference
+`.mid` (say, a version of the same piece found online), and prints a 0–100
+fidelity score with the weakest passages flagged:
+
+```bash
+node packages/cli/dist/fidelity.js songs/tema-para-ana/tema-para-ana.play.yaml reference.mid
+```
+
+The comparison is musical, not byte-exact: it aligns the two in beat space
+window by window (so meter changes, rubato and cut sections are followed, not
+punished), auto-detects the best key-transposition, folds octaves for the
+harmony score, and breaks the result into sub-scores — harmony (pitch-class
+match), register (exact octave), rhythm (onset alignment), coverage (how much
+of the original the arrangement spans) and tempo. Pass `--json` for the full
+per-window report, or `-o out.mid` to also keep the generated MIDI.
 
 ### Web App
 
