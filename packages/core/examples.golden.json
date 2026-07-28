@@ -6,10 +6,10 @@
     "sha256": "9588523ee5d04e7e9665315cf00511ec145f6eb8933227068f553474d2d96e8e"
   },
   "bwv846.play.yaml": {
-    "tracks": 3,
+    "tracks": 1,
     "notes": 533,
     "lengthBeats": 136,
-    "sha256": "cc4fd7785cb38561de713a0799223dc424a67c41da51682646803713db84beca"
+    "sha256": "fb29a8c9b75ac5482e74d3c332fce427af437b86583ecc3dafc71906577fd90a"
   },
   "bwv881.play.yaml": {
     "tracks": 2,
@@ -73,15 +73,15 @@
   },
   "preciso-me-encontrar-vst.play.yaml": {
     "tracks": 2,
-    "notes": 271,
+    "notes": 294,
     "lengthBeats": 52,
-    "sha256": "95ef57eb886c6899b3e4aee959d48d33dae1f23e03ff9ec91ad38076be5d61ec"
+    "sha256": "05c8e38b4ec423ba7a58746e6c82a0f6466250edc7973291026b9e0a3e5b8cbd"
   },
   "preciso-me-encontrar.play.yaml": {
     "tracks": 2,
     "notes": 271,
     "lengthBeats": 52,
-    "sha256": "c8ca5fb5b2e65dd8161f27b5e81b5d94da6863313e2665bc2f7e75f0c47f8530"
+    "sha256": "d38f78b6ffcbf476fbc293e032d27abd9bbc21ec8a6d2d4c222127d10384ada2"
   },
   "severance.play.yaml": {
     "tracks": 1,
