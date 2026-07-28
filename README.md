@@ -480,3 +480,30 @@ To play any of these songs through your speakers:
 ```bash
 node packages/cli/dist/cli.js examples/take-5.play.yaml
 ```
+
+### Song projects
+
+Larger transcriptions live in [songs/](songs/) as project directories —
+score, `README.md`, and a `research/` folder recording where every fact came
+from (see [docs/song-workflow.md](docs/song-workflow.md)). Among them is a
+**SNES collection**: the five best-known cues from each of *Chrono Trigger*
+(Yasunori Mitsuda), *Donkey Kong Country* (David Wise) and *Super Mario
+World* (Koji Kondo).
+
+These were transcribed from each game's own sound data rather than by ear or
+from memory: the SPC rip is converted to MIDI, read out as a per-channel bar
+grid, and the resulting score is checked back against that MIDI with
+`play-yaml-fidelity`. Every score lands between 92.7 and 98.1 out of 100.
+Each header comments the harmony bar by bar and maps the original SNES
+channels onto the arrangement's tracks.
+
+| Chrono Trigger | Donkey Kong Country | Super Mario World |
+|---|---|---|
+| `ct-main-theme` | `dkc-aquatic-ambiance` | `smw-overworld` |
+| `ct-corridors-of-time` | `dkc-dk-island-swing` | `smw-athletic` |
+| `ct-frogs-theme` | `dkc-gang-plank-galleon` | `smw-haunted-house` |
+| `ct-schalas-theme` | `dkc-fear-factory` | `smw-fortress` |
+| `ct-wind-scene` | `dkc-mine-cart-madness` | `smw-swimming` |
+
+Only the transcriptions and the analysis are committed — no ripped audio,
+MIDI, or third-party sheet music.

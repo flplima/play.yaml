@@ -137,6 +137,96 @@
     "lengthBeats": 180,
     "sha256": "b2093340c60fe191fa402426fb6d64bd985ec8ac99c514ad2a93df48550c6793"
   },
+  "songs/ct-corridors-of-time/ct-corridors-of-time.play.yaml": {
+    "tracks": 7,
+    "notes": 1329,
+    "lengthBeats": 160,
+    "sha256": "9561f1864103b23cd73badec87b8c1088af902fd21ae628dcd256cdedac323e3"
+  },
+  "songs/ct-frogs-theme/ct-frogs-theme.play.yaml": {
+    "tracks": 6,
+    "notes": 709,
+    "lengthBeats": 64,
+    "sha256": "eeec9711110edef8407cf95360e117783f75ffa1720cdda8377f7bf5b76f78d5"
+  },
+  "songs/ct-main-theme/ct-main-theme.play.yaml": {
+    "tracks": 7,
+    "notes": 821,
+    "lengthBeats": 100,
+    "sha256": "9837c81726c22615b56919053ac80eac760e5d28c809a3f6afd1e632f9700faf"
+  },
+  "songs/ct-schalas-theme/ct-schalas-theme.play.yaml": {
+    "tracks": 9,
+    "notes": 1242,
+    "lengthBeats": 120,
+    "sha256": "07bb45ab9a591779678496bf3afca0c9a2ec076cb9b0e84d5a4b7edbb282e157"
+  },
+  "songs/ct-wind-scene/ct-wind-scene.play.yaml": {
+    "tracks": 7,
+    "notes": 569,
+    "lengthBeats": 128,
+    "sha256": "14433f15f160e42a91cd17a42af4454b6404182ceb6e49a7595bd15e4ff1d40f"
+  },
+  "songs/dkc-aquatic-ambiance/dkc-aquatic-ambiance.play.yaml": {
+    "tracks": 7,
+    "notes": 1568,
+    "lengthBeats": 152,
+    "sha256": "c85c1757ada75874664a1a85c295b5c0220abf567325ae8b3dd2dc7915db4f24"
+  },
+  "songs/dkc-dk-island-swing/dkc-dk-island-swing.play.yaml": {
+    "tracks": 10,
+    "notes": 4325,
+    "lengthBeats": 260,
+    "sha256": "4183576c2f540d860cb8d1ef4e94c9508a557d02a37c7969f928e80a4b3ff698"
+  },
+  "songs/dkc-fear-factory/dkc-fear-factory.play.yaml": {
+    "tracks": 6,
+    "notes": 2728,
+    "lengthBeats": 128,
+    "sha256": "ff4522afef9c6d5ced9408ca67f52f9042d3945582831035861259dcb61e9956"
+  },
+  "songs/dkc-gang-plank-galleon/dkc-gang-plank-galleon.play.yaml": {
+    "tracks": 12,
+    "notes": 3368,
+    "lengthBeats": 233,
+    "sha256": "f4ebe5460989609c58654138e832cbd2986b86a66687ead03a5543fba3e4988a"
+  },
+  "songs/dkc-mine-cart-madness/dkc-mine-cart-madness.play.yaml": {
+    "tracks": 9,
+    "notes": 2128,
+    "lengthBeats": 129,
+    "sha256": "28b35bdb00bfeb7cfb6cd7aa5a433d662f3fa82062a1dd8581b39687eebcdd80"
+  },
+  "songs/smw-athletic/smw-athletic.play.yaml": {
+    "tracks": 5,
+    "notes": 838,
+    "lengthBeats": 100,
+    "sha256": "cab592438b2c926abd8f9776faf8e6f2c790e11cca2063a8fd97cbb3a583de13"
+  },
+  "songs/smw-fortress/smw-fortress.play.yaml": {
+    "tracks": 6,
+    "notes": 1741,
+    "lengthBeats": 112,
+    "sha256": "f3d06c8418047d234a7e2ff57b9382d7c98aa3de10695ca72cc56fad2ca5e2a5"
+  },
+  "songs/smw-haunted-house/smw-haunted-house.play.yaml": {
+    "tracks": 5,
+    "notes": 1126,
+    "lengthBeats": 64,
+    "sha256": "72117a63635ac1e6cb1a8443baa7f97f3ea94cc64f25add8e746ed7593fff36a"
+  },
+  "songs/smw-overworld/smw-overworld.play.yaml": {
+    "tracks": 4,
+    "notes": 1035,
+    "lengthBeats": 92,
+    "sha256": "c6d50e19c636f213ec7af4e47e5d781615a23b1f2c96760a69ca81340d5bf897"
+  },
+  "songs/smw-swimming/smw-swimming.play.yaml": {
+    "tracks": 6,
+    "notes": 786,
+    "lengthBeats": 102,
+    "sha256": "3b0372d873fcb81f097d285cfe1586cfbd26efbad42e101364d2618d7eb88dc3"
+  },
   "songs/tema-para-ana/tema-para-ana.play.yaml": {
     "tracks": 3,
     "notes": 516,
