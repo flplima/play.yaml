@@ -1,0 +1,57 @@
+# Claude Debussy — Clair de Lune, from Suite bergamasque, L. 75 (pub. 1905)
+# 9/8, Andante très expressif, D-flat major (quarter=50).
+
+title: "Clair de Lune"
+tempo: 50
+measure: 9/8
+
+tracks:
+  rh1: { sample: piano }
+  rh2: { sample: piano }
+  rh3: { sample: piano }
+  lh1: { sample: piano }
+  lh2: { sample: piano }
+  lh3: { sample: piano }
+  lh4: { sample: piano }
+  lh5: { sample: piano }
+  lh6: { sample: piano }
+
+sections:
+  piece:
+    loop: false
+    rh1:
+      play:
+        - "~ ~ [f5 ab5] _ _ _ [db5 f5] _ _"
+        - "_ [c5 eb5] [db5 f5] [c5 eb5] _ _ _ _ _"
+        - "_ [bb4 db5] [c5 eb5] db5 {_ f5} _ _ {_ db5} _"
+        - "bb4 [ab4 c5] [bb4 db5] [ab4 c5] _ _ _ _ _"
+        - "_ bb4 c5 bb4 eb5 bb4 ab4 bb4 ab4"
+        - "_ gb4 ab4 gb4 _ _ f4 _ _"
+        - "_ f4 gb4 f4 bb4 f4 eb4 f4 eb4"
+        - "_ db4 eb4 db4 _ _ c4 _ _"
+        - "~ ~ ~ [f5 ab5] _ _ [db5 f5] _ _"
+        - "_ eb5 f5 eb5 _ _ _ _ _"
+        - "_ [db4 db5] [eb4 eb5] [ab4 db5 ab5] _ _ [f4 db5 f5] _ _"
+        - "_ eb5 f5 eb5 _ _ db5 _ _"
+        - "_ [db4 db5] [eb4 eb5] [bb4 bb5] {_ [ab4 ab5]} _ _ {_ [f4 f5]} _"
+        - "_ eb5 f5 eb5 {_ db5} _ _ {_ bb4} _"
+    rh2:
+      play:
+        - "~ ~ ~ ~ ~ ~ ~ ~ ~"
+        - "~ ~ ~ ~ ~ ~ ~ ~ ~"
+        - "~ ~ ~ ~ ~ ~ ~ ~ ~"
+        - "~ ~ ~ ~ ~ ~ ~ ~ ~"
+        - "f4 f4 f4 f4 f4 f4 f4 f4 f4"
+        - "eb4 eb4 eb4 eb4 eb4 eb4 db4 db4 db4"
+        - "db4 db4 db4 db4 db4 db4 c4 c4 c4"
+        - "bb3 bb3 bb3 bb3 bb3 bb3 ab3 ab3 ab3"
+    lh1:
+      play:
+        - "~ ~ ~ ~ ~ ~ ~ ~ ~"
+        - "~ ~ ~ ~ ~ ~ ~ ~ ~"
+        - "~ ~ ~ ~ ~ ~ ~ ~ ~"
+        - "~ ~ ~ ~ ~ ~ ~ ~ ~"
+        - "db3 db3 db3 c3 c3 c3 c3 c3 c3"
+        - "bb2 bb2 bb2 bb2 bb2 bb2 ab2 ab2 ab2"
+        - "ab2 ab2 ab2 g2 g2 g2 g2 g2 g2"
+        - "f2 f2 f2 f2 f2 f2 eb2 eb2 eb2"

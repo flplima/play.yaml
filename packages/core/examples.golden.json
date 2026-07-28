@@ -137,6 +137,60 @@
     "lengthBeats": 180,
     "sha256": "b2093340c60fe191fa402426fb6d64bd985ec8ac99c514ad2a93df48550c6793"
   },
+  "songs/bwv-106-gottes-zeit/bwv-106-gottes-zeit.play.yaml": {
+    "tracks": 6,
+    "notes": 184,
+    "lengthBeats": 32,
+    "sha256": "07206f3fa321a27061883dbff4cc3c9ee20d36be999f92e95684009457669922"
+  },
+  "songs/bwv-106-in-deine-haende/bwv-106-in-deine-haende.play.yaml": {
+    "tracks": 3,
+    "notes": 169,
+    "lengthBeats": 32,
+    "sha256": "d8c9946aaeba49baa07035d48a758acf69b19101ddedf11dd1465c44f81af2db"
+  },
+  "songs/bwv-106-sonatina/bwv-106-sonatina.play.yaml": {
+    "tracks": 5,
+    "notes": 209,
+    "lengthBeats": 36,
+    "sha256": "642989e602d063d010d839a0776b1a8b83f8c88ab434bc3951a4181d25f1349b"
+  },
+  "songs/bwv-528-andante/bwv-528-andante.play.yaml": {
+    "tracks": 3,
+    "notes": 280,
+    "lengthBeats": 48,
+    "sha256": "940d06bd4e02d2bb39eb573f58a5db31736e697daf7853936129b49bf112a2c9"
+  },
+  "songs/bwv-784-invention-13/bwv-784-invention-13.play.yaml": {
+    "tracks": 2,
+    "notes": 415,
+    "lengthBeats": 84,
+    "sha256": "4ddbe75dd90553cb541b12564e9732edeb296777b5792ed5be659215701c98b8"
+  },
+  "songs/bwv-881-prelude-and-fugue-12/bwv-881-prelude-and-fugue-12.play.yaml": {
+    "tracks": 3,
+    "notes": 231,
+    "lengthBeats": 48,
+    "sha256": "50b214b52b0a7b96831604c3aad47c9c3534bb05bbcb2276b8773af90f0fe1dd"
+  },
+  "songs/debussy-clair-de-lune/debussy-clair-de-lune.play.yaml": {
+    "tracks": 3,
+    "notes": 156,
+    "lengthBeats": 63,
+    "sha256": "f2e78fd2daa59cf4ecef8f3f10e2a29d5cdf2327c818448122e401042f4bcdd5"
+  },
+  "songs/debussy-estampes-pagodes/debussy-estampes-pagodes.play.yaml": {
+    "tracks": 4,
+    "notes": 182,
+    "lengthBeats": 32,
+    "sha256": "92936cc5e63499620c8b7a9209b2800221e3f3c24c64d2c6b5437ae1c638afee"
+  },
+  "songs/mozart-requiem-lacrimosa/mozart-requiem-lacrimosa.play.yaml": {
+    "tracks": 7,
+    "notes": 135,
+    "lengthBeats": 30,
+    "sha256": "40f635885e8ec5e1ef6cbea4fc92ca4d83e1a61505f7df717a33286169526a08"
+  },
   "songs/tema-para-ana/tema-para-ana.play.yaml": {
     "tracks": 3,
     "notes": 516,

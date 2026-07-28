@@ -1,0 +1,77 @@
+# J.S. Bach — Cantata BWV 106: IIa. Gottes Zeit ist die allerbeste Zeit
+# Chorus & Instrumental Ensemble. 4/4 meter, E-flat major / C minor.
+
+title: "BWV 106: IIa. Gottes Zeit ist die allerbeste Zeit"
+tempo: 72
+
+tracks:
+  soprano: { sample: piano }
+  alto: { sample: piano }
+  tenor: { sample: piano }
+  bass: { sample: piano }
+  recorder: { sample: flute }
+  continuo: { sample: organ }
+
+sections:
+  piece:
+    loop: false
+    soprano:
+      play:
+        - "g4 g4 c5 g4"
+        - "ab4 g4 f4 eb4"
+        - "d4 d4 eb4 f4"
+        - "g4 _ ~ ~"
+        - "c5 c5 c5 d5"
+        - "eb5 d5 c5 b4"
+        - "c5 c5 d5 d5"
+        - "eb5 _ ~ ~"
+    alto:
+      play:
+        - "eb4 eb4 eb4 eb4"
+        - "f4 eb4 d4 c4"
+        - "b3 b3 c4 d4"
+        - "eb4 _ ~ ~"
+        - "g4 g4 g4 f4"
+        - "g4 f4 eb4 d4"
+        - "eb4 eb4 f4 f4"
+        - "g4 _ ~ ~"
+    tenor:
+      play:
+        - "c4 c4 g3 c4"
+        - "c4 c4 ab3 g3"
+        - "g3 g3 g3 b3"
+        - "c4 _ ~ ~"
+        - "eb4 eb4 eb4 d4"
+        - "c4 b3 c4 g3"
+        - "g3 c4 b3 b3"
+        - "c4 _ ~ ~"
+    bass:
+      play:
+        - "c3 c3 c3 c3"
+        - "f3 c3 d3 c3"
+        - "g3 g2 c3 b2"
+        - "c3 _ ~ ~"
+        - "c3 c3 c3 b2"
+        - "c3 d3 eb3 f3"
+        - "c3 ab2 g2 g2"
+        - "c3 _ ~ ~"
+    recorder:
+      play:
+        - "{c5 eb5} {g5 c6} {eb6 c6} {ab5 g5}"
+        - "{f5 ab5} {c6 f5} {d5 b4} {c5 eb5}"
+        - "{d5 f5} {g5 b5} {c6 eb5} {d5 f5}"
+        - "{eb5 g5} {c6 _} ~ ~"
+        - "{c6 eb6} {g6 c7} {eb7 c7} {b6 a6}"
+        - "{g6 b6} {d7 f6} {eb6 c6} {d6 b5}"
+        - "{c6 eb6} {ab6 f6} {g6 d6} {f6 d6}"
+        - "{eb6 g6} {c7 _} ~ ~"
+    continuo:
+      play:
+        - "c2 c2 c2 c2"
+        - "f2 c2 d2 c2"
+        - "g2 g1 c2 b1"
+        - "c2 _ ~ ~"
+        - "c2 c2 c2 b1"
+        - "c2 d2 eb2 f2"
+        - "c2 ab1 g1 g1"
+        - "c2 _ ~ ~"

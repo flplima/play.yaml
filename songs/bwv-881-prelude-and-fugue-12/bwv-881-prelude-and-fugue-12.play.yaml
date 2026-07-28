@@ -1,0 +1,84 @@
+# J.S. Bach — Prelude and Fugue No. 12 in F minor, BWV 881 (WTC II)
+# Section 1: Prelude (3/4, quarter=84)
+# Section 2: Fugue in 3 voices (2/4, quarter=76)
+
+title: "Prelude and Fugue No. 12 in F Minor, BWV 881"
+tempo: 84
+
+tracks:
+  soprano: { sample: piano }
+  alto: { sample: piano }
+  bass: { sample: piano }
+
+sections:
+  prelude:
+    loop: false
+    soprano:
+      play:
+        - "{~ c5} {c5 a#4} {~ c#5} {c#5 c5}"
+        - "{~ d#5} {d#5 c#5} {~ c#5} {c#5 c5}"
+        - "{~ f#5} {f#5 f5} {~ g#5} {g#5 g5}"
+        - "{~ a#4 d#4 a#4} {~ c5 d#4 c5} {~ g#4 d#4 g#4} {~ a#4 d#4 a#4}"
+        - "{~ c#5 d#4 c#5} {~ c5 d#4 c5} {~ d5 d#4 d5} {~ d#5 d#4 d#5}"
+        - "{f#4 g#4 c5 d#5} {d#5 c5 g#4 f4} {f4 g4 a#4 c#5} {c#5 a#4 g4 d#4}"
+        - "{d#4 f4 g#4 c5} {c5 g#4 f4 c#4} {c#4 d#4 g4 a#4} {a#4 g4 d#4 c4}"
+        - "{~ g#4 c4 g#4} {~ g#4 c#4 g#4} {~ g#4 c4 g#4} {~ g#4 a#3 g#4}"
+    alto:
+      play:
+        - "{~ g#4} {g#4 g4} {~ a#4} {a#4 g#4}"
+        - "{~ g#5} {g#5 g5} {~ f5} {f5 e5}"
+        - "{~ g4 c4 g4} {~ g#4 c4 g#4} {~ f4 c4 f4} {~ g4 c4 g4}"
+        - "{~ a#4 c4 a#4} {~ g#4 c4 g#4} {~ f4 c4 f4} {~ g4 c4 g4}"
+        - "{~ g#4} {g#4 g4} {~ a#4} {a#4 g#4}"
+        - "{~ c5} {c5 c#5} {~ a#4} {a#4 c5}"
+        - "{~ d#5} {d#5 c#5} {~ c#5} {c#5 c5}"
+        - "{~ f#5} {f#5 f5} {~ g#5} {g#5 g5}"
+    bass:
+      play:
+        - "f3 c4 c3 f3"
+        - "f2 a#2 b2 c3"
+        - "f3 c4 c3 f3"
+        - "f2 a#2 d#2 g#2"
+        - "g#3 a#3 a#2 c3"
+        - "c4 c#4 d4 d#4"
+        - "{~ g#3} {~ f3} {~ g3} {~ d#3}"
+        - "{~ f3} {~ c#3} {~ d#3} {~ c3}"
+
+  fugue:
+    loop: false
+    soprano:
+      play:
+        - "tempo 76"
+        - "measure 2/4"
+        - "c5 c5 c5 f5"
+        - "e5 _ f5 _"
+        - "g5 g5 g5 c6"
+        - "b5 _ c6 _"
+        - "ab5 g5 f5 eb5"
+        - "d5 c5 b4 g4"
+        - "c5 eb5 d5 c5"
+        - "c5 _ ~ ~"
+    alto:
+      play:
+        - "tempo 76"
+        - "measure 2/4"
+        - "~ ~ ~ ~"
+        - "~ ~ ~ ~"
+        - "c4 c4 c4 f4"
+        - "e4 _ f4 _"
+        - "g4 g4 g4 c5"
+        - "b4 _ c5 _"
+        - "ab4 g4 f4 eb4"
+        - "eb4 _ ~ ~"
+    bass:
+      play:
+        - "tempo 76"
+        - "measure 2/4"
+        - "~ ~ ~ ~"
+        - "~ ~ ~ ~"
+        - "~ ~ ~ ~"
+        - "~ ~ ~ ~"
+        - "c3 c3 c3 f3"
+        - "e3 _ f3 _"
+        - "g3 g3 g3 c4"
+        - "c3 _ ~ ~"

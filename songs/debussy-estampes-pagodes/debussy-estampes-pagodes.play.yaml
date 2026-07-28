@@ -1,0 +1,56 @@
+# Claude Debussy — Estampes, L. 100: I. Pagodes (pub. 1903)
+# 4/4, Modérément animé (quarter=64). B major (pentatonic: B, C#, D#, F#, G#).
+# Layered Gamelan piano arrangement.
+
+title: "Estampes: I. Pagodes"
+tempo: 64
+
+tracks:
+  gong_bass: { sample: piano }
+  ostinato_mid: { sample: piano }
+  bell_treble: { sample: piano }
+  melody: { sample: piano }
+
+sections:
+  piece:
+    loop: false
+    gong_bass:
+      play:
+        - "B1 _ _ _"
+        - "F#1 _ _ _"
+        - "B1 _ _ _"
+        - "F#1 _ _ _"
+        - "B1 _ _ _"
+        - "G#1 _ _ _"
+        - "C#1 _ _ _"
+        - "F#1 _ _ _"
+    ostinato_mid:
+      play:
+        - "{f#3 g#3 b3 c#4} {d#4 c#4 b3 g#3} {f#3 g#3 b3 c#4} {d#4 c#4 b3 g#3}"
+        - "{f#3 g#3 b3 c#4} {d#4 c#4 b3 g#3} {f#3 g#3 b3 c#4} {d#4 c#4 b3 g#3}"
+        - "{f#3 g#3 b3 c#4} {d#4 c#4 b3 g#3} {f#3 g#3 b3 c#4} {d#4 c#4 b3 g#3}"
+        - "{f#3 g#3 b3 c#4} {d#4 c#4 b3 g#3} {f#3 g#3 b3 c#4} {d#4 c#4 b3 g#3}"
+        - "{f#3 g#3 b3 c#4} {d#4 c#4 b3 g#3} {f#3 g#3 b3 c#4} {d#4 c#4 b3 g#3}"
+        - "{e3 g#3 b3 c#4} {e4 c#4 b3 g#3} {e3 g#3 b3 c#4} {e4 c#4 b3 g#3}"
+        - "{e3 g#3 c#4 d#4} {e4 d#4 c#4 g#3} {e3 g#3 c#4 d#4} {e4 d#4 c#4 g#3}"
+        - "{f#3 g#3 b3 c#4} {d#4 c#4 b3 g#3} {f#3 g#3 b3 c#4} {d#4 c#4 b3 g#3}"
+    bell_treble:
+      play:
+        - "{~ ~ [g#5 b5 d#6]} _ _ _"
+        - "{~ ~ [f#5 g#5 c#6]} _ _ _"
+        - "{~ ~ [g#5 b5 d#6]} _ _ _"
+        - "{~ ~ [f#5 g#5 c#6]} _ _ _"
+        - "{~ ~ [g#5 b5 d#6]} _ _ _"
+        - "{~ ~ [e5 g#5 c#6]} _ _ _"
+        - "{~ ~ [e5 g#5 d#6]} _ _ _"
+        - "{~ ~ [f#5 g#5 c#6]} _ _ _"
+    melody:
+      play:
+        - "~ g#4 b4 c#5"
+        - "d#5 _ c#5 _"
+        - "b4 g#4 f#4 g#4"
+        - "b4 _ ~ ~"
+        - "g#5 f#5 d#5 c#5"
+        - "b4 c#5 d#5 _"
+        - "c#5 b4 g#4 f#4"
+        - "g#4 _ ~ ~"

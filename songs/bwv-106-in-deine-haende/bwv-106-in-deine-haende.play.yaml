@@ -1,0 +1,44 @@
+# J.S. Bach — Cantata BWV 106: IIb. In deine Hände befehle ich meinen Geist
+# Alto Aria with Viola da Gamba & Organ. 4/4 meter, C minor, quarter=58.
+
+title: "BWV 106: IIb. In deine Hände befehle ich meinen Geist"
+tempo: 58
+
+tracks:
+  alto: { sample: piano }
+  gamba: { sample: cello }
+  continuo: { sample: organ }
+
+sections:
+  piece:
+    loop: false
+    alto:
+      play:
+        - "c4 c4 c4 d4"
+        - "eb4 _ d4 _"
+        - "c4 c4 d4 eb4"
+        - "f4 _ eb4 _"
+        - "g4 g4 f4 eb4"
+        - "d4 c4 b3 _"
+        - "c4 eb4 d4 c4"
+        - "c4 _ ~ ~"
+    gamba:
+      play:
+        - "{c4 eb4 g4 c5} {eb4 g4 c5 eb5} {d4 f4 b4 d5} {c4 eb4 g4 c5}"
+        - "{ab3 c4 f4 ab4} {g3 b3 d4 g4} {c4 eb4 g4 c5} {g3 b3 d4 g4}"
+        - "{c4 eb4 g4 c5} {eb4 g4 c5 eb5} {f4 ab4 c5 f5} {eb4 g4 c5 eb5}"
+        - "{d4 f4 b4 d5} {g3 b3 d4 g4} {c4 eb4 g4 c5} {eb4 g4 c5 eb5}"
+        - "{eb4 g4 c5 eb5} {d4 f4 b4 d5} {c4 eb4 g4 c5} {c4 eb4 g4 c5}"
+        - "{b3 d4 g4 b4} {c4 eb4 g4 c5} {d4 f4 b4 d5} {g3 b3 d4 g4}"
+        - "{c4 eb4 g4 c5} {c4 eb4 f4 ab4} {b3 d4 g4 b4} {c4 eb4 g4 c5}"
+        - "{c4 eb4 g4 c5} _ ~ ~"
+    continuo:
+      play:
+        - "c3 c3 b2 c3"
+        - "f2 g2 c3 g2"
+        - "c3 c3 f3 eb3"
+        - "d3 g2 c3 c3"
+        - "c3 b2 c3 c3"
+        - "g2 c3 g2 g1"
+        - "c2 f2 g2 c2"
+        - "c2 _ ~ ~"

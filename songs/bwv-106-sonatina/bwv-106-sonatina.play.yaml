@@ -1,0 +1,72 @@
+# J.S. Bach — Cantata BWV 106 "Actus Tragicus": I. Sonatina
+# Molto adagio (quarter=54), 4/4 meter, E-flat major / C minor.
+# Scoring: 2 Recorders (Flutes), 2 Viole da Gamba (Cellos), Organ Continuo.
+
+title: "BWV 106: I. Sonatina (Actus Tragicus)"
+tempo: 54
+
+tracks:
+  recorder1: { sample: flute }
+  recorder2: { sample: flute }
+  gamba1: { sample: cello }
+  gamba2: { sample: cello }
+  continuo: { sample: organ }
+
+sections:
+  piece:
+    loop: false
+    recorder1:
+      play:
+        - "~ {g5 eb5} {bb5 _ g5 eb5} {ab5 _ f5 d5}"
+        - "{g5 _ eb5 c5} {f5 _ d5 b4} {c5 _ g5 _}"
+        - "{c6 _ ab5 f5} {bb5 _ g5 eb5} {ab5 _ f5 d5}"
+        - "{g5 _ eb5 c5} {d5 _ b4 _} c5 _"
+        - "{eb5 _ g5 _} {bb5 _ eb6 _} {d6 _ c6 _}"
+        - "{b5 _ g5 _} {c6 _ ab5 _} {f5 _ d5 _}"
+        - "eb5 _ f5 _ g5 _"
+        - "{ab5 _ f5 _} {g5 _ eb5 _} d5 _"
+        - "{c5 _ g5 _} {c6 _ _ _} c6 ~"
+    recorder2:
+      play:
+        - "~ {eb5 c5} {g5 _ eb5 c5} {f5 _ d5 b4}"
+        - "{eb5 _ c5 ab4} {d5 _ b4 g4} {g4 _ eb5 _}"
+        - "{ab5 _ f5 d5} {g5 _ eb5 c5} {f5 _ d5 b4}"
+        - "{eb5 _ c5 ab4} {b4 _ g4 _} g4 _"
+        - "{c5 _ eb5 _} {g5 _ c6 _} {b5 _ a5 _}"
+        - "{g5 _ d5 _} {eb5 _ f5 _} {d5 _ b4 _}"
+        - "c5 _ d5 _ eb5 _"
+        - "{f5 _ d5 _} {eb5 _ c5 _} b4 _"
+        - "{c5 _ eb5 _} {g5 _ _ _} g5 ~"
+    gamba1:
+      play:
+        - "c4 c4 c4 d4"
+        - "c4 b3 c4 c4"
+        - "f4 eb4 d4 b3"
+        - "c4 g3 c4 ~"
+        - "c4 c4 g4 f4"
+        - "d4 c4 d4 b3"
+        - "c4 b3 c4 _"
+        - "f4 eb4 g4 g3"
+        - "c4 c4 c4 ~"
+    gamba2:
+      play:
+        - "c3 c3 c3 f3"
+        - "g3 g3 c3 c3"
+        - "f3 c3 d3 g3"
+        - "c3 g2 c3 ~"
+        - "c3 c3 c3 f3"
+        - "g3 ab3 f3 g3"
+        - "c3 d3 c3 _"
+        - "f3 c3 g3 g2"
+        - "c3 c3 c3 ~"
+    continuo:
+      play:
+        - "c2 c2 c2 f2"
+        - "g2 g2 c2 c2"
+        - "f2 c2 d2 g2"
+        - "c2 g1 c2 ~"
+        - "c2 c2 c2 f2"
+        - "g2 ab2 f2 g2"
+        - "c2 d2 c2 _"
+        - "f2 c2 g2 g1"
+        - "c2 c2 c2 ~"
