@@ -1,43 +1,69 @@
 # J.S. Bach — Prelude No. 1 in C major, BWV 846
 # The Well-Tempered Clavier, Book I (1722). 4/4, 34 bars.
-# Single piano track representation of the canonical arpeggiated prelude.
+# Single piano track representation with natural dynamic swells, sustain pedal automation,
+# and expressive rubato/tempo shaping across the harmonic arc.
 
 title: "Prelude in C major, BWV 846"
 tempo: 72
 measure: 4/4
 
 tracks:
-  piano: { sample: piano }
+  piano:
+    sample: piano
+    dynamic: mp
+    controls: { sustain: 64 }
+    set: legato, sustain 110
 
 sections:
   piece:
     loop: false
     piano:
       play:
+        # --- Opening Statement (Bars 1-4): C major, gentle dolce flow ---
+        - "dolce"
         - "{c4 e4 g4 c5} {e5 g4 c5 e5} {c4 e4 g4 c5} {e5 g4 c5 e5}"
         - "{c4 d4 a4 d5} {f5 a4 d5 f5} {c4 d4 a4 d5} {f5 a4 d5 f5}"
         - "{b3 d4 g4 d5} {f5 g4 d5 f5} {b3 d4 g4 d5} {f5 g4 d5 f5}"
         - "{c4 e4 g4 c5} {e5 g4 c5 e5} {c4 e4 g4 c5} {e5 g4 c5 e5}"
+
+        # --- Harmonic Rise (Bars 5-8): Crescendo toward A minor ---
+        - "crescendo over 4"
         - "{c4 e4 a4 e5} {a5 a4 e5 a5} {c4 e4 a4 e5} {a5 a4 e5 a5}"
         - "{c4 d4 f#4 a4} {d5 f#4 a4 d5} {c4 d4 f#4 a4} {d5 f#4 a4 d5}"
         - "{b3 d4 g4 d5} {g5 g4 d5 g5} {b3 d4 g4 d5} {g5 g4 d5 g5}"
         - "{b3 c4 e4 g4} {c5 e4 g4 c5} {b3 c4 e4 g4} {c5 e4 g4 c5}"
+
+        # --- Middle Arc (Bars 9-14): D minor / F minor darkening ---
+        - "mf"
         - "{a3 c4 e4 g4} {c5 e4 g4 c5} {a3 c4 e4 g4} {c5 e4 g4 c5}"
         - "{d3 a3 d4 f#4} {c5 d4 f#4 c5} {d3 a3 d4 f#4} {c5 d4 f#4 c5}"
         - "{g3 b3 d4 g4} {b4 d4 g4 b4} {g3 b3 d4 g4} {b4 d4 g4 b4}"
+        - "diminuendo over 3"
         - "{g3 bb3 e4 g4} {c#5 e4 g4 c#5} {g3 bb3 e4 g4} {c#5 e4 g4 c#5}"
         - "{f3 a3 d4 a4} {d5 d4 a4 d5} {f3 a3 d4 a4} {d5 d4 a4 d5}"
         - "{f3 ab3 d4 f4} {b4 d4 f4 b4} {f3 ab3 d4 f4} {b4 d4 f4 b4}"
+
+        # --- Floating Middle (Bars 15-19): Subdued & cantabile ---
+        - "mp"
+        - "cantabile"
         - "{e3 g3 c4 g4} {c5 c4 g4 c5} {e3 g3 c4 g4} {c5 c4 g4 c5}"
         - "{e3 f3 a3 c4} {f4 a3 c4 f4} {e3 f3 a3 c4} {f4 a3 c4 f4}"
         - "{d3 f3 a3 c4} {f4 a3 c4 f4} {d3 f3 a3 c4} {f4 a3 c4 f4}"
         - "{g2 d3 g3 b3} {f4 g3 b3 f4} {g2 d3 g3 b3} {f4 g3 b3 f4}"
         - "{c3 e3 g3 c4} {e4 g3 c4 e4} {c3 e3 g3 c4} {e4 g3 c4 e4}"
+
+        # --- Chromatic Bass Line (Bars 20-24): Building tension over pedal ---
+        - "crescendo over 5"
         - "{c3 g3 bb3 c4} {e4 bb3 c4 e4} {c3 g3 bb3 c4} {e4 bb3 c4 e4}"
         - "{f2 f3 a3 c4} {e4 a3 c4 e4} {f2 f3 a3 c4} {e4 a3 c4 e4}"
         - "{f#2 c3 a3 c4} {eb4 a3 c4 eb4} {f#2 c3 a3 c4} {eb4 a3 c4 eb4}"
         - "{ab2 f3 b3 c4} {d4 b3 c4 d4} {ab2 f3 b3 c4} {d4 b3 c4 d4}"
         - "{g2 f3 g3 b3} {d4 g3 b3 d4} {g2 f3 g3 b3} {d4 g3 b3 d4}"
+
+        # --- Dominant Pedal Climax (Bars 25-31): Forte & sostenuto ---
+        - "f"
+        - "sostenuto"
+        - "sustain 125"
         - "{g2 e3 g3 c4} {e4 g3 c4 e4} {g2 e3 g3 c4} {e4 g3 c4 e4}"
         - "{g2 d3 g3 b3} {f4 g3 b3 f4} {g2 d3 g3 b3} {f4 g3 b3 f4}"
         - "{g2 eb3 a3 c4} {f#4 a3 c4 f#4} {g2 eb3 a3 c4} {f#4 a3 c4 f#4}"
@@ -45,6 +71,13 @@ sections:
         - "{g2 d3 g3 c4} {f4 g3 c4 f4} {g2 d3 g3 c4} {f4 g3 c4 f4}"
         - "{g2 d3 g3 b3} {f4 g3 b3 f4} {g2 d3 g3 b3} {f4 g3 b3 f4}"
         - "{c2 c3 g3 bb3} {e4 g3 bb3 e4} {c2 c3 g3 bb3} {e4 g3 bb3 e4}"
+
+        # --- Cadenza & Grand Resolution (Bars 32-34) ---
+        - "ff"
+        - "ritardando over 2 to 54"
         - "{c2 f3 a3 c4} {f4 c4 a3 c4} {a3 f3 a3 f3} {d3 f3 d3 f3}"
         - "{c2 g4 b4 d5} {f5 d5 b4 d5} {b4 g4 b4 d4} {f4 e4 d4 f4}"
+        - "p"
+        - "a tempo"
+        - "sustain 127"
         - "[c2 c3 e4 g4 c5] _ _ _"
