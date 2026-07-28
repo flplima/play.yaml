@@ -44,7 +44,7 @@ export interface TrackBus {
 
 /** Perceptual loudness curve for the expression gain. */
 function loudness(value: number): number {
-  return Math.pow(Math.max(0, Math.min(127, value)) / 127, 1.6);
+  return Math.pow(Math.max(0, Math.min(127, value)) / 127, 1.85);
 }
 
 export function createTrackBus(
@@ -388,8 +388,8 @@ async function loadMelodic(
     // With an expression stream the bus carries the loudness and velocity
     // only shades the attack; otherwise velocity is the whole dynamic.
     const level = trim * (bus.hasExpression
-      ? 0.72 + 0.28 * (velocity / 127)
-      : Math.pow(velocity / 127, 1.4));
+      ? 0.25 + 0.75 * Math.pow(velocity / 127, 1.85)
+      : Math.pow(velocity / 127, 1.85));
 
     const gain = bus.ctx.createGain();
     const end = startSec + durationSec;

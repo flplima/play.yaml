@@ -33,7 +33,7 @@ title: "Prelude — Cello Suite No. 1, BWV 1007"
 tempo: 77
 sample: cello
 articulation: tenuto  # a connected détaché — the default bowing here
-dynamic: mf           # on SWAM this drives the expression, i.e. the bow speed
+dynamic: mezzoforte   # on SWAM this drives the expression, i.e. the bow speed
 controls: { bow: 74, vibrato: 1 }   # only if your instrument's MIDI map differs
 set: g major, octave 2
 play:
@@ -68,7 +68,7 @@ play:
 
   # mm.12–15 — back home: 1 = g again.
   - "g maj"
-  - "mf, tenuto, ordinario"   # settle back to an ordinary bow
+  - "mezzoforte, tenuto, ordinario"   # settle back to an ordinary bow
   - 12: "{4 6 9 10} {11 9 6 5} {4 6 9 10} {11 9 7 6}"
   # m.13 — a d#°7 chord pulling toward e minor. E HARMONIC MINOR holds
   # this chord natively: 1 = e, and the d# is its degree 7 — a leading
@@ -97,7 +97,7 @@ play:
   - 20: "{3 8 12 13} {14 12 13 14} {3 8 12 13} {14 12 13 14}"
   # m.21 — …resolving to D7, the true dominant. 1 = g (c = D7's 7th).
   - "g maj, oct 2"
-  - "crescendo to f over 2, allargando over 2"   # broaden into the fermata closing Part 1
+  - "crescendo to forte over 2, allargando over 2"   # broaden into the fermata closing Part 1
   - 21: "{4- 2 5 6} {7 5 6 7} {4- 2 5 6} {7 5 6 7}"
   - 22: "{4- 2 5 7} {9 11# 12 _} {_ 2 3 4} {5 6 7 8}" # the run to the fermata: the midpoint (4# = a passing c#)
 
@@ -118,7 +118,7 @@ play:
   # mm.29–36 — 1 = g; from m.31 the famous BARIOLAGE: a repeated
   # open-string pedal alternates with moving notes (double pedal, d + a).
   - "g maj"
-  - "crescendo to f over 8"   # the long climb over the pedal begins
+  - "crescendo to forte over 8"   # the long climb over the pedal begins
   - 29: "{5- _ 11 10} {9 8 7 6} {5 11 10 9} {8 7 6 5}"
   - 30: "{4 10 9 8} {7 6 5 4} {3 9 8 7} {6 5 4 3}"
   - "detached"   # bariolage: crisp separate bows so the string crossing speaks
@@ -132,14 +132,14 @@ play:
   # mm.37–38 — an ascending CHROMATIC scale, one half-step at a time —
   # among the earliest extended chromatic scales in music (Winold). No
   # scale contains this by design, so here the accidentals ARE the point.
-  - "legato, ff, stringendo over 1, sul ponticello"   # the chromatic climax: slurred, pressing forward
+  - "legato, fortissimo, stringendo over 1, sul ponticello"   # the chromatic climax: slurred, pressing forward
   - 37: "{7 9 5 6} {7b 5 7 5} {8 5 8# 5} {9 5 9# 5}"
   - 38: "{10 5 11 5} {11# 5 12 5} {12# 5 13 5} {14b 5 14 5}"
 
   # ══ THE CLOSE (mm.39–42) ══
   # Tonic six-four chord, then D7 with a 4–3 suspension, and at last the
   # plain G major chord — tension resolved.
-  - "tenuto, f, allargando to andante over 3, ordinario"   # the close broadens: a warm bow, easing off
+  - "tenuto, forte, allargando to andante over 3, ordinario"   # the close broadens: a warm bow, easing off
   - 39: "{15 10 5 10} {15 10 15 10} {15 10 5 10} {15 10 15 10}"
   - 40: "{15 9 5 9} {15 9 15 9} {15 9 5 9} {15 9 15 9}"
   - 41: "{14 11 5 11} {14 11 14 11} {14 11 5 11} {14 11 14 11}"

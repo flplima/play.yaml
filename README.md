@@ -233,7 +233,7 @@ sections:
     - 2x: ["1 2 3 4", "5 4 3 2"]   # a list works too; repeats nest; 0x skips
   ```
 - Per-section overrides are allowed for the directive props (`velocity`,
-  `gate`, `scale`, `octave`, `tempo`, `measure`, `strum`, `voices`, `set`) —
+  `gate`, `rubato`, `scale`, `octave`, `tempo`, `measure`, `strum`, `voices`, `set`) —
   instrument identity (`sample`, `kit`, `channel`, `controls`) stays on the
   top-level track.
 - The compiled song carries `loopStartBeats`: the web player loops the cycle
@@ -286,6 +286,7 @@ Performance is written the way a score marks it, not in numbers. Every term belo
 - **Relative tempo** — `più lento` (or `piu lento`), `meno mosso`, `più mosso`: an immediate section-boundary shift relative to the running tempo.
 - **Meter** — a bare time signature (`2/4`, or `measure 2/4`) changes the measure length from that point on, so a score can interpolate a 2/4 bar inside 4/4 the way printed music does.
 - **Articulation** — `staccatissimo` `staccato` `portato` `detached` `tenuto` `legato` (or `short` / `smooth`)
+- **Rubato** — `rubato` `poco rubato` `molto rubato` (or `rubato 0.4`); `a battuta`, `tempo giusto` and `senza rubato` play strictly again
 - **Character** — `dolce` `cantabile` `espressivo` `sotto voce` `leggiero` `grazioso` `marcato` `pesante` `maestoso` `agitato` `tranquillo`, each standing for a dynamic and a bowing together
 - **Playing technique** — bow position `sul tasto` `flautando` `poco sul tasto` `ordinario` `poco sul ponticello` `sul ponticello` `molto sul ponticello`; bow pressure `sfiorando` `light bow` `normal bow` `heavy bow` `premuto`; vibrato `senza vibrato` `poco vibrato` `vibrato` `molto vibrato`
 
@@ -316,6 +317,32 @@ play:
   - 2: "5 6 7 8"
   - set: detached      # back to 0.9 — also: staccato (0.4), or `gate 1.2`
 ```
+
+### Rubato (`rubato`)
+
+Nobody plays to a click. `rubato` — "stolen time" — makes the beat breathe: the
+notes after a downbeat lean late, then hurry to arrive on the next one. It is a
+depth from 0 (strict) to 1 (very free), and the words set it too:
+
+```yaml
+rubato: 0.5            # or the mark: `set: rubato` / `molto rubato` / `poco rubato`
+play:
+  - 1: "1 2 3 4"
+  - set: a battuta     # strictly in time again (also: senza rubato, tempo giusto)
+  - 2: "5 6 7 8"
+```
+
+What makes this rubato rather than a tempo change: **time stolen inside a bar is
+paid back by the bar line.** The shift is a sine over the measure, so it vanishes
+at both ends — bars never drift and every track stays together, which is what
+lets two players breathe as one. A slow arch across four bars varies the depth so
+consecutive bars don't breathe in lockstep, and the curve stays monotonic at
+every depth, so notes stretch but never reorder or collide. It is a pure function
+of the bar number — no randomness — so a score always compiles to the same
+timeline.
+
+Reach for `tempo`/`ritardando` when the music genuinely changes speed; reach for
+`rubato` when it keeps its pulse but refuses to be mechanical.
 
 ### Instrument controls (CC)
 

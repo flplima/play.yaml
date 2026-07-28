@@ -7,9 +7,9 @@
   },
   "bwv846.play.yaml": {
     "tracks": 1,
-    "notes": 536,
-    "lengthBeats": 148,
-    "sha256": "42a3210c027249ddd5b7b676a10de6dac4659ceef3b0254c543cb03b6c70582f"
+    "notes": 533,
+    "lengthBeats": 140,
+    "sha256": "440a5d0ba00db36a08185f71c6b64766d71a57093c6dc238b00f5473a0c170d5"
   },
   "bwv881.play.yaml": {
     "tracks": 2,
@@ -75,13 +75,13 @@
     "tracks": 2,
     "notes": 294,
     "lengthBeats": 52,
-    "sha256": "05c8e38b4ec423ba7a58746e6c82a0f6466250edc7973291026b9e0a3e5b8cbd"
+    "sha256": "f64e83e248ff0f6957a1e8d7fc632f916304428f5144dbc48a3cd1bc70b2ac89"
   },
   "preciso-me-encontrar.play.yaml": {
     "tracks": 2,
     "notes": 271,
     "lengthBeats": 52,
-    "sha256": "d38f78b6ffcbf476fbc293e032d27abd9bbc21ec8a6d2d4c222127d10384ada2"
+    "sha256": "89401215f6a4a5560a85ddc9bf1fe0ba8477f4b79df7ad452413a4e32036354a"
   },
   "severance.play.yaml": {
     "tracks": 1,
@@ -129,13 +129,13 @@
     "tracks": 4,
     "notes": 947,
     "lengthBeats": 149,
-    "sha256": "71d63491cd34f3c79eddda832b2ea95433310f3061ef1c6158cbc4d67ec932fa"
+    "sha256": "9a6fea75d96592f0955f29f00764502e894dfb725cf4d13f0931201d80e59427"
   },
   "songs/bibo-no-aozora/bibo-no-aozora.play.yaml": {
     "tracks": 4,
-    "notes": 576,
-    "lengthBeats": 180,
-    "sha256": "b2093340c60fe191fa402426fb6d64bd985ec8ac99c514ad2a93df48550c6793"
+    "notes": 578,
+    "lengthBeats": 184,
+    "sha256": "b500955f06ea05feb72cdc60dbee10b935c5cd7445ab3bcdb9b4088b20e72b74"
   },
   "songs/bwv-106-gottes-zeit/bwv-106-gottes-zeit.play.yaml": {
     "tracks": 6,

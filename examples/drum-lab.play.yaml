@@ -98,5 +98,5 @@ tracks:
       - 21: *traphats
       - 22: *traphats
       - 23: "{hh hh hh hh} {hh hh hh hh} hh~~ oh"             # ~~ rolls twice as fast
-      - 24: "crescendo to f over 1"
+      - 24: "crescendo to forte over 1"
       - 24: "{hh hh hh hh} {hh hh hh hh} {hh hh hh hh} {hh hh hh hh}"

@@ -9,8 +9,8 @@ measure: 4/4
 
 tracks:
   piano:
-    sample: piano
-    dynamic: mp
+    sample: epiano
+    dynamic: mezzopiano
     controls: { sustain: 64 }
     set: legato, sustain 110
 
@@ -34,7 +34,7 @@ sections:
         - "{b3 c4 e4 g4} {c5 e4 g4 c5} {b3 c4 e4 g4} {c5 e4 g4 c5}"
 
         # --- Middle Arc (Bars 9-14): D minor / F minor darkening ---
-        - "mf"
+        - "mezzoforte"
         - "{a3 c4 e4 g4} {c5 e4 g4 c5} {a3 c4 e4 g4} {c5 e4 g4 c5}"
         - "{d3 a3 d4 f#4} {c5 d4 f#4 c5} {d3 a3 d4 f#4} {c5 d4 f#4 c5}"
         - "{g3 b3 d4 g4} {b4 d4 g4 b4} {g3 b3 d4 g4} {b4 d4 g4 b4}"
@@ -44,7 +44,7 @@ sections:
         - "{f3 ab3 d4 f4} {b4 d4 f4 b4} {f3 ab3 d4 f4} {b4 d4 f4 b4}"
 
         # --- Floating Middle (Bars 15-19): Subdued & cantabile ---
-        - "mp"
+        - "mezzopiano"
         - "cantabile"
         - "{e3 g3 c4 g4} {c5 c4 g4 c5} {e3 g3 c4 g4} {c5 c4 g4 c5}"
         - "{e3 f3 a3 c4} {f4 a3 c4 f4} {e3 f3 a3 c4} {f4 a3 c4 f4}"
@@ -61,7 +61,7 @@ sections:
         - "{g2 f3 g3 b3} {d4 g3 b3 d4} {g2 f3 g3 b3} {d4 g3 b3 d4}"
 
         # --- Dominant Pedal Climax (Bars 25-31): Forte & sostenuto ---
-        - "f"
+        - "forte"
         - "sostenuto"
         - "sustain 125"
         - "{g2 e3 g3 c4} {e4 g3 c4 e4} {g2 e3 g3 c4} {e4 g3 c4 e4}"
@@ -73,11 +73,11 @@ sections:
         - "{c2 c3 g3 bb3} {e4 g3 bb3 e4} {c2 c3 g3 bb3} {e4 g3 bb3 e4}"
 
         # --- Cadenza & Grand Resolution (Bars 32-34) ---
-        - "ff"
+        - "fortissimo"
         - "ritardando over 2 to 54"
         - "{c2 f3 a3 c4} {f4 c4 a3 c4} {a3 f3 a3 f3} {d3 f3 d3 f3}"
         - "{c2 g4 b4 d5} {f5 d5 b4 d5} {b4 g4 b4 d4} {f4 e4 d4 f4}"
-        - "p"
+        - "piano"
         - "a tempo"
         - "sustain 127"
         - "[c2 c3 e4 g4 c5] _ _ _"

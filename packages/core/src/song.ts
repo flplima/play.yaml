@@ -65,6 +65,15 @@ export interface TrackProps {
    * max(3×strum, 0.09).
    */
   strumTail?: number;
+  /**
+   * Rubato — "stolen time" — as a depth from 0 (strict) to 1 (very free).
+   * The beat breathes inside each bar: the notes after a downbeat lean late,
+   * then hurry to arrive on the next one. What is stolen is paid back by the
+   * bar line, so bars never drift and parts stay together — that is what
+   * separates rubato from a tempo change. The worded marks ("rubato",
+   * "molto rubato", "a battuta") set it too.
+   */
+  rubato?: number;
   /** A dynamic or character mark ("mf", "dolce") — the worded form of `velocity`. */
   dynamic?: string;
   /** An articulation mark ("legato", "tenuto") — the worded form of `gate`. */
@@ -107,7 +116,7 @@ export interface TempoEvent {
  * measures can be labeled explicitly and gaps become silence.
  */
 export type PlayDirective = Pick<
-  TrackProps, 'scale' | 'octave' | 'velocity' | 'gate' | 'tempo' | 'measure' | 'strum' | 'voices'
+  TrackProps, 'scale' | 'octave' | 'velocity' | 'gate' | 'rubato' | 'tempo' | 'measure' | 'strum' | 'voices'
 > & {
   set?: string | string[];
   [measure: number]: string | undefined;
@@ -142,7 +151,7 @@ export interface TrackNode extends TrackProps {
  * for this section's span.
  */
 export interface SectionTrack extends Pick<
-  TrackProps, 'scale' | 'octave' | 'velocity' | 'gate' | 'tempo' | 'measure' | 'strum' | 'voices'
+  TrackProps, 'scale' | 'octave' | 'velocity' | 'gate' | 'rubato' | 'tempo' | 'measure' | 'strum' | 'voices'
 > {
   /** Measures to rest before entering the section. Applies once, never on loops. */
   wait?: number;
@@ -227,10 +236,43 @@ interface EmitCtx {
   voices: number;
   /** Release tail for voices-limited notes, in beats; undefined = auto. */
   strumTail?: number;
+  /** Rubato depth, 0 (strict) to 1 (very free). */
+  rubato: number;
   /** Active crescendo/diminuendo; notes inside the span interpolate. */
   velocityRamp?: { fromBeat: number; toBeat: number; from: number; to: number };
   /** The notes a `_` would prolong, and how much time they cover so far. */
   held?: { events: TimelineEvent[]; span: number } | null;
+}
+
+/**
+ * The deepest a bar may lean, as a fraction of its own length, at `rubato: 1`.
+ * Roughly an eighth of a beat in 2/4 — the edge of expressive, not sloppy.
+ */
+const RUBATO_DEPTH = 0.08;
+
+/**
+ * Where a point inside a bar actually falls once the beat breathes.
+ *
+ * `u` is the position within the measure (0 = this downbeat, 1 = the next) and
+ * the answer is the same measure re-read expressively. The shift is a sine over
+ * the bar, so it vanishes at both bar lines: **time stolen early is paid back by
+ * the end of the measure**, and bars — and the other parts — never drift. That
+ * is the whole difference between rubato and a tempo change.
+ *
+ * Within the bar the first half leans late (the player lingers just after the
+ * downbeat) and the second half hurries to arrive on the next one. A slow arch
+ * across four bars varies the depth, so consecutive bars do not breathe in
+ * lockstep and the line still phrases rather than wobbling.
+ *
+ * The curve is monotonic for every depth ≤ 1 (its slope bottoms out near 0.5),
+ * so notes stretch and compress but never reorder, collide, or run backwards.
+ * It is a pure function of the bar number — no randomness — so a score compiles
+ * to the same timeline every time.
+ */
+export function rubatoWarp(u: number, amount: number, measureIndex = 0): number {
+  if (!amount) return u;
+  const arch = 0.75 + 0.25 * Math.cos((Math.PI * measureIndex) / 4);
+  return u + amount * RUBATO_DEPTH * arch * Math.sin(2 * Math.PI * u);
 }
 
 /** Velocity for a note, honouring any crescendo/diminuendo in progress. */
@@ -515,6 +557,7 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
     strum: props.strum ?? DEFAULT_STRUM,
     voices: props.voices ?? 0,
     strumTail: props.strumTail,
+    rubato: props.rubato ?? worded.rubato ?? 0,
   };
   const controls: ControlEvent[] = [];
   const tempos: TempoEvent[] = [];
@@ -590,6 +633,7 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
     if (patch.strum !== undefined) ctx.strum = patch.strum;
     if (patch.voices !== undefined) ctx.voices = patch.voices;
     if (patch.strumTail !== undefined) ctx.strumTail = patch.strumTail;
+    if (patch.rubato !== undefined) ctx.rubato = patch.rubato;
 
     if (patch.aTempo) setTempo(baseTempo, 0, at);
     if (patch.tempo) {
@@ -651,6 +695,7 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
     // (`.` ×1.5, `:` ×2, stackable) — plain equal division when unweighted.
     const totalWeight = noteTokens.reduce((sum, t) => sum + tokenWeight(t), 0) || 1;
     const unit = measureBeats / totalWeight;
+    const firstEvent = ctx.events.length; // where this measure's notes begin
     let pos = 0; // beats consumed within the measure
     for (const tok of tokens) {
       const at = beat + pos;
@@ -663,6 +708,20 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
         const span = unit * tokenWeight(tok);
         placeToken(tok, at, span, ctx);
         pos += span;
+      }
+    }
+    // Let the bar breathe. Onset and release are warped by the same curve, so
+    // a note keeps its shape (and its overlap with the next) as it moves; the
+    // measure still ends where it began, so `beat` below is untouched.
+    if (ctx.rubato > 0) {
+      const warp = (t: number) =>
+        beat + rubatoWarp((t - beat) / measureBeats, ctx.rubato, m) * measureBeats;
+      for (let i = firstEvent; i < ctx.events.length; i++) {
+        const event = ctx.events[i];
+        const from = warp(event.time);
+        const to = warp(event.time + event.duration);
+        event.time = round(from);
+        event.duration = round(Math.max(0.01, to - from));
       }
     }
     m++;
@@ -685,6 +744,7 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
         octave: item.octave,
         velocity: item.velocity,
         gate: item.gate,
+        rubato: item.rubato,
         strum: item.strum,
         voices: item.voices,
         measure: item.measure,
@@ -736,7 +796,7 @@ const SECTION_KEYS = new Set(['loop', 'wait']);
 
 /** Section-track props that compile into play directives. */
 const SECTION_DIRECTIVE_PROPS = [
-  'scale', 'octave', 'velocity', 'gate', 'tempo', 'measure', 'strum', 'voices',
+  'scale', 'octave', 'velocity', 'gate', 'rubato', 'tempo', 'measure', 'strum', 'voices',
 ] as const;
 
 const SECTION_TRACK_KEYS = new Set(['wait', 'set', 'play', ...SECTION_DIRECTIVE_PROPS]);
@@ -904,7 +964,7 @@ export function expandSections(doc: SongDoc): { doc: SongDoc; loopStartBar: numb
 
 const INHERITED: (keyof TrackProps)[] = [
   'tempo', 'measure', 'sample', 'scale', 'octave', 'channel', 'program', 'velocity',
-  'gate', 'dynamic', 'articulation', 'controls', 'strum', 'voices', 'strumTail', 'kit',
+  'gate', 'rubato', 'dynamic', 'articulation', 'controls', 'strum', 'voices', 'strumTail', 'kit',
 ];
 
 function effectiveProps(node: TrackNode, inherited: TrackProps): TrackProps {
@@ -922,6 +982,7 @@ function effectiveProps(node: TrackNode, inherited: TrackProps): TrackProps {
     if (patch.strum !== undefined) props.strum = patch.strum;
     if (patch.voices !== undefined) props.voices = patch.voices;
     if (patch.strumTail !== undefined) props.strumTail = patch.strumTail;
+    if (patch.rubato !== undefined) props.rubato = patch.rubato;
     // Any control changes it declares are emitted at the start of the track,
     // in compileDoc — see the `set` handling in walk().
   }

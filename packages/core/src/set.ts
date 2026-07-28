@@ -9,7 +9,7 @@
 import { parseScale } from './theory';
 import {
   ARTICULATIONS, CONTROL_TERMS, ControlSpec, DYNAMICS, DYNAMIC_STEP, EXPRESSIONS,
-  TEMPO_GRADUAL, TEMPO_MARKS, TEMPO_RELATIVE, resolveControl,
+  RUBATO_TERMS, TEMPO_GRADUAL, TEMPO_MARKS, TEMPO_RELATIVE, resolveControl,
 } from './vocabulary';
 
 export interface SetPatch {
@@ -22,6 +22,8 @@ export interface SetPatch {
   /** Gradual dynamic: reach `to` over `overMeasures` measures. */
   velocityRamp?: { to?: number; scale?: number; overMeasures: number };
   gate?: number;
+  /** Rubato depth, 0 (strict) to 1 (very free). See `TrackProps.rubato`. */
+  rubato?: number;
   /** `bpm` is absolute, `scale` multiplies the running tempo; both may ramp. */
   tempo?: { bpm?: number; scale?: number; overMeasures: number };
   /** "a tempo" — return to the tempo the track started at. */
@@ -56,6 +58,7 @@ const clamp127 = (v: number) => Math.max(0, Math.min(127, Math.round(v)));
  *   "octave 3" / "oct 3"          → absolute octave
  *   "tempo 60" / "tempo 60 over 2" → tempo, optionally ramped over N measures
  *   "legato" / "detached" / "staccato" / "gate 1.05" → articulation
+ *   "rubato" / "molto rubato" / "rubato 0.4" / "a battuta" → rubato depth
  *   "velocity 90"                 → dynamics
  *   "cc74 30"                     → a raw control change
  *   "bow 30"                      → a control change via the track's `controls`
@@ -87,6 +90,14 @@ export function parseSet(
       continue;
     }
 
+    // "rubato 0.4" — the worded marks ("molto rubato", "a battuta") come from
+    // RUBATO_TERMS below, so this is only the numeric form.
+    const rubato = new RegExp(`^rubato\\s+(${NUM})$`, 'i').exec(clause);
+    if (rubato) {
+      patch.rubato = Math.max(0, Math.min(1, Number(rubato[1])));
+      continue;
+    }
+
     const tempo = new RegExp(`^tempo\\s+(${NUM})(?:\\s+over\\s+(${NUM}))?$`, 'i').exec(clause);
     if (tempo) {
       patch.tempo = { bpm: Number(tempo[1]), overMeasures: tempo[2] ? Number(tempo[2]) : 0 };
@@ -105,6 +116,11 @@ export function parseSet(
 
     if (TEMPO_RELATIVE[word] !== undefined) {
       patch.tempo = { scale: TEMPO_RELATIVE[word], overMeasures: 0 };
+      continue;
+    }
+
+    if (RUBATO_TERMS[word] !== undefined) {
+      patch.rubato = RUBATO_TERMS[word];
       continue;
     }
 
@@ -174,39 +190,75 @@ export function parseSet(
       continue;
     }
 
-    // Gradual marks: "ritardando", "rit over 2", "allargando to adagio over 3".
-    const gradual = new RegExp(
-      `^([a-z]+)(?:\\s+to\\s+([a-z]+|${NUM}))?(?:\\s+over\\s+(${NUM}))?$`,
+    // Gradual marks: "ritardando", "rit. over 2 to 54", "allargando to adagio over 3".
+    const gradualMatch = new RegExp(
+      `^([a-z]+\\.?)(?:\\s+(to|over)\\s+([a-z]+\\.?|${NUM}))?(?:\\s+(to|over)\\s+([a-z]+\\.?|${NUM}))?$`,
       'i',
     ).exec(word);
-    if (gradual && TEMPO_GRADUAL[gradual[1]] !== undefined) {
-      const overMeasures = gradual[3] ? Number(gradual[3]) : 1;
-      if (gradual[2] !== undefined) {
-        const bpm = TEMPO_MARKS[gradual[2]] ?? Number(gradual[2]);
-        if (!Number.isFinite(bpm)) {
-          throw new Error(`Unknown tempo "${gradual[2]}" in "${clause}".`);
+
+    if (gradualMatch) {
+      const stem = gradualMatch[1].toLowerCase().replace(/\.$/, '');
+      if (TEMPO_GRADUAL[stem] !== undefined) {
+        let targetStr: string | undefined;
+        let overStr: string | undefined;
+
+        const p1Type = gradualMatch[2]?.toLowerCase();
+        const p1Val = gradualMatch[3];
+        const p2Type = gradualMatch[4]?.toLowerCase();
+        const p2Val = gradualMatch[5];
+
+        if (p1Type === 'to') targetStr = p1Val;
+        else if (p1Type === 'over') overStr = p1Val;
+
+        if (p2Type === 'to') targetStr = p2Val;
+        else if (p2Type === 'over') overStr = p2Val;
+
+        const overMeasures = overStr ? Number(overStr) : 1;
+
+        if (targetStr !== undefined) {
+          const cleanTarget = targetStr.toLowerCase().replace(/\.$/, '');
+          const bpm = TEMPO_MARKS[cleanTarget] ?? Number(cleanTarget);
+          if (!Number.isFinite(bpm)) {
+            throw new Error(`Unknown tempo "${targetStr}" in "${clause}".`);
+          }
+          patch.tempo = { bpm, overMeasures };
+        } else {
+          patch.tempo = { scale: TEMPO_GRADUAL[stem], overMeasures };
         }
-        patch.tempo = { bpm, overMeasures };
-      } else {
-        patch.tempo = { scale: TEMPO_GRADUAL[gradual[1]], overMeasures };
+        continue;
       }
-      continue;
     }
 
-    // "crescendo", "cresc to ff over 2", "diminuendo over 4".
-    const hairpin = new RegExp(
-      `^(crescendo|cresc|diminuendo|dim|decrescendo|decresc)` +
-        `(?:\\s+to\\s+([a-z]+|${NUM}))?(?:\\s+over\\s+(${NUM}))?$`,
+    // "crescendo", "cresc. over 2 to fortissimo", "diminuendo over 4".
+    const hairpinMatch = new RegExp(
+      `^(crescendo|cresc|diminuendo|dim|decrescendo|decresc)\\.?` +
+        `(?:\\s+(to|over)\\s+([a-z]+\\.?|${NUM}))?(?:\\s+(to|over)\\s+([a-z]+\\.?|${NUM}))?$`,
       'i',
     ).exec(word);
-    if (hairpin) {
-      const rising = /^cres/.test(hairpin[1]);
-      const target = hairpin[2];
-      const overMeasures = hairpin[3] ? Number(hairpin[3]) : 1;
-      if (target !== undefined) {
-        const to = DYNAMICS[target] ?? Number(target);
+
+    if (hairpinMatch) {
+      const rising = /^cres/i.test(hairpinMatch[1]);
+      let targetStr: string | undefined;
+      let overStr: string | undefined;
+
+      const p1Type = hairpinMatch[2]?.toLowerCase();
+      const p1Val = hairpinMatch[3];
+      const p2Type = hairpinMatch[4]?.toLowerCase();
+      const p2Val = hairpinMatch[5];
+
+      if (p1Type === 'to') targetStr = p1Val;
+      else if (p1Type === 'over') overStr = p1Val;
+
+      if (p2Type === 'to') targetStr = p2Val;
+      else if (p2Type === 'over') overStr = p2Val;
+
+      const overMeasures = overStr ? Number(overStr) : 1;
+
+      if (targetStr !== undefined) {
+        const cleanTarget = targetStr.toLowerCase().replace(/\.$/, '');
+        const to = DYNAMICS[cleanTarget] ?? Number(cleanTarget);
         if (!Number.isFinite(to)) {
-          throw new Error(`Unknown dynamic "${target}" in "${clause}".`);
+          throw new Error(`Unknown dynamic "${targetStr}" in "${clause}".`);
         }
         patch.velocityRamp = { to, overMeasures };
       } else {
@@ -287,10 +339,11 @@ export function parseSet(
       // Not a scale either — fall through to the error below.
     }
     throw new Error(
-      `Unknown set clause "${clause}" — expected a dynamic ("mf", "dolce", ` +
-        `"crescendo to f over 2"), a tempo ("allegro", "ritardando over 2", ` +
+      `Unknown set clause "${clause}" — expected a dynamic ("mezzoforte", "dolce", ` +
+        `"crescendo to forte over 2"), a tempo ("allegro", "ritardando over 2", ` +
         `"a tempo", "tempo 60", "più lento"), an articulation ("legato", ` +
-        `"staccato"), a scale ("g lydian"), an octave ("oct up"), a meter ` +
+        `"staccato"), a rubato ("rubato", "molto rubato", "rubato 0.4", ` +
+        `"a battuta"), a scale ("g lydian"), an octave ("oct up"), a meter ` +
         `("2/4"), or a control ("cc74 30").`,
     );
   }

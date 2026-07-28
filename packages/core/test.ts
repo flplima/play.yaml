@@ -409,12 +409,12 @@ check('techniques work with no controls declared at all', () => {
   assert.deepStrictEqual(parseSet('molto vibrato').ccs, [{ cc: 1, value: 127 }]);
 });
 check('a track-level set: opens the instrument at beat 0', () => {
-  const song = compileDoc({ set: 'sul tasto, molto vibrato, mf', play: 'c d e f' });
+  const song = compileDoc({ set: 'sul tasto, molto vibrato, mezzoforte', play: 'c d e f' });
   assert.deepStrictEqual(song.tracks[0].controls, [
     { time: 0, cc: 74, value: 0 },
     { time: 0, cc: 1, value: 127 },
   ]);
-  assert.strictEqual(song.tracks[0].timeline[0].velocity, 80); // the mf applied too
+  assert.strictEqual(song.tracks[0].timeline[0].velocity, 80); // the mezzoforte applied too
 });
 
 console.log('\ncontrol changes:');
@@ -488,8 +488,8 @@ check('exported .mid carries control changes', () => {
 });
 
 console.log('\nmusical terms:');
-check('dynamic marks set velocity (pp, mf, ff)', () => {
-  const tl = parsePlay(['c ~ ~ ~', { set: 'pp' }, 'c ~ ~ ~', { set: 'ff' }, 'c ~ ~ ~']);
+check('dynamic marks set velocity (pianissimo, mezzoforte, fortissimo)', () => {
+  const tl = parsePlay(['c ~ ~ ~', { set: 'pianissimo' }, 'c ~ ~ ~', { set: 'fortissimo' }, 'c ~ ~ ~']);
   assert.deepStrictEqual(tl.map((n) => n.velocity), [90, 32, 112]);
 });
 check('spelled-out and plain-english dynamics', () => {
@@ -497,12 +497,12 @@ check('spelled-out and plain-english dynamics', () => {
   assert.strictEqual(parsePlay(['c', { set: 'quiet' }, 'c'])[1].velocity, 48);
 });
 check('louder / softer step relative to the current dynamic', () => {
-  const tl = parsePlay(['c ~ ~ ~', { set: 'mp' }, 'c ~ ~ ~', { set: 'louder' }, 'c ~ ~ ~',
+  const tl = parsePlay(['c ~ ~ ~', { set: 'mezzopiano' }, 'c ~ ~ ~', { set: 'louder' }, 'c ~ ~ ~',
     { set: 'softer, softer' }, 'c ~ ~ ~']);
   assert.deepStrictEqual(tl.map((n) => n.velocity), [90, 64, 80, 48]);
 });
-check('a bare "f" is forte, not F major', () => {
-  assert.strictEqual(parseSet('f').velocity, 96);
+check('a bare "forte" sets forte velocity, f major sets scale', () => {
+  assert.strictEqual(parseSet('forte').velocity, 96);
   assert.strictEqual(parseSet('f major').scale, 'f major');
 });
 check('articulation words: staccato, tenuto, smooth', () => {
@@ -536,8 +536,11 @@ check('gradual tempo marks take a target: "allargando to adagio over 3"', () => 
     tempo: 100,
     play: ['c ~ ~ ~', { set: 'allargando to adagio over 3' }, 'c ~ ~ ~'],
   });
-  assert.deepStrictEqual(song.tempoMap, [{ time: 4, bpm: 66, rampBeats: 12 }]);
   assert.strictEqual(parseSet('rit to 60 over 2').tempo?.bpm, 60);
+  assert.strictEqual(parseSet('ritardando over 2 to 54').tempo?.bpm, 54);
+  assert.strictEqual(parseSet('ritardando over 2 to 54').tempo?.overMeasures, 2);
+  assert.strictEqual(parseSet('cresc. over 2 to forte').velocityRamp?.to, 96);
+  assert.strictEqual(parseSet('cresc. over 2 to forte').velocityRamp?.overMeasures, 2);
 });
 check('"a tempo" returns to the tempo the track started at', () => {
   const song = compileDoc({
@@ -547,14 +550,14 @@ check('"a tempo" returns to the tempo the track started at', () => {
   assert.deepStrictEqual(song.tempoMap.map((t) => t.bpm), [132, 77]);
 });
 check('crescendo interpolates velocity across its span', () => {
-  const tl = parsePlay(['c c c c', { set: 'p, crescendo to f over 1' }, 'c c c c', 'c ~ ~ ~']);
+  const tl = parsePlay(['c c c c', { set: 'piano, crescendo to forte over 1' }, 'c c c c', 'c ~ ~ ~']);
   const during = tl.slice(4, 8).map((n) => n.velocity);
   assert.strictEqual(during[0], 48); // starts at piano
   assert.ok(during[1] > during[0] && during[2] > during[1], `rising: ${during}`);
   assert.strictEqual(tl[8].velocity, 96); // lands on forte and stays
 });
 check('dynamic: and articulation: props are the worded velocity/gate', () => {
-  const song = compileDoc({ dynamic: 'pp', articulation: 'staccato', play: 'c ~ ~ ~' });
+  const song = compileDoc({ dynamic: 'pianissimo', articulation: 'staccato', play: 'c ~ ~ ~' });
   assert.strictEqual(song.tracks[0].timeline[0].velocity, 32);
   assert.strictEqual(song.tracks[0].timeline[0].duration, 0.4);
 });
@@ -578,7 +581,7 @@ check('a bare string of expression words is a mark, not a measure', () => {
 check('multi-clause marks work bare too', () => {
   const song = compileDoc({
     tempo: 100,
-    play: ['c ~ ~ ~', 'ff, sul ponticello, allargando to adagio over 2', 'c ~ ~ ~'],
+    play: ['c ~ ~ ~', 'fortissimo, sul ponticello, allargando to adagio over 2', 'c ~ ~ ~'],
   });
   assert.strictEqual(song.tracks[0].timeline[1].velocity, 112);
   assert.deepStrictEqual(song.tempoMap, [{ time: 4, bpm: 66, rampBeats: 8 }]);
@@ -806,7 +809,7 @@ check('martelé and spiccato read as articulation words', () => {
 });
 check('declared expression control mirrors dynamics as CCs', () => {
   const { controls } = parsePlayFull(
-    ['1 2 3 4', { set: 'ff' }, '1 2 3 4'],
+    ['1 2 3 4', { set: 'fortissimo' }, '1 2 3 4'],
     { velocity: 64, controls: { expression: 11 } },
   );
   assert.deepStrictEqual(controls[0], { time: 0, cc: 11, value: 64 }); // opening
@@ -814,7 +817,7 @@ check('declared expression control mirrors dynamics as CCs', () => {
 });
 check('a crescendo becomes an expression ramp at eighth-note steps', () => {
   const { controls } = parsePlayFull(
-    ['1 2 3 4', { set: 'crescendo to ff over 1' }, '1 2 3 4'],
+    ['1 2 3 4', { set: 'crescendo to fortissimo over 1' }, '1 2 3 4'],
     { velocity: 64, controls: { expression: 11 } },
   );
   const ramp = controls.filter((c) => c.time > 4 && c.time <= 8);
@@ -823,7 +826,7 @@ check('a crescendo becomes an expression ramp at eighth-note steps', () => {
   assert.ok(ramp[0].value > 64 && ramp[0].value < 112);
 });
 check('without a declared expression control no CCs are emitted', () => {
-  const { controls } = parsePlayFull(['1 2 3 4', { set: 'ff' }, '1 2 3 4'], { velocity: 64 });
+  const { controls } = parsePlayFull(['1 2 3 4', { set: 'fortissimo' }, '1 2 3 4'], { velocity: 64 });
   assert.deepStrictEqual(controls, []);
 });
 
@@ -957,7 +960,7 @@ check('a tempo: directive updates the running tempo for later rits', () => {
   assert.deepStrictEqual(song.tempoMap.map((t) => t.bpm), [90, 72]);
 });
 check('a velocity: directive cancels an in-flight hairpin', () => {
-  const tl = parsePlay(['c c c c', { set: 'p, crescendo to f over 2' }, 'c c c c',
+  const tl = parsePlay(['c c c c', { set: 'piano, crescendo to forte over 2' }, 'c c c c',
     { velocity: 40 }, 'c c c c']);
   assert.ok(tl.slice(8).every((n) => n.velocity === 40));
 });
@@ -1020,10 +1023,10 @@ check('`~~` doubles the roll speed; a flam via `[sd sd]~`', () => {
   assert.ok(flam[1].time - flam[0].time > 0 && flam[1].time - flam[0].time < 0.1);
 });
 check('`_` extends a hit; dynamics words still apply', () => {
-  const song = compileDoc({ kit: 'acoustic', play: ['cy _ _ _', 'pp', 'bd ~ ~ ~'] });
+  const song = compileDoc({ kit: 'acoustic', play: ['cy _ _ _', 'pianissimo', 'bd ~ ~ ~'] });
   const tl = song.tracks[0].timeline;
   assert.strictEqual(tl[0].duration, 3.6); // crash rings through the holds
-  assert.strictEqual(tl[1].velocity, 32); // the pp mark took no time
+  assert.strictEqual(tl[1].velocity, 32); // pianissimo applied to bd
   assert.strictEqual(song.lengthBeats, 8);
 });
 check('a drum measure is a measure, not a directive', () => {
@@ -1222,6 +1225,63 @@ check('the exported .mid carries a loopStart marker', () => {
     if (marker.every((b, j) => buf[i + j] === b)) found = true;
   }
   assert.ok(found, 'expected a loopStart marker meta event');
+});
+
+console.log('\nrubato (stolen time):');
+
+check('rubato leaves the notes and the bar lines exactly where they were', () => {
+  const strict = parsePlay(['c d e f', 'g a b c5']);
+  const free = parsePlay(['c d e f', 'g a b c5'], { rubato: 0.6 });
+  assert.deepStrictEqual(free.map((e) => e.midi), strict.map((e) => e.midi));
+  // every downbeat is still a downbeat — what is stolen is paid back by the bar
+  assert.strictEqual(free[0].time, 0);
+  assert.strictEqual(free[4].time, 4);
+});
+
+check('rubato moves the notes inside the bar, and off it does nothing', () => {
+  const strict = parsePlay(['c d e f']);
+  const free = parsePlay(['c d e f'], { rubato: 0.6 });
+  assert.ok(free.some((e, i) => e.time !== strict[i].time), 'expected the beat to breathe');
+  // the note after the downbeat leans late; the bar catches up afterwards
+  assert.ok(free[1].time > strict[1].time, 'expected a lean after the downbeat');
+  assert.ok(free[3].time < strict[3].time, 'expected the bar to hurry home');
+  assert.deepStrictEqual(parsePlay(['c d e f'], { rubato: 0 }), strict);
+  assert.deepStrictEqual(parsePlay(['c d e f'], { rubato: undefined }), strict);
+});
+
+check('rubato never reorders notes, at any depth', () => {
+  for (const rubato of [0.25, 0.5, 0.85, 1]) {
+    const tl = parsePlay(['c d e f g a b c5'], { rubato });
+    for (let i = 1; i < tl.length; i++) {
+      assert.ok(tl[i].time > tl[i - 1].time, `depth ${rubato}: notes crossed`);
+      assert.ok(tl[i].duration > 0, `depth ${rubato}: non-positive duration`);
+    }
+  }
+});
+
+check('rubato is deterministic — the same score compiles the same twice', () => {
+  const once = parsePlay(['c d e f', 'g a b c5'], { rubato: 0.7 });
+  const twice = parsePlay(['c d e f', 'g a b c5'], { rubato: 0.7 });
+  assert.deepStrictEqual(once, twice);
+});
+
+check('the worded marks set rubato, and a battuta cancels it', () => {
+  assert.strictEqual(parseSet('rubato').rubato, 0.5);
+  assert.strictEqual(parseSet('molto rubato').rubato, 0.85);
+  assert.strictEqual(parseSet('poco rubato').rubato, 0.25);
+  assert.strictEqual(parseSet('rubato 0.4').rubato, 0.4);
+  assert.strictEqual(parseSet('a battuta').rubato, 0);
+  assert.strictEqual(parseSet('senza rubato').rubato, 0);
+  assert.strictEqual(parseSet('rubato 5').rubato, 1); // clamped
+});
+
+check('rubato can be switched on and off mid-piece', () => {
+  const tl = parsePlayFull(['c d e f', 'rubato', 'c d e f', 'a battuta', 'c d e f']).timeline;
+  const bar = (n: number) => tl.filter((e) => e.time >= n * 4 && e.time < (n + 1) * 4);
+  const offsets = (n: number) => bar(n).map((e) => Math.round((e.time - n * 4) * 1000) / 1000);
+  assert.deepStrictEqual(offsets(0), [0, 1, 2, 3], 'bar 1 should be strict');
+  assert.notDeepStrictEqual(offsets(1), [0, 1, 2, 3], 'bar 2 should breathe');
+  assert.deepStrictEqual(offsets(2), [0, 1, 2, 3], 'bar 3 should be strict again');
 });
 
 console.log('\ntempo timing (beats → seconds):');

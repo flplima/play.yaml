@@ -14,7 +14,12 @@ export type InstrumentPreset = 'piano' | 'epiano' | 'strings' | 'flute' | 'bass'
 /** Known sample names → built-in synth preset. */
 const SAMPLE_PRESETS: Record<string, InstrumentPreset> = {
   piano: 'piano',
+  epiano: 'epiano',
   keys: 'epiano',
+  synth: 'epiano',
+  pluck: 'epiano',
+  clav: 'epiano',
+  synth_piano: 'epiano',
   bass: 'bass',
   strings: 'strings',
   violin: 'strings', // oscillator fallback — normally the sampler takes over
@@ -101,18 +106,32 @@ function playNotePreset(
     gainNode.gain.exponentialRampToValueAtTime(0.0001, endSec + 0.4); // Long sustain tail
   } else if (instrument === 'epiano') {
     // Two-operator FM electric piano: a decaying modulator gives the tine
-    // bark, a quiet 4th-partial sine the bell sparkle on top.
+    // bark, a quiet 4th-partial sine the bell sparkle on top, and a sharp
+    // triangle transient gives the piano-like percussive attack strike.
     osc.type = 'sine';
     const mod = ctx.createOscillator();
     mod.type = 'sine';
     mod.frequency.value = freq * 2;
     mod.frequency.setValueAtTime(freq * 2, startSec);
     const modGain = ctx.createGain();
-    modGain.gain.setValueAtTime(freq * 2.5, startSec);
+    modGain.gain.setValueAtTime(freq * 3.5, startSec);
     modGain.gain.exponentialRampToValueAtTime(freq * 0.05, startSec + 0.35);
     mod.connect(modGain);
     modGain.connect(osc.frequency);
     activeNodes.push(mod);
+
+    // Sharp percussive key-strike attack transient
+    const attackOsc = ctx.createOscillator();
+    attackOsc.type = 'triangle';
+    attackOsc.frequency.value = freq * 4;
+    attackOsc.frequency.setValueAtTime(freq * 4, startSec);
+    const attackGain = ctx.createGain();
+    attackGain.gain.setValueAtTime(0, startSec);
+    attackGain.gain.linearRampToValueAtTime(targetVolume * 0.4, startSec + 0.001);
+    attackGain.gain.exponentialRampToValueAtTime(0.0001, startSec + 0.04);
+    attackOsc.connect(attackGain);
+    attackGain.connect(destination);
+    activeNodes.push(attackOsc);
 
     const sparkle = ctx.createOscillator();
     sparkle.type = 'sine';
@@ -231,7 +250,8 @@ export function playNote(
   const maxVolume =
     instrument === 'bass' ? 0.35 : instrument === 'piano' || instrument === 'epiano' ? 0.25 : 0.15;
   const freq = 440 * Math.pow(2, (midi - 69) / 12);
-  playNotePreset(ctx, destination, instrument, freq, startSec, durationSec, maxVolume * (velocity / 127));
+  const velScale = Math.pow(velocity / 127, 1.85);
+  playNotePreset(ctx, destination, instrument, freq, startSec, durationSec, maxVolume * velScale);
 }
 
 // ---------------------------------------------------------------------------
@@ -325,7 +345,7 @@ export function playDrum(
   velocity: number,
   time: number,
 ): void {
-  const level = Math.pow(velocity / 127, 1.4);
+  const level = Math.pow(velocity / 127, 1.85);
   const noise = (v: NoiseVoice) => noiseHit(ctx, destination, time, { ...v, gain: v.gain * level });
   const tone = (v: ToneVoice) => toneHit(ctx, destination, time, { ...v, gain: v.gain * level });
 

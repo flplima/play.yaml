@@ -30,23 +30,15 @@ export const ARTICULATIONS: Record<string, number> = {
 
 /** Dynamic marks → MIDI velocity. */
 export const DYNAMICS: Record<string, number> = {
-  ppp: 16,
   pianississimo: 16,
-  pp: 32,
   pianissimo: 32,
-  p: 48,
   piano: 48,
   quiet: 48,
-  mp: 64,
   mezzopiano: 64,
-  mf: 80,
   mezzoforte: 80,
-  f: 96,
   forte: 96,
   loud: 96,
-  ff: 112,
   fortissimo: 112,
-  fff: 127,
   fortississimo: 127,
 };
 
@@ -105,6 +97,22 @@ export const TEMPO_GRADUAL: Record<string, number> = {
  * Character marks — the composite ones. Each expands to the combination of
  * dynamic and articulation a player would reach for on seeing the word.
  */
+/**
+ * Rubato — "stolen time" — as depth, 0 (strict) to 1 (very free). The marks
+ * that cancel it are the ones a score uses: `a battuta` ("to the beat") and
+ * `tempo giusto` ("strict time") both mean stop stretching and play straight.
+ */
+export const RUBATO_TERMS: Record<string, number> = {
+  rubato: 0.5,
+  'tempo rubato': 0.5,
+  'poco rubato': 0.25,
+  'molto rubato': 0.85,
+  'senza rubato': 0,
+  'no rubato': 0,
+  'a battuta': 0,
+  'tempo giusto': 0,
+};
+
 export const EXPRESSIONS: Record<string, { velocity?: number; gate?: number }> = {
   dolce: { velocity: 56, gate: 1.02 }, // sweetly: soft and connected
   cantabile: { velocity: 80, gate: 1.05 }, // singing

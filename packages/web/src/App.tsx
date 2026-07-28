@@ -60,6 +60,7 @@ export default function App() {
   const [loop, setLoop] = useState(true);
   const [metronome, setMetronome] = useState(false);
   const [showPanel, setShowPanel] = useState(true);
+  const [currentBeat, setCurrentBeat] = useState(0);
   // The player polls this ref every beat, so toggling works mid-playback.
   const metronomeRef = useRef(false);
 
@@ -103,6 +104,7 @@ export default function App() {
     cancelAnimationFrame(highlightRaf.current);
     editorView.current?.dispatch({ effects: setPlayingNotes.of([]) });
     setPlaying(false);
+    setCurrentBeat(0);
   }, []);
 
   useEffect(() => () => playback.current?.stop(), []);
@@ -244,9 +246,14 @@ export default function App() {
     // position and lights up the beat tokens currently sounding.
     noteSpans.current = buildNoteSpans(text);
     let lastKey = '';
+    let lastBeatValue = -1;
     const tick = () => {
       if (playback.current !== handle) return;
       const beat = handle.getPositionBeats();
+      if (Math.abs(beat - lastBeatValue) > 0.02) {
+        lastBeatValue = beat;
+        setCurrentBeat(beat);
+      }
       const active = noteSpans.current.filter((s) => beat >= s.startBeat && beat < s.endBeat);
       const key = active.map((s) => `${s.kind}:${s.from}-${s.to}`).join(',');
       if (key !== lastKey) {
@@ -265,6 +272,7 @@ export default function App() {
         cancelAnimationFrame(highlightRaf.current);
         editorView.current?.dispatch({ effects: setPlayingNotes.of([]) });
         setPlaying(false);
+        setCurrentBeat(0);
       }
     });
   };
@@ -478,6 +486,9 @@ export default function App() {
             routes={routes}
             onRouteChange={handleRouteChange}
             disabled={outputMode === 'builtin'}
+            song={lastGoodSong}
+            currentBeat={currentBeat}
+            playing={playing}
           />
         )}
       </main>
