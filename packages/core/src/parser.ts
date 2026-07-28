@@ -8,6 +8,8 @@
  *                  playing techniques, named controls
  *   set.ts         the `set` shorthand — "g lydian, octave up" → prop patch
  *   tokens.ts      measure-string tokenizing and token classification
+ *   generate.ts    deterministic generators (spread/arp/walk) and the seeded
+ *                  hash behind chance/humanize
  *   song.ts        the compiler: measures → timelines, documents → songs
  *
  * This module re-exports all of them, so `import … from './parser'` (or from
@@ -49,4 +51,5 @@ export * from './theory';
 export * from './vocabulary';
 export * from './set';
 export * from './tokens';
+export * from './generate';
 export * from './song';

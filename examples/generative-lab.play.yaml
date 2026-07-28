@@ -1,0 +1,60 @@
+# Generative Lab — a tour of the generators (docs/generative-design.md).
+#
+#   spread:     euclidean rhythms — layers of [pulses, rotate] over a step grid
+#   alternate:  a different entry on each pass of an Nx: repeat
+#   arp:        chord tones patterned over the bar
+#   walk:       a seeded drunk walk over the current scale
+#   chance:     probability each note sounds (seeded, deterministic)
+#   humanize:   seeded timing/velocity looseness
+#
+# Everything is deterministic: same file, same seed, same MIDI — change
+# `seed:` to browse variations.
+title: Generative Lab
+tempo: 96
+scale: d dorian
+seed: 11
+
+tracks:
+  drums:
+    kit: acoustic
+    play:
+      - spread:
+          steps: 16
+          bd: 5
+          hh: [13, 2]
+          sd: [2, 4]
+      - 4x:
+          - spread:
+              steps: 16
+              bd: [5, 0]
+              oh: [1, 4]
+              sd: [2, 4]
+          - alternate:
+              - "hh hh hh hh hh hh hh hh"
+              - "hh hh hh hh hh hh {hh hh hh} sd<"
+  hats:
+    kit: acoustic
+    set: chance 0.8
+    velocity: 72
+    play:
+      - 9x: "ph ph ph ph ph ph ph ph"
+  keys:
+    sample: piano
+    humanize: 0.4
+    gate: 0.9
+    play:
+      - arp: {chord: Dm7, mode: up, steps: 8}
+      - arp: {chord: Gm7, mode: updown, steps: 8}
+      - arp: {chord: Bb, mode: converge, steps: 8, octaves: 2}
+      - arp: {chord: A7, mode: random, steps: 8, seed: 4}
+      - arp: {notes: [d3, f3, a3, c4], mode: downup, steps: 8}
+  lead:
+    sample: flute
+    octave: 5
+    set: chance 0.9, humanize 0.3
+    play:
+      - "~ ~ ~ ~"
+      - walk: {steps: 8, start: 1, span: [-2, 9]}
+      - walk: {steps: 8}
+      - walk: {steps: 6, moves: [-2, -1, 1, 2], weights: [1, 3, 3, 1]}
+      - "1: ~ ~ 1"

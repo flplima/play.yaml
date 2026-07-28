@@ -47,6 +47,12 @@
     "lengthBeats": 159,
     "sha256": "cd1f12a0cdcf9234c092465708332aec215cd6f9948363e1e6f694698a61ac6c"
   },
+  "generative-lab.play.yaml": {
+    "tracks": 4,
+    "notes": 205,
+    "lengthBeats": 36,
+    "sha256": "c8caade796b3c71a3353dc3e6fc1f328e99e7b5f143a1e747069226852455027"
+  },
   "lost-woods-vst.play.yaml": {
     "tracks": 4,
     "notes": 227,

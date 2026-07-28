@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import {
   compileDoc, parsePlay, parsePlayFull, parseSet, noteToMidi, measureToBeats, TimelineEvent,
   DEFAULT_TEMPO, DEFAULT_SAMPLE,
+  bjorklund, expandArp, expandSpread, expandWalk, hash01,
 } from './src/parser';
 import { encodeMidi } from './src/exporter';
 import { decodeMidi, compareMidi } from './src/fidelity';
@@ -1241,6 +1242,170 @@ check('a ramp lands between the flat extremes', () => {
   assert.ok(end > 2 && end < 4, `ramp end ${end} sits between all-120 (2s) and all-60 (4s)`);
   // After the ramp the new tempo holds.
   assert.ok(Math.abs(beatsToSeconds(ramped, 6) - (end + 2)) < 1e-9);
+});
+
+console.log('\ngenerators (spread / arp / walk):');
+check('bjorklund places the canonical patterns', () => {
+  const pat = (p: number, s: number, r = 0) =>
+    bjorklund(p, s, r).map((hit) => (hit ? 'x' : '.')).join('');
+  assert.strictEqual(pat(3, 8), 'x..x..x.');   // tresillo
+  assert.strictEqual(pat(4, 4), 'xxxx');
+  assert.strictEqual(pat(0, 8), '........');
+  assert.strictEqual(pat(1, 8, 0), 'x.......');
+  // Rotation advances the starting point of the same cycle.
+  assert.strictEqual(pat(3, 8, 3), pat(3, 8).slice(3) + pat(3, 8).slice(0, 3));
+});
+check('spread expands layers to one measure, merging shared steps', () => {
+  assert.strictEqual(expandSpread({ steps: 8, bd: 3 }), 'bd ~ ~ bd ~ ~ bd ~');
+  assert.strictEqual(expandSpread({ steps: 4, bd: 4, hh: 4 }), '[bd hh] [bd hh] [bd hh] [bd hh]');
+  assert.strictEqual(expandSpread({ steps: 8, oh: [1, 4] }), '~ ~ ~ ~ oh ~ ~ ~');
+});
+check('spread compiles inside a kit track', () => {
+  const tl = parsePlay([{ spread: { steps: 8, bd: 3, hh: [2, 4] } }], { kit: 'standard' });
+  assert.strictEqual(tl.length, 5); // 3 kicks + 2 hats
+  assert.deepStrictEqual(times(tl.filter((e) => e.pitch === 'bd')), [0, 1.5, 3]);
+});
+check('spread works with degrees on melodic tracks', () => {
+  const tl = parsePlay([{ spread: { steps: 8, 1: 3 } }]);
+  assert.deepStrictEqual(midis(tl), [60, 60, 60]);
+  assert.deepStrictEqual(times(tl), [0, 1.5, 3]);
+});
+check('spread validates its shape', () => {
+  assert.throws(() => expandSpread({ steps: 8, bd: 9 }), /can't exceed steps/);
+  assert.throws(() => expandSpread({ steps: 0, bd: 1 }), /steps/);
+  assert.throws(() => expandSpread({ steps: 8 } as never), /at least one layer/);
+});
+check('arp orders chord tones by mode', () => {
+  assert.strictEqual(expandArp({ chord: 'C', steps: 3 }), 'C4 E4 G4');
+  assert.strictEqual(expandArp({ chord: 'Dm7', mode: 'down', steps: 4 }), 'C5 A4 F4 D4');
+  assert.strictEqual(expandArp({ chord: 'C', mode: 'updown', steps: 4 }), 'C4 E4 G4 E4');
+  assert.strictEqual(expandArp({ notes: ['d3', 'f3', 'a3', 'c4'], mode: 'converge', steps: 4 }),
+    'D3 C4 F3 A3');
+});
+check('arp random mode is seeded and deterministic', () => {
+  const one = expandArp({ chord: 'C', mode: 'random', steps: 8, seed: 3 });
+  assert.strictEqual(one, expandArp({ chord: 'C', mode: 'random', steps: 8, seed: 3 }));
+  assert.notStrictEqual(one, expandArp({ chord: 'C', mode: 'random', steps: 8, seed: 4 }));
+});
+check('walk starts at start, stays in span, and is deterministic', () => {
+  const state = { count: 0 };
+  const bar = expandWalk({ steps: 8, start: 1, span: [-3, 10], seed: 5 }, state);
+  const degrees = bar.split(' ').map(Number);
+  assert.strictEqual(degrees.length, 8);
+  assert.strictEqual(degrees[0], 1);
+  assert.ok(degrees.every((d) => d >= -3 && d <= 10));
+  const again = expandWalk({ steps: 8, start: 1, span: [-3, 10], seed: 5 }, { count: 0 });
+  assert.strictEqual(bar, again);
+});
+check('a second walk item continues where the first left off', () => {
+  const state = { count: 0 };
+  const first = expandWalk({ steps: 4, seed: 9 }, state).split(' ').map(Number);
+  const second = expandWalk({ steps: 4, seed: 9 }, state).split(' ').map(Number);
+  const step = Math.abs(second[0] - first[3]);
+  assert.ok(step >= 1 && step <= 2, `continues by one move (moved ${step})`);
+});
+check('alternate cycles per pass inside a repeat', () => {
+  const tl = parsePlay([{ '4x': [{ alternate: ['c', 'd'] }] }]);
+  assert.deepStrictEqual(midis(tl), [60, 62, 60, 62]);
+  assert.deepStrictEqual(times(tl), [0, 4, 8, 12]);
+});
+check('alternate outside a repeat plays its first entry', () => {
+  assert.deepStrictEqual(midis(parsePlay([{ alternate: ['e', 'g'] }])), [64]);
+});
+check('alternate entries may be generator items', () => {
+  const tl = parsePlay(
+    [{ '2x': [{ alternate: [{ spread: { steps: 4, bd: 1 } }, 'sd sd sd sd'] }] }],
+    { kit: 'standard' },
+  );
+  assert.strictEqual(tl.filter((e) => e.pitch === 'bd').length, 1);
+  assert.strictEqual(tl.filter((e) => e.pitch === 'sd').length, 4);
+});
+check('alternate rejects directive entries', () => {
+  assert.throws(() => parsePlay([{ alternate: [{ set: 'legato' }] }] as never), /measure strings or generator/);
+});
+
+console.log('\nchance / humanize / seed:');
+check('hash01 is deterministic and uniform-ish', () => {
+  assert.strictEqual(hash01(1, 2, 3), hash01(1, 2, 3));
+  assert.notStrictEqual(hash01(1, 2, 3), hash01(2, 2, 3));
+  const vals = Array.from({ length: 100 }, (_, i) => hash01(7, i));
+  assert.ok(vals.every((v) => v >= 0 && v < 1));
+  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+  assert.ok(mean > 0.35 && mean < 0.65, `mean ${mean}`);
+});
+check('chance 0 silences, chance 1 (and off) changes nothing', () => {
+  const base = parsePlay(['c d e f']);
+  assert.strictEqual(parsePlay(['c d e f'], { chance: 0 }).length, 0);
+  assert.deepStrictEqual(parsePlay(['c d e f'], { chance: 1 }), base);
+});
+check('chance is deterministic per seed and varies across seeds', () => {
+  const props = { chance: 0.5, kit: 'standard' };
+  const bars = ['hh hh hh hh hh hh hh hh', 'hh hh hh hh hh hh hh hh', 'hh hh hh hh hh hh hh hh', 'hh hh hh hh hh hh hh hh'];
+  const a = parsePlay(bars, { ...props, seed: 1 });
+  const b = parsePlay(bars, { ...props, seed: 1 });
+  const c = parsePlay(bars, { ...props, seed: 2 });
+  assert.deepStrictEqual(a, b);
+  assert.ok(a.length > 0 && a.length < 32, `dropped some of 32 hats (kept ${a.length})`);
+  assert.notDeepStrictEqual(times(a), times(c));
+});
+check('a dropped note keeps its slot — later notes never shift', () => {
+  const full = parsePlay(['c d e f']);
+  const thinned = parsePlay(['c d e f'], { chance: 0.5, seed: 3 });
+  for (const e of thinned) {
+    assert.ok(times(full).includes(e.time), `kept note at ${e.time} sits on the grid`);
+  }
+});
+check('chance switches mid-measure with ||chance …||', () => {
+  const tl = parsePlay(['||chance 0|| c d ||chance off|| e f']);
+  assert.deepStrictEqual(midis(tl), [64, 65]);
+  assert.deepStrictEqual(times(tl), [2, 3]);
+});
+check('humanize jitters within its bounds, deterministically', () => {
+  const base = parsePlay(['c d e f']);
+  const loose = parsePlay(['c d e f'], { humanize: 1, seed: 5 });
+  assert.strictEqual(loose.length, base.length);
+  assert.ok(loose.some((e, i) => e.time !== base[i].time), 'timing moved');
+  loose.forEach((e, i) => {
+    assert.ok(Math.abs(e.time - base[i].time) <= 0.03 + 1e-9, `time within ±0.03 (${e.time})`);
+    assert.ok(Math.abs(e.velocity - base[i].velocity) <= 10, `velocity within ±10 (${e.velocity})`);
+  });
+  assert.deepStrictEqual(loose, parsePlay(['c d e f'], { humanize: 1, seed: 5 }));
+});
+check('humanize accepts explicit time/velocity and off', () => {
+  const only = parsePlay(['c d'], { humanize: { velocity: 5 }, seed: 2 });
+  assert.deepStrictEqual(times(only), [0, 2]); // time untouched
+  const off = parsePlayFull(['humanize off', 'c d'], { humanize: 1, seed: 2 }).timeline;
+  assert.deepStrictEqual(times(off), [0, 2]);
+});
+check('set clauses: chance, seed, humanize', () => {
+  assert.strictEqual(parseSet('chance 0.6').chance, 0.6);
+  assert.strictEqual(parseSet('chance off').chance, 1);
+  assert.strictEqual(parseSet('seed 42').seed, 42);
+  assert.deepStrictEqual(parseSet('humanize 0.5').humanize, { time: 0.015, velocity: 5 });
+  assert.strictEqual(parseSet('humanize off').humanize, null);
+  assert.throws(() => parseSet('chance 2'), /probability/);
+});
+check('seed/chance/humanize inherit and compile through a document', () => {
+  const song = compileDoc({
+    seed: 7,
+    chance: 0.5,
+    tracks: { keys: { play: ['c d e f g a b c^', 'c d e f g a b c^'] } },
+  });
+  const notes = song.tracks[0].timeline.length;
+  assert.ok(notes > 0 && notes < 16, `inherited chance thinned the line (kept ${notes})`);
+});
+check('alternate varies passes of a loop: N section', () => {
+  const song = compileDoc({
+    tracks: { keys: {} },
+    sections: {
+      groove: {
+        loop: 2,
+        keys: { play: [{ alternate: ['c c c c', 'd d d d'] }] },
+      },
+    },
+  });
+  const tl = song.tracks[0].timeline;
+  assert.deepStrictEqual(midis(tl), [60, 60, 60, 60, 62, 62, 62, 62]);
 });
 
 console.log('\nexamples (golden):');
