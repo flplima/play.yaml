@@ -1,6 +1,6 @@
 import * as Tone from 'tone';
 import type { CompiledSong } from '@play.yaml/core';
-import { detectPreset, metronomeClick, playDrum, playNote } from '@play.yaml/core';
+import { detectPreset, metronomeClick, panicMessages, playDrum, playNote } from '@play.yaml/core';
 import {
   createTrackBus, DRUM_LIBRARY, loadInstrument, Sampler, SAMPLE_LIBRARIES, TrackBus,
 } from './sampler';
@@ -25,6 +25,8 @@ export interface PlaybackHandle {
   done: Promise<void>;
   /** Current transport position in beats (quarter notes). */
   getPositionBeats: () => number;
+  /** Set master volume (0.0 to 1.0). */
+  setVolume: (volume: number) => void;
   /**
    * Hot-swap: splice a recompiled song in at an upcoming bar boundary while
    * the transport keeps running. Resolves with the 1-based bar the splice
@@ -61,10 +63,12 @@ function allNotesOff(output: MIDIOutput) {
   } catch {
     // Ignore.
   }
-  for (let ch = 0; ch < 16; ch++) {
+  // Pedals first, then the blanket kills: All Notes Off leaves damper-held
+  // notes sounding, so a score holding the sustain pedal rang on after Stop.
+  // See core's midiPanic for the order.
+  for (const msg of panicMessages()) {
     try {
-      output.send([CC | ch, 123, 0]); // All Notes Off
-      output.send([CC | ch, 120, 0]); // All Sound Off
+      output.send([CC | msg.channel, msg.controller, msg.value]);
     } catch {
       // Ignore — the device may have been unplugged mid-playback.
     }
@@ -97,6 +101,7 @@ export async function playSong(
   midiOutputs: Map<string, MIDIOutput>,
   opts: {
     loop?: boolean;
+    volume?: number;
     /** Live switch, checked on every beat, so it can be toggled mid-playback. */
     metronome?: () => boolean;
   } = {},
@@ -117,6 +122,8 @@ export async function playSong(
   // Per-playback master gain: lets stop() cut ringing synth tails instantly
   // without touching Tone's shared context.
   const masterGain = ctx.createGain();
+  const initialVol = opts.volume != null ? Math.max(0, Math.min(1, opts.volume)) : 1.0;
+  masterGain.gain.setValueAtTime(initialVol, ctx.currentTime);
   masterGain.connect(ctx.destination);
 
   const usedOutputs = new Set<MIDIOutput>();
@@ -537,6 +544,10 @@ export async function playSong(
     stop: cleanup,
     done,
     getPositionBeats: () => (stopped ? 0 : transport.ticks / ppq),
+    setVolume: (v: number) => {
+      const vol = Math.max(0, Math.min(1, v));
+      masterGain.gain.setValueAtTime(vol, ctx.currentTime);
+    },
     update,
   };
 }
