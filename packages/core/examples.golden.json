@@ -179,24 +179,6 @@
     "lengthBeats": 48,
     "sha256": "50b214b52b0a7b96831604c3aad47c9c3534bb05bbcb2276b8773af90f0fe1dd"
   },
-  "songs/debussy-clair-de-lune/debussy-clair-de-lune.play.yaml": {
-    "tracks": 3,
-    "notes": 156,
-    "lengthBeats": 63,
-    "sha256": "f2e78fd2daa59cf4ecef8f3f10e2a29d5cdf2327c818448122e401042f4bcdd5"
-  },
-  "songs/debussy-estampes-pagodes/debussy-estampes-pagodes.play.yaml": {
-    "tracks": 4,
-    "notes": 182,
-    "lengthBeats": 32,
-    "sha256": "92936cc5e63499620c8b7a9209b2800221e3f3c24c64d2c6b5437ae1c638afee"
-  },
-  "songs/mozart-requiem-lacrimosa/mozart-requiem-lacrimosa.play.yaml": {
-    "tracks": 7,
-    "notes": 135,
-    "lengthBeats": 30,
-    "sha256": "40f635885e8ec5e1ef6cbea4fc92ca4d83e1a61505f7df717a33286169526a08"
-  },
   "songs/ct-corridors-of-time/ct-corridors-of-time.play.yaml": {
     "tracks": 7,
     "notes": 1329,
@@ -226,6 +208,18 @@
     "notes": 569,
     "lengthBeats": 128,
     "sha256": "14433f15f160e42a91cd17a42af4454b6404182ceb6e49a7595bd15e4ff1d40f"
+  },
+  "songs/debussy-clair-de-lune/debussy-clair-de-lune.play.yaml": {
+    "tracks": 3,
+    "notes": 156,
+    "lengthBeats": 63,
+    "sha256": "f2e78fd2daa59cf4ecef8f3f10e2a29d5cdf2327c818448122e401042f4bcdd5"
+  },
+  "songs/debussy-estampes-pagodes/debussy-estampes-pagodes.play.yaml": {
+    "tracks": 4,
+    "notes": 182,
+    "lengthBeats": 32,
+    "sha256": "92936cc5e63499620c8b7a9209b2800221e3f3c24c64d2c6b5437ae1c638afee"
   },
   "songs/dkc-aquatic-ambiance/dkc-aquatic-ambiance.play.yaml": {
     "tracks": 7,
@@ -257,6 +251,12 @@
     "lengthBeats": 129,
     "sha256": "28b35bdb00bfeb7cfb6cd7aa5a433d662f3fa82062a1dd8581b39687eebcdd80"
   },
+  "songs/mozart-requiem-lacrimosa/mozart-requiem-lacrimosa.play.yaml": {
+    "tracks": 7,
+    "notes": 135,
+    "lengthBeats": 30,
+    "sha256": "40f635885e8ec5e1ef6cbea4fc92ca4d83e1a61505f7df717a33286169526a08"
+  },
   "songs/smw-athletic/smw-athletic.play.yaml": {
     "tracks": 5,
     "notes": 838,
@@ -284,8 +284,8 @@
   "songs/smw-swimming/smw-swimming.play.yaml": {
     "tracks": 6,
     "notes": 786,
-    "lengthBeats": 102,
-    "sha256": "3b0372d873fcb81f097d285cfe1586cfbd26efbad42e101364d2618d7eb88dc3"
+    "lengthBeats": 111,
+    "sha256": "2afe4ebecea4727d6faa0252390b1c13b8b92f7cb7e7a10abaf88f22d423ed46"
   },
   "songs/tema-para-ana/tema-para-ana.play.yaml": {
     "tracks": 3,
