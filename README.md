@@ -487,6 +487,54 @@ play:
   - 3: *theme      # the repeat: same measure, played again
 ```
 
+### Generators (algorithmic variation)
+
+Generators are named play-list items that expand into ordinary measure
+strings at compile time — data, not operators, and fully deterministic: the
+same file always compiles to the same MIDI. Change `seed:` to browse
+variations. (Design and rationale: [docs/generative-design.md](docs/generative-design.md);
+full tour: [examples/generative-lab.play.yaml](examples/generative-lab.play.yaml).)
+
+```yaml
+seed: 11                 # drives every stochastic feature (default 1)
+
+tracks:
+  drums:
+    kit: acoustic
+    play:
+      - spread:                    # euclidean rhythm: layers over a step grid
+          steps: 16
+          bd: 5                    # 5 kicks spread evenly over 16 steps
+          hh: [13, 2]              # [pulses, rotate]
+      - 4x:
+          - alternate:             # a different bar on each pass, cycling
+              - "hh hh hh hh hh hh hh hh"
+              - "hh hh hh hh hh hh {hh hh hh} sd<"
+  keys:
+    humanize: 0.4                  # seeded timing/velocity looseness
+    play:
+      - arp: {chord: Dm7, mode: updown, steps: 8}   # chord tones over the bar
+  lead:
+    set: chance 0.9                # each note sounds with probability 0.9
+    play:
+      - walk: {steps: 8, start: 1, span: [-2, 9]}   # drunk walk on the scale
+```
+
+- `spread:` — Bjorklund/Toussaint euclidean rhythms; every key but `steps` is
+  a token (drum, note or degree) with `pulses` or `[pulses, rotate]`; layers
+  landing together merge into chords. Works on melodic tracks too.
+- `alternate:` — per-pass variation inside `Nx:` repeats and `loop: N`
+  sections (a forever-looping tail plays one fixed body).
+- `arp:` — `chord:` (via chord-scales: `Dm7` → D dorian tones) or explicit
+  `notes:`; modes `up down updown downup converge diverge random`.
+- `walk:` — seeded walk over the current scale in degrees, so `scale:` and
+  inline `==chords==` re-key it; later `walk:` items continue the line.
+- `chance` / `humanize` / `seed` — track props, `set` clauses and inline
+  `||chance 0.5||` fences all work; dropped notes keep their time slot.
+
+Generated bars don't highlight in the studio editor (there's no source text
+to point at) — everything else about them behaves like hand-written measures.
+
 ## Example Songs
 
 You can find several complete multi-track songs in the [examples/](file:///Users/felipe/projects/oss/play.yaml/examples/) directory:

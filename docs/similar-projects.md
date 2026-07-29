@@ -124,13 +124,20 @@ production; beats had YAML sections but only drums.
    CompressionStream, no Strudel code).*
 3. **Euclidean rhythms** (Tidal/Strudel `bd(3,8)`): one token suffix that
    drummers and live-coders both expect; expands in `placeToken` like our
-   roll suffix does.
+   roll suffix does. *Shipped 2026-07-28 as the `spread:` play item — a YAML
+   directive rather than an in-string call, per
+   [syntax-differentiation.md](syntax-differentiation.md); see
+   [generative-design.md](generative-design.md).*
 4. **Per-pass alternation** (Strudel `<a b>`): a token or `Nx`-style item
    that plays alternatives on successive loop passes — composes naturally
-   with our section loops (vary the vamp every cycle).
+   with our section loops (vary the vamp every cycle). *Shipped 2026-07-28
+   as the `alternate:` play item (with `arp:`, `walk:`, `chance`, `seed` in
+   the same release — [generative-design.md](generative-design.md)).*
 5. **Humanize/quantize control** (Alda `quant`, per-note timing feel): a
    `humanize:` prop (timing/velocity jitter, swing amount) would soften the
-   grid — our drum groove currently plays machine-exact.
+   grid — our drum groove currently plays machine-exact. *Shipped 2026-07-28
+   (`humanize:` prop/clause, seeded and compile-time; swing stays notated as
+   triplet groups).*
 6. **Score preview** (abcjs): render the compiled timeline as simple SVG
    notation (or export ABC/LilyPond for engraving) with abcjs's
    score-following cursor idea. We already have token highlighting; engraved

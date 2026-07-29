@@ -50,6 +50,12 @@ export interface SetPatch {
   /** Control drifts: reach `to` over `overMeasures`, from wherever the
    *  control last sat ("sul ponticello over 6", "bow to 110 over 4"). */
   ccRamps?: { cc: number; to: number; overMeasures: number }[];
+  /** Seed for chance/humanize and seeded generators ("seed 42"). */
+  seed?: number;
+  /** Probability each struck note sounds, 0..1 ("chance 0.6", "chance off"). */
+  chance?: number;
+  /** Seeded timing/velocity jitter ("humanize 0.5"); null = off. */
+  humanize?: { time: number; velocity: number } | null;
 }
 
 const NUM = String.raw`-?\d+(?:\.\d+)?`;
@@ -307,6 +313,38 @@ export function parseSet(
     const vel = new RegExp(`^velocity\\s+(${NUM})$`, 'i').exec(clause);
     if (vel) {
       patch.velocity = Number(vel[1]);
+      continue;
+    }
+
+    // Generative state (docs/generative-design.md): "chance 0.6" ghosts
+    // notes, "seed 42" re-rolls every stochastic feature, "humanize 0.5"
+    // loosens timing and velocity. All deterministic per (seed, position).
+    const chance = new RegExp(`^chance\\s+(off|${NUM})$`, 'i').exec(clause);
+    if (chance) {
+      const value = chance[1].toLowerCase() === 'off' ? 1 : Number(chance[1]);
+      if (value < 0 || value > 1) {
+        throw new Error(`"${clause}" — chance is a probability from 0 to 1 (or "off").`);
+      }
+      patch.chance = value;
+      continue;
+    }
+
+    const seed = /^seed\s+(-?\d+)$/i.exec(clause);
+    if (seed) {
+      patch.seed = parseInt(seed[1], 10);
+      continue;
+    }
+
+    const humanize = new RegExp(`^humanize\\s+(off|${NUM})$`, 'i').exec(clause);
+    if (humanize) {
+      if (humanize[1].toLowerCase() === 'off') {
+        patch.humanize = null;
+      } else {
+        const amount = Number(humanize[1]);
+        if (amount < 0) throw new Error(`"${clause}" — humanize is an intensity from 0 up (0.5 is subtle).`);
+        // Intensity 1 ≈ ±0.03 beats, ±10 velocity — mirrors normalizeHumanize.
+        patch.humanize = amount > 0 ? { time: 0.03 * amount, velocity: 10 * amount } : null;
+      }
       continue;
     }
 

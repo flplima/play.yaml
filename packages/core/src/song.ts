@@ -18,6 +18,10 @@ import { SetPatch, parseSet } from './set';
 import {
   HOLD, isDirectiveString, isScaleToken, isSetToken, setTokenBody, splitTopLevel, tokenWeight,
 } from './tokens';
+import {
+  ArpSpec, DEFAULT_SEED, HumanizeSpec, SpreadSpec, WalkSpec, WalkState,
+  expandArp, expandSpread, expandWalk, hash01, normalizeHumanize,
+} from './generate';
 
 export interface TimelineEvent {
   time: number; // in quarter-note beats
@@ -97,6 +101,24 @@ export interface TrackProps {
    * form ("pedale sincopato", "pedal per bar") sets this from `set:`.
    */
   pedal?: PedalPattern | null;
+  /**
+   * Seed for every stochastic feature (`chance`, `humanize`, seeded
+   * generators). The same file always compiles to the same MIDI; change the
+   * seed to browse variations. Default 1.
+   */
+  seed?: number;
+  /**
+   * Probability (0..1) that each struck note actually sounds. Dropped notes
+   * stay silent but keep their time slot, so the groove never shifts.
+   * Deterministic per (seed, time, pitch). Default 1 — everything plays.
+   */
+  chance?: number;
+  /**
+   * Seeded timing/velocity jitter, applied at compile time: an intensity
+   * 0..1 (1 ≈ ±0.03 beats, ±10 velocity) or explicit
+   * `{time: beats, velocity: steps}`.
+   */
+  humanize?: number | { time?: number; velocity?: number };
 }
 
 /** A control-change emitted at a point in the timeline. */
@@ -121,11 +143,40 @@ export interface TempoEvent {
  * measures can be labeled explicitly and gaps become silence.
  */
 export type PlayDirective = Pick<
-  TrackProps, 'scale' | 'octave' | 'velocity' | 'gate' | 'rubato' | 'tempo' | 'measure' | 'strum' | 'voices'
+  TrackProps,
+  'scale' | 'octave' | 'velocity' | 'gate' | 'rubato' | 'tempo' | 'measure' | 'strum' | 'voices'
+  | 'seed' | 'chance' | 'humanize'
 > & {
   set?: string | string[];
   [measure: number]: string | undefined;
 };
+
+/**
+ * A generator item inside a `play` list — expands to one ordinary measure
+ * string before compilation (docs/generative-design.md):
+ *
+ *   - spread: {steps: 16, bd: 5, hh: [13, 2]}   # euclidean rhythm layers
+ *   - arp: {chord: Dm7, mode: updown, steps: 8} # chord tones over the bar
+ *   - walk: {steps: 8, start: 1}                # seeded walk over the scale
+ */
+export interface PlayGenerator {
+  spread?: SpreadSpec;
+  arp?: ArpSpec;
+  walk?: WalkSpec;
+}
+
+/**
+ * Per-pass variation inside an `Nx:` repeat (or a `loop: N` section): each
+ * pass plays the next entry, cycling. Entries are measure strings or
+ * generator items — one bar each.
+ *
+ *   - 4x:
+ *       - "bd ~ sd ~"
+ *       - alternate: ["hh hh hh hh", "hh hh {hh hh hh}"]
+ */
+export interface PlayAlternate {
+  alternate: (string | PlayGenerator)[];
+}
 
 /**
  * An inline repeat inside a `play` list — sugar that expands before
@@ -140,7 +191,8 @@ export interface PlayRepeat {
   [times: `${number}x`]: PlayInput | undefined;
 }
 
-export type PlayInput = string | (string | PlayDirective | PlayRepeat)[];
+export type PlayInput =
+  string | (string | PlayDirective | PlayRepeat | PlayGenerator | PlayAlternate)[];
 
 export interface TrackNode extends TrackProps {
   title?: string; // meaningful at the root
@@ -156,7 +208,9 @@ export interface TrackNode extends TrackProps {
  * for this section's span.
  */
 export interface SectionTrack extends Pick<
-  TrackProps, 'scale' | 'octave' | 'velocity' | 'gate' | 'rubato' | 'tempo' | 'measure' | 'strum' | 'voices'
+  TrackProps,
+  'scale' | 'octave' | 'velocity' | 'gate' | 'rubato' | 'tempo' | 'measure' | 'strum' | 'voices'
+  | 'seed' | 'chance' | 'humanize'
 > {
   /** Measures to rest before entering the section. Applies once, never on loops. */
   wait?: number;
@@ -257,6 +311,29 @@ interface EmitCtx {
   warnings?: string[];
   /** 1-based measure being compiled, so a warning can name it. */
   measureNumber?: number;
+  /** Seed for chance/humanize — same seed, same compiled song. */
+  seed: number;
+  /** Probability each struck note sounds (1 = always). */
+  chance: number;
+  /** Seeded timing/velocity jitter; unset = play exactly as written. */
+  humanize?: HumanizeSpec;
+}
+
+/** Should this note be dropped by the running `chance`? Deterministic. */
+function dropByChance(ctx: EmitCtx, start: number, midi: number): boolean {
+  if (ctx.chance >= 1) return false;
+  return hash01(ctx.seed, Math.round(start * 1e6), midi, 15485863) >= ctx.chance;
+}
+
+/** Seeded humanize offsets for a note (zero when humanize is off). */
+function humanizeOffsets(ctx: EmitCtx, start: number, midi: number): { dt: number; dv: number } {
+  const h = ctx.humanize;
+  if (!h || (h.time === 0 && h.velocity === 0)) return { dt: 0, dv: 0 };
+  const t6 = Math.round(start * 1e6);
+  return {
+    dt: (hash01(ctx.seed, t6, midi, 7919) * 2 - 1) * h.time,
+    dv: (hash01(ctx.seed, t6, midi, 104729) * 2 - 1) * h.velocity,
+  };
 }
 
 /**
@@ -420,6 +497,11 @@ function placeToken(token: string, start: number, span: number, ctx: EmitCtx, bo
       noteUnknownToken(ctx, token, 'drum');
       return; // unknown token → rest, same policy as pitches
     }
+    // A `chance`-dropped hit stays silent but keeps its slot.
+    if (dropByChance(ctx, start, spec.note)) {
+      ctx.held = null;
+      return;
+    }
     const pitch = drumName(spec.note) ?? String(spec.note);
     const baseVelocity = clampVelocity(velocityAt(ctx, start) + boost);
     if (strumMarks > 0) {
@@ -430,22 +512,25 @@ function placeToken(token: string, start: number, span: number, ctx: EmitCtx, bo
       const hits = Math.max(2, Math.round(span / step));
       for (let i = 0; i < hits; i++) {
         const t = hits > 1 ? i / (hits - 1) : 1;
+        const at = start + (i * span) / hits;
+        const h = humanizeOffsets(ctx, at, spec.note);
         ctx.events.push({
-          time: round(start + (i * span) / hits),
+          time: round(Math.max(0, at + h.dt)),
           pitch,
           duration: round((span / hits) * 0.9),
-          velocity: clampVelocity(baseVelocity * (0.6 + 0.4 * t)),
+          velocity: clampVelocity(baseVelocity * (0.6 + 0.4 * t) + h.dv),
           midi: spec.note,
         });
       }
       ctx.held = { events: [ctx.events[ctx.events.length - 1]], span: span / hits };
       return;
     }
+    const h = humanizeOffsets(ctx, start, spec.note);
     const event: TimelineEvent = {
-      time: round(start),
+      time: round(Math.max(0, start + h.dt)),
       pitch,
       duration: round(span * ctx.gate),
-      velocity: baseVelocity,
+      velocity: clampVelocity(baseVelocity + h.dv),
       midi: spec.note,
     };
     ctx.events.push(event);
@@ -467,11 +552,17 @@ function placeToken(token: string, start: number, span: number, ctx: EmitCtx, bo
     noteUnknownToken(ctx, token);
     return; // unknown token → treat as a rest, stay robust
   }
+  // A `chance`-dropped note stays silent but keeps its slot.
+  if (dropByChance(ctx, start, midi)) {
+    ctx.held = null;
+    return;
+  }
+  const h = humanizeOffsets(ctx, start, midi);
   const event: TimelineEvent = {
-    time: round(start),
+    time: round(Math.max(0, start + h.dt)),
     pitch: midiToName(midi),
     duration: round(span * ctx.gate),
-    velocity: clampVelocity(velocityAt(ctx, start) + boost),
+    velocity: clampVelocity(velocityAt(ctx, start) + boost + h.dv),
     midi,
   };
   ctx.events.push(event);
@@ -484,13 +575,43 @@ function placeToken(token: string, start: number, span: number, ctx: EmitCtx, bo
 
 const REPEAT_KEY = /^(\d+)x$/;
 
+const GENERATOR_KEYS = ['spread', 'arp', 'walk'] as const;
+
+/** Expansion state shared across the items of one play list. */
+interface GenState {
+  walk: WalkState;
+}
+
+/** Expand one generator item to its measure string. */
+function expandGenerator(item: PlayGenerator, gen: GenState): string {
+  const keys = Object.keys(item);
+  const kind = keys.find((k) => (GENERATOR_KEYS as readonly string[]).includes(k))!;
+  if (keys.length > 1) {
+    throw new Error(`A "${kind}:" generator item can't mix with "${keys.find((k) => k !== kind)}" — put other keys in their own list item.`);
+  }
+  const spec = (item as Record<string, unknown>)[kind];
+  if (spec == null || typeof spec !== 'object') {
+    throw new Error(`"${kind}:" needs a mapping with its parameters — see docs/generative-design.md.`);
+  }
+  if (kind === 'spread') return expandSpread(spec as SpreadSpec);
+  if (kind === 'arp') return expandArp(spec as ArpSpec);
+  return expandWalk(spec as WalkSpec, gen.walk);
+}
+
 /**
  * Flatten a `play` value into its items, expanding inline `Nx:` repeats
- * (recursively — repeats may nest). Every consumer of a play list goes
- * through here, so repeats work identically for compiling, measure counting,
- * sections and editor highlighting.
+ * (recursively — repeats may nest), generator items (`spread:`, `arp:`,
+ * `walk:` → ordinary measure strings) and `alternate:` picks. Every consumer
+ * of a play list goes through here, so all of these work identically for
+ * compiling, measure counting, sections and editor highlighting.
+ *
+ * `pass` is which pass of an enclosing repeat (or `loop: N` section) is
+ * being expanded — it drives `alternate:`; nested repeats compose
+ * lexicographically. Expansion is deterministic, so repeated walks over the
+ * same list always agree.
  */
-function playItems(play: PlayInput): (string | PlayDirective)[] {
+function playItems(play: PlayInput, pass = 0, gen?: GenState): (string | PlayDirective)[] {
+  gen ??= { walk: { count: 0 } };
   const raw = Array.isArray(play) ? play : String(play).split('\n');
   const out: (string | PlayDirective)[] = [];
   for (const item of raw) {
@@ -503,16 +624,44 @@ function playItems(play: PlayInput): (string | PlayDirective)[] {
         if (content == null) {
           throw new Error(`"${key}:" needs the measures to repeat as its value.`);
         }
-        const inner = playItems(content as PlayInput);
-        for (const entry of inner) {
-          if (entry && typeof entry === 'object' && Object.keys(entry).some((k) => /^\d+$/.test(k))) {
-            throw new Error(
-              `Numbered measures can't sit inside a "${key}:" repeat — a repeat has no fixed bar to anchor them to.`,
-            );
+        const times = parseInt(match[1], 10);
+        for (let p = 0; p < times; p++) {
+          const inner = playItems(content as PlayInput, pass * times + p, gen);
+          for (const entry of inner) {
+            if (entry && typeof entry === 'object' && Object.keys(entry).some((k) => /^\d+$/.test(k))) {
+              throw new Error(
+                `Numbered measures can't sit inside a "${key}:" repeat — a repeat has no fixed bar to anchor them to.`,
+              );
+            }
           }
+          out.push(...inner);
         }
-        for (let pass = 0; pass < parseInt(match[1], 10); pass++) out.push(...inner);
       }
+      continue;
+    }
+    if (item && typeof item === 'object' && 'alternate' in item) {
+      const keys = Object.keys(item);
+      if (keys.length > 1) {
+        throw new Error(`An "alternate:" item can't mix with "${keys.find((k) => k !== 'alternate')}" — put other keys in their own list item.`);
+      }
+      const entries = (item as PlayAlternate).alternate;
+      if (!Array.isArray(entries) || entries.length === 0) {
+        throw new Error('"alternate:" needs a list of measures to cycle through, one per pass.');
+      }
+      const chosen = entries[((pass % entries.length) + entries.length) % entries.length];
+      if (typeof chosen === 'string') {
+        out.push(chosen);
+      } else if (chosen && typeof chosen === 'object' &&
+        Object.keys(chosen).some((k) => (GENERATOR_KEYS as readonly string[]).includes(k))) {
+        out.push(expandGenerator(chosen, gen));
+      } else {
+        throw new Error('"alternate:" entries must be measure strings or generator items (spread/arp/walk) — one bar each.');
+      }
+      continue;
+    }
+    if (item && typeof item === 'object' &&
+      Object.keys(item).some((k) => (GENERATOR_KEYS as readonly string[]).includes(k))) {
+      out.push(expandGenerator(item as PlayGenerator, gen));
       continue;
     }
     out.push(item as string | PlayDirective);
@@ -599,6 +748,9 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
     strumTail: props.strumTail,
     rubato: props.rubato ?? worded.rubato ?? 0,
     warnings: [],
+    seed: props.seed ?? DEFAULT_SEED,
+    chance: Math.max(0, Math.min(1, props.chance ?? 1)),
+    humanize: normalizeHumanize(props.humanize),
   };
   const controls: ControlEvent[] = [];
   const tempos: TempoEvent[] = [];
@@ -713,6 +865,9 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
     if (patch.voices !== undefined) ctx.voices = patch.voices;
     if (patch.strumTail !== undefined) ctx.strumTail = patch.strumTail;
     if (patch.rubato !== undefined) ctx.rubato = patch.rubato;
+    if (patch.seed !== undefined) ctx.seed = patch.seed;
+    if (patch.chance !== undefined) ctx.chance = Math.max(0, Math.min(1, patch.chance));
+    if (patch.humanize !== undefined) ctx.humanize = patch.humanize ?? undefined;
 
     if (patch.aTempo) setTempo(baseTempo, 0, at);
     if (patch.tempo) {
@@ -829,6 +984,9 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
         strum: item.strum,
         voices: item.voices,
         measure: item.measure,
+        seed: item.seed,
+        chance: item.chance,
+        humanize: item.humanize !== undefined ? normalizeHumanize(item.humanize) ?? null : undefined,
         tempo: item.tempo !== undefined ? { bpm: item.tempo, overMeasures: 0 } : undefined,
       }, beat);
       if (item.set !== undefined) applySet(item.set, beat);
@@ -878,6 +1036,7 @@ const SECTION_KEYS = new Set(['loop', 'wait']);
 /** Section-track props that compile into play directives. */
 const SECTION_DIRECTIVE_PROPS = [
   'scale', 'octave', 'velocity', 'gate', 'rubato', 'tempo', 'measure', 'strum', 'voices',
+  'seed', 'chance', 'humanize',
 ] as const;
 
 const SECTION_TRACK_KEYS = new Set(['wait', 'set', 'play', ...SECTION_DIRECTIVE_PROPS]);
@@ -954,7 +1113,7 @@ export function expandSections(doc: SongDoc): { doc: SongDoc; loopStartBar: numb
       });
 
   /** Write one pass of a section into every participating track's list. */
-  const emit = (name: string, section: SectionNode, withWaits: boolean) => {
+  const emit = (name: string, section: SectionNode, withWaits: boolean, pass = 0) => {
     const sectionWait = withWaits ? Math.max(0, section.wait ?? 0) : 0;
     const tracks = sectionTracks(name, section);
     let length = 0;
@@ -976,7 +1135,7 @@ export function expandSections(doc: SongDoc): { doc: SongDoc; loopStartBar: numb
       if (Object.keys(overrides).length) list.push(overrides);
 
       let rel = 0; // section-relative bar of the next plain measure string
-      for (const item of playItems(node.play ?? [])) {
+      for (const item of playItems(node.play ?? [], pass)) {
         if (item && typeof item === 'object') {
           const rekeyed: PlayDirective = {};
           for (const [key, value] of Object.entries(item)) {
@@ -1017,7 +1176,7 @@ export function expandSections(doc: SongDoc): { doc: SongDoc; loopStartBar: numb
       );
     }
     const times = loop === false ? 1 : Math.max(0, Math.floor(loop));
-    for (let pass = 0; pass < times; pass++) emit(name, section, pass === 0);
+    for (let pass = 0; pass < times; pass++) emit(name, section, pass === 0, pass);
   }
   if (cycle.length) {
     // Waits inside the looping tail play once: compile a waited pass before
@@ -1027,7 +1186,7 @@ export function expandSections(doc: SongDoc): { doc: SongDoc; loopStartBar: numb
       sectionTracks(name, section).some(([, node]) => (node.wait ?? 0) > 0));
     if (hasWaits) for (const [name, section] of cycle) emit(name, section, true);
     loopStartBar = cursor;
-    for (const [name, section] of cycle) emit(name, section, !hasWaits);
+    for (const [name, section] of cycle) emit(name, section, !hasWaits, hasWaits ? 1 : 0);
   }
 
   const baseTracks = doc.tracks ?? {};
@@ -1046,7 +1205,7 @@ export function expandSections(doc: SongDoc): { doc: SongDoc; loopStartBar: numb
 const INHERITED: (keyof TrackProps)[] = [
   'tempo', 'measure', 'sample', 'scale', 'octave', 'channel', 'program', 'velocity',
   'gate', 'rubato', 'dynamic', 'articulation', 'controls', 'strum', 'voices', 'strumTail', 'kit',
-  'pedal',
+  'pedal', 'seed', 'chance', 'humanize',
 ];
 
 function effectiveProps(node: TrackNode, inherited: TrackProps): TrackProps {
@@ -1066,6 +1225,9 @@ function effectiveProps(node: TrackNode, inherited: TrackProps): TrackProps {
     if (patch.strumTail !== undefined) props.strumTail = patch.strumTail;
     if (patch.rubato !== undefined) props.rubato = patch.rubato;
     if (patch.pedal !== undefined) props.pedal = patch.pedal;
+    if (patch.seed !== undefined) props.seed = patch.seed;
+    if (patch.chance !== undefined) props.chance = patch.chance;
+    if (patch.humanize !== undefined) props.humanize = patch.humanize ?? undefined;
     // Any control changes it declares are emitted at the start of the track,
     // in compileDoc — see the `set` handling in walk().
   }
