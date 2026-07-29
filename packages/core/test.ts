@@ -10,7 +10,9 @@ import {
 import { encodeMidi } from './src/exporter';
 import { decodeMidi, compareMidi } from './src/fidelity';
 import { parseYaml } from './src/yaml';
-import { tempoSegments, beatsToSeconds } from './src/time';
+import { tempoSegments, beatsToSeconds, secondsToBeats, TempoSegment } from './src/time';
+import { panicMessages } from './src/midiPanic';
+import { controlValue } from './src/vocabulary';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -108,6 +110,93 @@ check('a full measure of beat groups: {g2 d3 b3 a3} {b3 d3 b3 d3} …', () => {
 });
 check('unknown tokens fall back to rests', () => {
   assert.strictEqual(parsePlay('c xyz9 e ~').length, 2);
+});
+check('an unreadable token is reported, not just silenced', () => {
+  // The whole point: a mistyped mark ("sostenuto" before it was vocabulary)
+  // used to swallow a bar with nothing to point at.
+  const song = compileDoc({ play: ['c ~ ~ ~', 'ritardadno', 'c ~ ~ ~'] });
+  assert.strictEqual(song.warnings.length, 1);
+  assert.match(song.warnings[0], /bar 2/);
+  assert.match(song.warnings[0], /ritardadno/);
+  // …and it still plays, so a half-written score is not blocked.
+  assert.strictEqual(song.tracks[0].timeline.length, 2);
+});
+check('a panic lifts the pedals before it kills the notes', () => {
+  // Regression: Stop sent only All Notes Off + All Sound Off, and the MIDI
+  // spec has All Notes Off leave damper-pedalled notes ringing — so a score
+  // holding the sustain pedal kept sounding after Stop.
+  const ch0 = panicMessages([0]);
+  const order = ch0.map((m) => m.controller);
+  assert.deepStrictEqual(order, [64, 66, 67, 121, 123, 120]);
+  assert.ok(order.indexOf(64) < order.indexOf(123), 'sustain must be released before all-notes-off');
+  assert.ok(ch0.every((m) => m.value === 0));
+  assert.strictEqual(panicMessages().length, 16 * 6); // every channel
+  // Reset All Controllers must not be asked to touch volume or pan.
+  assert.ok(!order.includes(7) && !order.includes(10));
+});
+check('a control range can be a ceiling, a band, or a curve', () => {
+  assert.strictEqual(controlValue({ cc: 64 }, 1), 127); // default 0..127
+  assert.strictEqual(controlValue({ cc: 64, range: 110 }, 1), 110); // ceiling
+  assert.strictEqual(controlValue({ cc: 64, range: 110 }, 0), 0);
+  assert.strictEqual(controlValue({ cc: 74, range: [40, 100] }, 0), 40); // band
+  assert.strictEqual(controlValue({ cc: 74, range: [40, 100] }, 1), 100);
+  assert.strictEqual(controlValue({ cc: 74, range: [127, 0] }, 1), 0); // inverted
+  // A curve is piecewise linear across evenly spaced breakpoints.
+  const curve = { cc: 64, range: [0, 24, 96, 118] };
+  assert.strictEqual(controlValue(curve, 0), 0);
+  assert.strictEqual(controlValue(curve, 1), 118);
+  assert.strictEqual(controlValue(curve, 0.5), 60); // midpoint of the 24→96 leg
+  assert.strictEqual(controlValue(curve, 1 / 3), 24);
+});
+check('pedal words follow the control they are given', () => {
+  const song = compileDoc({
+    controls: { pedal: { cc: 64, range: 110 } },
+    play: ['con pedale', 'c ~ ~ ~'],
+  });
+  assert.deepStrictEqual(song.tracks[0].controls, [{ time: 0, cc: 64, value: 110 }]);
+});
+check('a score that declared `sustain` still answers to the pedal words', () => {
+  const song = compileDoc({ controls: { sustain: 64 }, play: ['half pedal', 'c ~ ~ ~'] });
+  assert.deepStrictEqual(song.tracks[0].controls.map((c) => c.cc), [64]);
+});
+check('pedale sincopato re-takes the pedal every bar', () => {
+  const song = compileDoc({
+    controls: { pedal: { cc: 64 } },
+    set: 'pedale sincopato',
+    play: ['c ~ ~ ~', 'd ~ ~ ~', 'e ~ ~ ~'],
+  });
+  const pedal = song.tracks[0].controls.filter((c) => c.cc === 64);
+  assert.strictEqual(pedal.length, 6); // lift + catch, three bars
+  // It lifts *on* the barline and catches straight after — that is the point.
+  assert.deepStrictEqual(pedal.map((c) => c.time), [0, 0.06, 4, 4.06, 8, 8.06]);
+  assert.deepStrictEqual(pedal.map((c) => c.value), [0, 127, 0, 127, 0, 127]);
+});
+check('pedal per bar releases before the barline instead', () => {
+  const song = compileDoc({ controls: { pedal: { cc: 64 } }, set: 'pedal per bar', play: ['c ~ ~ ~'] });
+  const pedal = song.tracks[0].controls.filter((c) => c.cc === 64);
+  assert.deepStrictEqual(pedal.map((c) => [c.time, c.value]), [[0, 127], [3.94, 0]]);
+});
+check('senza pedale cancels the pattern and drops the dampers', () => {
+  const song = compileDoc({
+    controls: { pedal: { cc: 64 } },
+    set: 'pedale sincopato',
+    play: ['c ~ ~ ~', 'senza pedale', 'd ~ ~ ~'],
+  });
+  const pedal = song.tracks[0].controls.filter((c) => c.cc === 64);
+  assert.strictEqual(pedal[pedal.length - 1].value, 0);
+  // Nothing re-takes it in the bar after the cancel.
+  assert.strictEqual(pedal.filter((c) => c.time >= 4).length, 1);
+});
+check('a clean score carries no warnings', () => {
+  assert.deepStrictEqual(compileDoc({ play: ['c ~ ~ ~', 'legato', 'e ~ ~ ~'] }).warnings, []);
+});
+check('sostenuto is a real articulation, not a silent bar', () => {
+  // Regression: BWV 846 lost bar 25 to this word.
+  const song = compileDoc({ play: ['c ~ ~ ~', 'forte', 'sostenuto', 'e ~ ~ ~'] });
+  assert.deepStrictEqual(song.warnings, []);
+  assert.deepStrictEqual(song.tracks[0].timeline.map((n) => n.time), [0, 4]);
+  // Gate only — it must not undo the `forte` above it.
+  assert.strictEqual(song.tracks[0].timeline[1].velocity, 96); // forte
 });
 
 console.log('\nchords as scales:');
@@ -1302,6 +1391,24 @@ check('a ramp lands between the flat extremes', () => {
   // After the ramp the new tempo holds.
   assert.ok(Math.abs(beatsToSeconds(ramped, 6) - (end + 2)) < 1e-9);
 });
+check('secondsToBeats undoes beatsToSeconds, ramps included', () => {
+  const cases: TempoSegment[][] = [
+    tempoSegments(120),
+    tempoSegments(120, [{ time: 4, bpm: 60, rampBeats: 0 }]),
+    tempoSegments(90, [{ time: 2, bpm: 54, rampBeats: 8 }, { time: 16, bpm: 120, rampBeats: 0 }]),
+  ];
+  for (const segs of cases) {
+    for (const beat of [0, 0.5, 3, 4, 7.25, 16, 23.5]) {
+      const back = secondsToBeats(segs, beatsToSeconds(segs, beat));
+      assert.ok(Math.abs(back - beat) < 1e-9, `beat ${beat} round-tripped to ${back}`);
+    }
+  }
+});
+check('secondsToBeats floors at beat 0 before the song starts', () => {
+  const segs = tempoSegments(120);
+  assert.strictEqual(secondsToBeats(segs, 0), 0);
+  assert.strictEqual(secondsToBeats(segs, -1), 0);
+});
 
 console.log('\nexamples (golden):');
 check('bundled example compiles', () => {
@@ -1337,7 +1444,11 @@ check('every example matches its golden digest', () => {
       tracks: song.tracks.length,
       notes: song.tracks.reduce((n, t) => n + t.timeline.length, 0),
       lengthBeats: song.lengthBeats,
-      sha256: crypto.createHash('sha256').update(JSON.stringify(song)).digest('hex'),
+      // `warnings` is diagnostics, not music: hashing it would move every
+      // digest whenever the compiler learns to report something new.
+      sha256: crypto.createHash('sha256')
+        .update(JSON.stringify({ ...song, warnings: undefined }))
+        .digest('hex'),
     };
   }
   if (process.env.UPDATE_GOLDEN || !fs.existsSync(goldenPath)) {

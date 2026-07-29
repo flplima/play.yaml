@@ -1,6 +1,7 @@
 # J.S. Bach — Prelude No. 1 in C major, BWV 846
 # The Well-Tempered Clavier, Book I (1722). 4/4, 34 bars.
-# Single piano track representation with natural dynamic swells, sustain pedal automation,
+# Single piano track representation with natural dynamic swells, pedalling written
+# as a pattern (`pedale sincopato`) rather than raw CC values,
 # and expressive rubato/tempo shaping across the harmonic arc.
 
 title: "Prelude in C major, BWV 846"
@@ -11,8 +12,17 @@ tracks:
   piano:
     sample: epiano
     dynamic: mezzopiano
-    controls: { sustain: 64 }
-    set: legato, sustain 110
+    controls:
+      # cc, plus how far the pedal words are allowed to push it. The curve is
+      # the damper's own travel: the first part of the pedal barely lifts the
+      # felts, most of the damping happens late, and it stops short of 118
+      # because a fully floored damper on this instrument rings into mud.
+      pedal: { cc: 64, range: [0, 24, 96, 118] }
+      soft: { cc: 67, range: 90 }
+    # Bar-by-bar syncopated pedalling, the way this prelude is always played:
+    # each bar is one harmony, so the pedal lifts exactly on the new bass note
+    # and takes it again at once. Written once here instead of per bar.
+    set: legato, pedale sincopato
 
 sections:
   piece:
@@ -46,6 +56,9 @@ sections:
         # --- Floating Middle (Bars 15-19): Subdued & cantabile ---
         - "mezzopiano"
         - "cantabile"
+        # Half the depth, still re-taken each bar: the texture stays legato
+        # without the wash the full pedal gives it.
+        - "half pedal per bar"
         - "{e3 g3 c4 g4} {c5 c4 g4 c5} {e3 g3 c4 g4} {c5 c4 g4 c5}"
         - "{e3 f3 a3 c4} {f4 a3 c4 f4} {e3 f3 a3 c4} {f4 a3 c4 f4}"
         - "{d3 f3 a3 c4} {f4 a3 c4 f4} {d3 f3 a3 c4} {f4 a3 c4 f4}"
@@ -63,7 +76,7 @@ sections:
         # --- Dominant Pedal Climax (Bars 25-31): Forte & sostenuto ---
         - "forte"
         - "sostenuto"
-        - "sustain 125"
+        - "pedale sincopato"
         - "{g2 e3 g3 c4} {e4 g3 c4 e4} {g2 e3 g3 c4} {e4 g3 c4 e4}"
         - "{g2 d3 g3 b3} {f4 g3 b3 f4} {g2 d3 g3 b3} {f4 g3 b3 f4}"
         - "{g2 eb3 a3 c4} {f#4 a3 c4 f#4} {g2 eb3 a3 c4} {f#4 a3 c4 f#4}"
@@ -79,5 +92,7 @@ sections:
         - "{c2 g4 b4 d5} {f5 d5 b4 d5} {b4 g4 b4 d4} {f4 e4 d4 f4}"
         - "piano"
         - "a tempo"
-        - "sustain 127"
+        # Stop re-taking and hold the last chord under the fermata.
+        - "senza pedale"
+        - "pedal down"
         - "[c2 c3 e4 g4 c5] _ _ _"

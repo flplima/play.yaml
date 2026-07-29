@@ -22,6 +22,9 @@ export const ARTICULATIONS: Record<string, number> = {
   detached: DEFAULT_GATE,
   separate: DEFAULT_GATE,
   tenuto: 0.98,
+  // Sustained — notes given their full value and a shade more. Gate only, so
+  // it shapes length without touching the dynamic it follows.
+  sostenuto: 1.02,
   legato: 1.05,
   smooth: 1.05,
   slurred: 1.05,
@@ -129,11 +132,87 @@ export const EXPRESSIONS: Record<string, { velocity?: number; gate?: number }> =
   tranquillo: { velocity: 52, gate: 1.0 },
 };
 
+/**
+ * Pedalling *patterns* — the part a single CC value cannot express.
+ *
+ * A held damper is a static value; real pedalling is a rhythm. These say when
+ * the pedal moves, and the compiler emits the changes bar by bar so the
+ * pattern follows meter changes and tempo without being written out by hand.
+ *
+ *   pedale sincopato  the pianist's legato pedal: lift exactly on the new
+ *                     harmony and catch it again immediately, so the bass
+ *                     connects and the previous bar does not smear into it.
+ *                     This is the pedalling BWV 846 is always played with.
+ *   pedal per bar     press on the downbeat, release before the next — each
+ *                     bar rings alone, nothing carries across the barline.
+ *   pedal per beat    the same, once a beat, for slow harmonic rhythm.
+ *   senza pedale      cancel the pattern and let the dampers down.
+ */
+export interface PedalPattern {
+  /** 'legato' lifts on the beat and re-takes; 'direct' presses and releases. */
+  style: 'legato' | 'direct';
+  unit: 'bar' | 'beat';
+  /** How far down, as a 0-to-1 amount along the pedal control's range. */
+  depth: number;
+}
+
+export const PEDAL_PATTERNS: Record<string, PedalPattern | null> = {
+  'pedale sincopato': { style: 'legato', unit: 'bar', depth: 1 },
+  'syncopated pedal': { style: 'legato', unit: 'bar', depth: 1 },
+  'legato pedal': { style: 'legato', unit: 'bar', depth: 1 },
+  'pedal per bar': { style: 'direct', unit: 'bar', depth: 1 },
+  'pedale per battuta': { style: 'direct', unit: 'bar', depth: 1 },
+  'pedal per beat': { style: 'direct', unit: 'beat', depth: 1 },
+  'half pedal per bar': { style: 'legato', unit: 'bar', depth: 0.5 },
+  'senza pedale': null,
+  'pedal off': null,
+  'no pedal': null,
+};
+
 /** How a named control maps onto a CC, and over what range. */
 export interface ControlSpec {
   cc: number;
   min?: number;
   max?: number;
+  /**
+   * How a 0-to-1 technique amount lands on this control's CC:
+   *
+   *   range: 110            → 0 … 110   (a ceiling; the pedal that only ever
+   *                                      goes three-quarters down)
+   *   range: [40, 100]      → 40 … 100  (a usable band; write it backwards to
+   *                                      invert a control that runs the other way)
+   *   range: [0, 20, 90, 110] → a curve through those breakpoints, evenly
+   *                             spaced across the amount. Instruments are
+   *                             rarely linear — this is where you say that the
+   *                             first half of the pedal does almost nothing
+   *                             and the last quarter does most of the damping.
+   *
+   * `min`/`max` still work and mean the same as the two-value form.
+   */
+  range?: number | number[];
+}
+
+/** The breakpoints an amount is interpolated across. */
+export function controlCurve(spec: ControlSpec): number[] {
+  if (Array.isArray(spec.range) && spec.range.length) {
+    return spec.range.length === 1 ? [0, spec.range[0]] : [...spec.range];
+  }
+  if (typeof spec.range === 'number') return [0, spec.range];
+  return [spec.min ?? 0, spec.max ?? 127];
+}
+
+/**
+ * Place a 0-to-1 technique amount on a control, following its curve. Two
+ * breakpoints is the straight line this always used to be.
+ */
+export function controlValue(spec: ControlSpec, amount: number): number {
+  const points = controlCurve(spec);
+  if (points.length === 1) return points[0];
+  const t = Math.max(0, Math.min(1, amount));
+  const spans = points.length - 1;
+  const pos = t * spans;
+  const i = Math.min(spans - 1, Math.floor(pos));
+  return points[i] + (points[i + 1] - points[i]) * (pos - i);
 }
 
 /**
@@ -145,6 +224,20 @@ export const DEFAULT_CONTROLS: Record<string, ControlSpec> = {
   bow: { cc: 74 }, // bow position / brightness
   pressure: { cc: 71 },
   vibrato: { cc: 1 }, // modulation, the near-universal vibrato control
+  pedal: { cc: 64 }, // damper — the piano pedal every score means by "pedal"
+  sostenuto: { cc: 66 }, // middle pedal: holds what is already down
+  soft: { cc: 67 }, // una corda
+};
+
+/**
+ * Other names a score may have declared the same control under, so
+ * `controls: { sustain: … }` still answers to the pedal words.
+ */
+export const CONTROL_ALIASES: Record<string, string[]> = {
+  pedal: ['sustain', 'damper'],
+  soft: ['una corda', 'softpedal'],
+  sostenuto: ['middle'],
+  expression: ['expr'],
 };
 
 /**
@@ -154,6 +247,20 @@ export const DEFAULT_CONTROLS: Record<string, ControlSpec> = {
  * way, invert the range in `controls:` rather than rewriting the score.
  */
 export const CONTROL_TERMS: Record<string, { control: string; amount: number }> = {
+  // ── the piano pedals ──
+  // Depth, not timing. `range:` on the control decides what "full" is worth,
+  // so a rack whose damper only wants 110 says so once in `controls:`.
+  'senza pedale': { control: 'pedal', amount: 0 },
+  'pedal up': { control: 'pedal', amount: 0 },
+  'quarter pedal': { control: 'pedal', amount: 0.25 },
+  'mezzo pedale': { control: 'pedal', amount: 0.5 },
+  'half pedal': { control: 'pedal', amount: 0.5 },
+  'three quarter pedal': { control: 'pedal', amount: 0.75 },
+  'con pedale': { control: 'pedal', amount: 1 },
+  'pedal down': { control: 'pedal', amount: 1 },
+  'una corda': { control: 'soft', amount: 1 },
+  'tre corde': { control: 'soft', amount: 0 },
+
   // ── bow position ──
   'sul tasto': { control: 'bow', amount: 0 },
   flautando: { control: 'bow', amount: 0.1 },
@@ -228,7 +335,16 @@ export function resolveControl(
   controls: Record<string, number | ControlSpec> | undefined,
   name: string,
 ): ControlSpec | undefined {
-  const declared = controls?.[name];
+  let declared = controls?.[name];
+  // A score that wrote `sustain:` still means the pedal.
+  if (declared === undefined) {
+    for (const alias of CONTROL_ALIASES[name] ?? []) {
+      if (controls?.[alias] !== undefined) {
+        declared = controls[alias];
+        break;
+      }
+    }
+  }
   const spec = typeof declared === 'number' ? { cc: declared } : declared ?? DEFAULT_CONTROLS[name];
   return spec && { min: 0, max: 127, ...spec };
 }

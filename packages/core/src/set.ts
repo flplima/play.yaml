@@ -9,10 +9,16 @@
 import { parseScale } from './theory';
 import {
   ARTICULATIONS, CONTROL_TERMS, ControlSpec, DYNAMICS, DYNAMIC_STEP, EXPRESSIONS,
-  RUBATO_TERMS, TEMPO_GRADUAL, TEMPO_MARKS, TEMPO_RELATIVE, resolveControl,
+  PEDAL_PATTERNS, PedalPattern, RUBATO_TERMS, TEMPO_GRADUAL, TEMPO_MARKS, TEMPO_RELATIVE,
+  controlValue, resolveControl,
 } from './vocabulary';
 
 export interface SetPatch {
+  /**
+   * A pedalling pattern to run from here on, or null to stop pedalling.
+   * Undefined leaves whatever is running alone.
+   */
+  pedal?: PedalPattern | null;
   scale?: string;
   octave?: number;
   octaveDelta?: number;
@@ -139,12 +145,19 @@ export function parseSet(
       continue;
     }
 
+    // Pedalling patterns are checked before the plain control terms, because
+    // "senza pedale" has to both cancel the pattern and lift the dampers.
+    if (word in PEDAL_PATTERNS) {
+      patch.pedal = PEDAL_PATTERNS[word];
+      continue;
+    }
+
     // Playing techniques: "sul tasto", "molto vibrato", "pizzicato".
     if (CONTROL_TERMS[word] !== undefined) {
       const { control, amount } = CONTROL_TERMS[word];
       const spec = resolveControl(controls, control);
       if (spec) {
-        addCc(spec.cc, spec.min! + (spec.max! - spec.min!) * amount);
+        addCc(spec.cc, controlValue(spec, amount));
       } else if (!opts.ignoreMissingControls) {
         throw new Error(
           `"${clause}" needs a "${control}" control — add it under \`controls:\`, ` +
@@ -163,7 +176,7 @@ export function parseSet(
       if (spec) {
         (patch.ccRamps ??= []).push({
           cc: spec.cc,
-          to: clamp127(spec.min! + (spec.max! - spec.min!) * amount),
+          to: clamp127(controlValue(spec, amount)),
           overMeasures: Number(termRamp[2]),
         });
       } else if (!opts.ignoreMissingControls) {

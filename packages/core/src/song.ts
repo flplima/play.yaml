@@ -11,8 +11,8 @@ import {
   midiToName, noteToMidi, parseScale,
 } from './theory';
 import {
-  ACCENT_STEP, ControlSpec, DEFAULT_GATE, DEFAULT_STRUM, SAMPLE_PROGRAMS,
-  drumName, resolveControl, resolveDrum,
+  ACCENT_STEP, ControlSpec, DEFAULT_GATE, DEFAULT_STRUM, PedalPattern, SAMPLE_PROGRAMS,
+  controlValue, drumName, resolveControl, resolveDrum,
 } from './vocabulary';
 import { SetPatch, parseSet } from './set';
 import {
@@ -87,11 +87,16 @@ export interface TrackProps {
    */
   kit?: string | number;
   /**
-   * Named MIDI controls: alias → CC number, or → { cc, min, max } when the
-   * instrument's mapping uses a narrower band or runs the other way round
-   * (`{ cc: 74, min: 127, max: 0 }` inverts it).
+   * Named MIDI controls: alias → CC number, or → `{ cc, range }` when the
+   * instrument's mapping uses a narrower band, runs the other way round, or
+   * is not linear. See ControlSpec for the range forms.
    */
   controls?: Record<string, number | ControlSpec>;
+  /**
+   * A pedalling pattern that runs until something cancels it — the worded
+   * form ("pedale sincopato", "pedal per bar") sets this from `set:`.
+   */
+  pedal?: PedalPattern | null;
 }
 
 /** A control-change emitted at a point in the timeline. */
@@ -201,6 +206,12 @@ export interface CompiledSong {
   /** Tempo changes in beat order; empty when the song holds one tempo. */
   tempoMap: TempoEvent[];
   tracks: CompiledTrack[];
+  /**
+   * Non-fatal compile notes — tokens that read as nothing and became silence,
+   * tagged with their bar. A score with these still plays; they exist so a
+   * typo in a mark or a pitch is visible instead of just sounding wrong.
+   */
+  warnings: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -242,6 +253,10 @@ interface EmitCtx {
   velocityRamp?: { fromBeat: number; toBeat: number; from: number; to: number };
   /** The notes a `_` would prolong, and how much time they cover so far. */
   held?: { events: TimelineEvent[]; span: number } | null;
+  /** Tokens that read as nothing, collected rather than thrown. */
+  warnings?: string[];
+  /** 1-based measure being compiled, so a warning can name it. */
+  measureNumber?: number;
 }
 
 /**
@@ -289,6 +304,23 @@ function velocityAt(ctx: EmitCtx, beat: number): number {
  * rests emit nothing, chords stack, groups subdivide equally.
  * `boost` carries an accent's extra velocity into chord members.
  */
+/**
+ * A token that reads as neither a note nor a mark stays a rest — deliberately,
+ * so a half-written score still plays. The cost is that a mistyped expression
+ * mark ("sostenuto" before it was vocabulary, "ritardadno") silently swallows a
+ * whole bar and a mistyped pitch silently drops a note, leaving a hole in the
+ * music with nothing to point at. So the token is recorded: playback stays
+ * forgiving, and the studio can say which bar went quiet and why.
+ */
+function noteUnknownToken(ctx: EmitCtx, token: string, kind: 'pitch' | 'drum' = 'pitch'): void {
+  const tok = token.trim();
+  if (!tok || !ctx.warnings) return;
+  const what = kind === 'drum' ? 'no such drum name or GM key' : 'not a note, degree, chord or rest';
+  const where = `bar ${ctx.measureNumber ?? 1}`;
+  const message = `${where}: unknown token "${tok}" (${what}) — silent`;
+  if (!ctx.warnings.includes(message)) ctx.warnings.push(message);
+}
+
 function placeToken(token: string, start: number, span: number, ctx: EmitCtx, boost = 0): void {
   let tok = token.trim();
   if (!tok) return;
@@ -384,7 +416,10 @@ function placeToken(token: string, start: number, span: number, ctx: EmitCtx, bo
   // Kit tracks: the token is a drum name ("bd", "snare") or a raw GM key.
   if (ctx.drums) {
     const spec = resolveDrum(tok);
-    if (!spec) return; // unknown token → rest, same policy as pitches
+    if (!spec) {
+      noteUnknownToken(ctx, token, 'drum');
+      return; // unknown token → rest, same policy as pitches
+    }
     const pitch = drumName(spec.note) ?? String(spec.note);
     const baseVelocity = clampVelocity(velocityAt(ctx, start) + boost);
     if (strumMarks > 0) {
@@ -428,7 +463,10 @@ function placeToken(token: string, start: number, span: number, ctx: EmitCtx, bo
     ? degreeToMidi(core, ctx.scale, ctx.octave)
     : noteToMidi(core, ctx.octave);
   const midi = raw === null ? null : raw - 12 * octavesDown;
-  if (midi === null) return; // unknown token → treat as a rest, stay robust
+  if (midi === null) {
+    noteUnknownToken(ctx, token);
+    return; // unknown token → treat as a rest, stay robust
+  }
   const event: TimelineEvent = {
     time: round(start),
     pitch: midiToName(midi),
@@ -530,6 +568,8 @@ export interface PlayResult {
   tempos: TempoEvent[];
   /** Where the last sounding measure ends, in beats — honours meter changes. */
   lengthBeats: number;
+  /** Tokens that compiled to silence, with the bar they sat in. */
+  warnings: string[];
 }
 
 /**
@@ -558,6 +598,7 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
     voices: props.voices ?? 0,
     strumTail: props.strumTail,
     rubato: props.rubato ?? worded.rubato ?? 0,
+    warnings: [],
   };
   const controls: ControlEvent[] = [];
   const tempos: TempoEvent[] = [];
@@ -572,7 +613,7 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
     ? resolveControl(controlAliases, 'expression')
     : undefined;
   const exprValue = (velocity: number) =>
-    Math.round(exprSpec!.min! + (exprSpec!.max! - exprSpec!.min!) * (clampVelocity(velocity) / 127));
+    Math.round(controlValue(exprSpec!, clampVelocity(velocity) / 127));
   const emitExpression = (at: number, velocity: number) => {
     if (exprSpec) controls.push({ time: round(at), cc: exprSpec.cc, value: exprValue(velocity) });
   };
@@ -582,6 +623,36 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
     for (let s = 1; s <= steps; s++) {
       const t = s / steps;
       emitExpression(fromBeat + (toBeat - fromBeat) * t, from + (to - from) * t);
+    }
+  };
+
+  /*
+   * Pedalling. A held damper is one CC; real pedalling is a rhythm, so the
+   * pattern is re-emitted for each measure as it is compiled — that way it
+   * follows meter changes and never has to be written out bar by bar.
+   */
+  let pedalPattern: PedalPattern | null = props.pedal ?? null;
+  const pedalSpec = () => resolveControl(controlAliases, 'pedal');
+  /** How long the dampers are actually off the strings when re-taking, in beats. */
+  const PEDAL_LIFT = 0.06;
+  const emitPedal = (start: number, span: number) => {
+    const spec = pedalSpec();
+    if (!pedalPattern || !spec || span <= 0) return;
+    const down = Math.round(controlValue(spec, pedalPattern.depth));
+    const up = Math.round(controlValue(spec, 0));
+    const step = pedalPattern.unit === 'beat' ? 1 : span;
+    for (let offset = 0; offset < span - 1e-9; offset += step) {
+      const at = start + offset;
+      const width = Math.min(step, span - offset);
+      if (pedalPattern.style === 'legato') {
+        // Lift *on* the change and catch it again at once: the new harmony is
+        // caught, the old one is not dragged into it.
+        controls.push({ time: round(at), cc: spec.cc, value: up });
+        controls.push({ time: round(at + Math.min(PEDAL_LIFT, width / 2)), cc: spec.cc, value: down });
+      } else {
+        controls.push({ time: round(at), cc: spec.cc, value: down });
+        controls.push({ time: round(at + Math.max(0, width - PEDAL_LIFT)), cc: spec.cc, value: up });
+      }
     }
   };
 
@@ -598,6 +669,14 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
   };
 
   const applyPatch = (patch: SetPatch, at: number) => {
+    if (patch.pedal !== undefined) {
+      pedalPattern = patch.pedal;
+      // Stopping means the dampers come down now, not at the next barline.
+      if (!patch.pedal) {
+        const spec = pedalSpec();
+        if (spec) controls.push({ time: round(at), cc: spec.cc, value: Math.round(controlValue(spec, 0)) });
+      }
+    }
     if (patch.scale) ctx.scale = parseScale(patch.scale);
     if (patch.octave !== undefined) ctx.octave = patch.octave;
     if (patch.octaveDelta) ctx.octave += patch.octaveDelta;
@@ -674,6 +753,7 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
   const compileMeasure = (raw: string) => {
     const measure = raw.trim();
     if (!measure) return;
+    ctx.measureNumber = m + 1;
     // A bare expression mark ("legato", "allargando over 2") sits between
     // measures like a marking in a score, and takes no time.
     if (isDirectiveString(measure)) {
@@ -724,6 +804,7 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
         event.duration = round(Math.max(0.01, to - from));
       }
     }
+    emitPedal(beat, measureBeats);
     m++;
     beat = round(beat + measureBeats);
     endBeat = Math.max(endBeat, beat);
@@ -779,7 +860,7 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
 
   controls.sort((a, b) => a.time - b.time);
   tempos.sort((a, b) => a.time - b.time);
-  return { timeline: ctx.events, controls, tempos, lengthBeats: endBeat };
+  return { timeline: ctx.events, controls, tempos, lengthBeats: endBeat, warnings: ctx.warnings ?? [] };
 }
 
 /** Compile one track's measures to its note timeline. */
@@ -965,6 +1046,7 @@ export function expandSections(doc: SongDoc): { doc: SongDoc; loopStartBar: numb
 const INHERITED: (keyof TrackProps)[] = [
   'tempo', 'measure', 'sample', 'scale', 'octave', 'channel', 'program', 'velocity',
   'gate', 'rubato', 'dynamic', 'articulation', 'controls', 'strum', 'voices', 'strumTail', 'kit',
+  'pedal',
 ];
 
 function effectiveProps(node: TrackNode, inherited: TrackProps): TrackProps {
@@ -983,6 +1065,7 @@ function effectiveProps(node: TrackNode, inherited: TrackProps): TrackProps {
     if (patch.voices !== undefined) props.voices = patch.voices;
     if (patch.strumTail !== undefined) props.strumTail = patch.strumTail;
     if (patch.rubato !== undefined) props.rubato = patch.rubato;
+    if (patch.pedal !== undefined) props.pedal = patch.pedal;
     // Any control changes it declares are emitted at the start of the track,
     // in compileDoc — see the `set` handling in walk().
   }
@@ -1010,6 +1093,7 @@ export function compileDoc(doc: SongDoc): CompiledSong {
   });
 
   const tracks: CompiledTrack[] = [];
+  const warnings: string[] = [];
   const tempoMap: TempoEvent[] = [];
   let lengthBeats = 0;
   let nextChannel = 1;
@@ -1018,7 +1102,12 @@ export function compileDoc(doc: SongDoc): CompiledSong {
     const props = node === doc ? rootProps : effectiveProps(node, inherited);
 
     if (node.play != null) {
-      const { timeline, controls, tempos, lengthBeats: trackBeats } = parsePlayFull(node.play, props);
+      const { timeline, controls, tempos, lengthBeats: trackBeats, warnings: trackWarnings } =
+        parsePlayFull(node.play, props);
+      for (const w of trackWarnings) {
+        const tagged = `${name}: ${w}`;
+        if (!warnings.includes(tagged)) warnings.push(tagged);
+      }
       // A `set:` on the track itself opens the instrument at beat 0.
       const opening = (node.set !== undefined ? parseSet(node.set, props.controls).ccs ?? [] : [])
         .map((c) => ({ time: 0, cc: c.cc, value: c.value }));
@@ -1072,5 +1161,6 @@ export function compileDoc(doc: SongDoc): CompiledSong {
       : undefined,
     tempoMap: [...byTime.values()].sort((a, b) => a.time - b.time),
     tracks,
+    warnings,
   };
 }

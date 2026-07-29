@@ -8,8 +8,8 @@
   "bwv846.play.yaml": {
     "tracks": 1,
     "notes": 533,
-    "lengthBeats": 140,
-    "sha256": "440a5d0ba00db36a08185f71c6b64766d71a57093c6dc238b00f5473a0c170d5"
+    "lengthBeats": 136,
+    "sha256": "d73fc09bfb36ff44905ff6f5a220ac2c1dd328bfe43090e99cb21b8c19caa836"
   },
   "bwv881.play.yaml": {
     "tracks": 2,
