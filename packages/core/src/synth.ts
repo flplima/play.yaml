@@ -54,6 +54,7 @@ function playNotePreset(
   startSec: number,
   durationSec: number,
   targetVolume: number,
+  vibrato?: GainNode,
 ): void {
   const osc = ctx.createOscillator();
   const gainNode = ctx.createGain();
@@ -212,6 +213,17 @@ function playNotePreset(
   gainNode.connect(destination);
 
   for (const node of activeNodes) {
+    // The track bus's vibrato LFO feeds every voice's detune in cents. Without
+    // this the `vibrato` family of words moved a control nothing listened to,
+    // so vibrato was inaudible on the synth presets (it only ever reached the
+    // sampled instruments).
+    if (vibrato) {
+      try {
+        vibrato.connect(node.detune);
+      } catch {
+        // Some engines reject connecting to a detune param; skip vibrato there.
+      }
+    }
     node.start(startSec);
     node.stop(endSec + 1.0); // Stop safely after decay/release
   }
@@ -246,12 +258,14 @@ export function playNote(
   velocity: number,
   startSec: number,
   durationSec: number,
+  /** Track-bus vibrato feed (cents) — connect it to every voice's detune. */
+  vibrato?: GainNode,
 ): void {
   const maxVolume =
     instrument === 'bass' ? 0.35 : instrument === 'piano' || instrument === 'epiano' ? 0.25 : 0.15;
   const freq = 440 * Math.pow(2, (midi - 69) / 12);
   const velScale = Math.pow(velocity / 127, 1.85);
-  playNotePreset(ctx, destination, instrument, freq, startSec, durationSec, maxVolume * velScale);
+  playNotePreset(ctx, destination, instrument, freq, startSec, durationSec, maxVolume * velScale, vibrato);
 }
 
 // ---------------------------------------------------------------------------

@@ -4,3 +4,7 @@ export * from './exporter';
 export * from './fidelity';
 export * from './time';
 export * from './synth';
+export * from './midiPanic';
+export * from './bus';
+export * from './sampler';
+export * from './schedule';

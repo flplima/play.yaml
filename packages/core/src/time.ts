@@ -53,3 +53,17 @@ export function beatsToSeconds(segments: TempoSegment[], beat: number): number {
   }
   return seg.sec + (Math.max(0, beat - seg.beat) * 60) / seg.bpm;
 }
+
+/**
+ * The inverse of beatsToSeconds(): which beat is sounding at this many seconds
+ * in. Backends that only know wall-clock elapsed time — the server's playback
+ * engine reporting its position to the studio — use this to say where they are.
+ */
+export function secondsToBeats(segments: TempoSegment[], sec: number): number {
+  let seg = segments[0];
+  for (const s of segments) {
+    if (s.sec <= sec) seg = s;
+    else break;
+  }
+  return seg.beat + (Math.max(0, sec - seg.sec) * seg.bpm) / 60;
+}

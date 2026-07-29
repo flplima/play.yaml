@@ -9,11 +9,10 @@
 
 import { Mp3Encoder } from '@breezystack/lamejs';
 import {
-  CompiledSong, CompiledTrack, beatsToSeconds, detectPreset, playDrum, playNote, tempoSegments,
+  CompiledSong, CompiledTrack, beatsToSeconds, librariesForTracks, libraryForTrack,
+  scheduleSong, tempoSegments,
 } from '@play.yaml/core';
-import {
-  createTrackBus, DRUM_LIBRARY, loadInstrument, Sampler, SAMPLE_LIBRARIES,
-} from './sampler';
+import { loadInstrument, Sampler } from './sampler';
 
 const SAMPLE_RATE = 44100;
 /** Ring-out after the last note, in seconds. */
@@ -21,16 +20,7 @@ const TAIL = 1.5;
 
 /** The sampled libraries a track set needs (kits share the drum library). */
 export function librariesFor(tracks: CompiledTrack[]): Set<string> {
-  const wanted = new Set<string>();
-  for (const track of tracks) {
-    if (track.kit) {
-      if (track.kit !== '808') wanted.add(DRUM_LIBRARY);
-    } else {
-      const library = SAMPLE_LIBRARIES[track.sample?.toLowerCase() ?? ''];
-      if (library) wanted.add(library);
-    }
-  }
-  return wanted;
+  return librariesForTracks(tracks);
 }
 
 /** Render the whole song (or its first `maxBeats`) to an AudioBuffer. */
@@ -59,33 +49,12 @@ export async function renderSong(
     samplers.set(name, await loadInstrument(ctx, name));
   }));
 
-  for (const track of tracks) {
-    const bus = createTrackBus(ctx, ctx.destination, {
-      hasExpression: (track.controls ?? []).some((c) => c.cc === 11),
-    });
-    const preset = track.kit ? null : detectPreset(track);
-    const sampled = track.kit
-      ? (track.kit !== '808' ? samplers.get(DRUM_LIBRARY) : null)
-      : samplers.get(SAMPLE_LIBRARIES[track.sample?.toLowerCase() ?? '']) || null;
-
-    for (const control of track.controls ?? []) {
-      if (control.time >= limit) continue;
-      bus.applyCC(control.cc, control.value, at(control.time));
-    }
-    for (const note of track.timeline) {
-      if (note.time >= limit) continue;
-      const start = at(note.time);
-      const duration = at(note.time + note.duration) - start; // tempo-aware
-      if (track.kit) {
-        if (sampled?.kind === 'drums') sampled.play(bus, note.midi, note.velocity, start);
-        else playDrum(ctx, bus.input, note.midi, note.velocity, start);
-      } else if (sampled?.kind === 'melodic') {
-        sampled.play(bus, note.midi, note.velocity, start, duration);
-      } else {
-        playNote(ctx, bus.input, preset!, note.midi, note.velocity, start, duration);
-      }
-    }
-  }
+  scheduleSong(ctx, ctx.destination, song, {
+    originTime: 0,
+    maxBeats: opts.maxBeats,
+    onlyTracks: opts.onlyTracks,
+    instrumentFor: (track) => samplers.get(libraryForTrack(track) ?? '') ?? null,
+  });
 
   return ctx.startRendering();
 }
