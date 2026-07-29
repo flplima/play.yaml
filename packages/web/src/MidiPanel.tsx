@@ -1,8 +1,11 @@
+import { useMemo } from 'react';
 import type { CompiledSong } from '@play.yaml/core';
 import type { MidiState } from './useMidi';
 import type { MidiRoute, RouteMap } from './player';
 import { sendTestNote } from './player';
 import { calculateRealTempo, getLiveTrackStates } from './trackMonitor';
+
+import type { ServerPortInfo } from './serverPlayback';
 
 /** A distinct `sample:` from the current score, with the channel it declares. */
 export interface SampleEntry {
@@ -20,6 +23,22 @@ interface MidiPanelProps {
   song?: CompiledSong | null;
   currentBeat?: number;
   playing?: boolean;
+
+  // Master volume
+  masterVolume?: number;
+  onVolumeChange?: (volume: number) => void;
+
+  // Server-side mode props
+  serverSideMode?: boolean;
+  onServerSideModeChange?: (active: boolean) => void;
+  serverMidiDevice?: string;
+  onServerMidiDeviceChange?: (device: string) => void;
+  serverMidiDevices?: string[];
+  serverPortsInfo?: ServerPortInfo[];
+  onRefreshServerDevices?: () => void;
+  serverAvailable?: boolean;
+  serverError?: string | null;
+  onServerTestNote?: (device: string, channel: number) => void;
 }
 
 const CHANNELS = Array.from({ length: 16 }, (_, i) => i + 1);
@@ -33,12 +52,62 @@ export default function MidiPanel({
   song,
   currentBeat = 0,
   playing = false,
+  masterVolume = 80,
+  onVolumeChange,
+  serverSideMode = false,
+  onServerSideModeChange,
+  serverMidiDevice = 'Server Audio Output (Web Audio)',
+  onServerMidiDeviceChange,
+  serverMidiDevices = ['Server Audio Output (Web Audio)'],
+  serverPortsInfo = [],
+  onRefreshServerDevices,
+  serverAvailable = false,
+  serverError = null,
+  onServerTestNote,
 }: MidiPanelProps) {
   const outputById = new Map(midi.outputs.map((o) => [o.id, o]));
+  const portsInfoById = new Map(serverPortsInfo.map((p) => [p.id, p]));
 
-  // WebMIDI names ports from the browser's side: what it calls an "output" is
-  // the MIDI IN of the synth or DAW receiving the notes, which is how the
-  // panel labels them.
+  const findPortInfo = (outputId?: string): ServerPortInfo | undefined => {
+    if (!outputId) return undefined;
+    let match = portsInfoById.get(outputId);
+    if (match) return match;
+    match = serverPortsInfo.find((p) => p.rawName === outputId || p.id === outputId);
+    if (match) return match;
+    return serverPortsInfo.find(
+      (p) =>
+        (p.id && (p.id.includes(outputId) || outputId.includes(p.id))) ||
+        (p.rawName && (p.rawName.includes(outputId) || outputId.includes(p.rawName))),
+    );
+  };
+
+  // The routable ports depend on which machine is going to play: the server's
+  // own ports in server mode, this browser's WebMIDI outputs otherwise. Mixing
+  // them would offer routes the playing side cannot honour.
+  const allAvailablePorts = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; mpe: boolean }>();
+
+    if (serverSideMode) {
+      for (const p of serverPortsInfo) {
+        map.set(p.id, { id: p.id, name: `${p.name}${p.mpe ? ' [MPE]' : ''}`, mpe: p.mpe });
+      }
+      return Array.from(map.values());
+    }
+
+    // WebMIDI outputs, wearing their config.yaml names where one matches.
+    for (const o of midi.outputs) {
+      const match = findPortInfo(o.id) || findPortInfo(o.name || undefined);
+      map.set(o.id, {
+        id: o.id,
+        name: match ? `${match.name}${match.mpe ? ' [MPE]' : ''}` : o.name || o.id,
+        mpe: Boolean(match?.mpe),
+      });
+    }
+
+    return Array.from(map.values());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverSideMode, serverPortsInfo, midi.outputs]);
+
   const status = !midi.supported
     ? 'WebMIDI is not supported in this browser.'
     : midi.error
@@ -50,8 +119,109 @@ export default function MidiPanel({
   const realTempo = calculateRealTempo(song, currentBeat);
   const liveTracks = getLiveTrackStates(song, currentBeat);
 
+  const selectedServerPort = findPortInfo(serverMidiDevice);
+
   return (
     <aside className="flex w-80 shrink-0 flex-col overflow-y-auto border-l border-zinc-800 bg-zinc-900">
+      {/* ── SECTION 0: SERVER SIDE PLAYBACK & VOLUME ── */}
+      <div className="border-b border-zinc-800 px-4 py-3 bg-purple-950/20">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-purple-200">Server Side Mode</span>
+            {serverSideMode && (
+              <span className="rounded bg-purple-500/20 border border-purple-500/40 px-1.5 py-0.5 text-[10px] font-bold text-purple-300 animate-pulse">
+                ACTIVE
+              </span>
+            )}
+          </div>
+          <label className="relative inline-flex cursor-pointer items-center">
+            <input
+              type="checkbox"
+              className="peer sr-only"
+              checked={serverSideMode}
+              onChange={(e) => onServerSideModeChange?.(e.target.checked)}
+            />
+            <div className="peer h-5 w-9 rounded-full bg-zinc-700 after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-purple-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none" />
+          </label>
+        </div>
+
+        <p className="mt-1 text-xs text-zinc-400">
+          Play music through server speakers or server hardware MIDI devices.
+        </p>
+
+        {/* Master Volume Slider */}
+        <div className="mt-2.5 pt-2 border-t border-purple-900/40">
+          <div className="flex items-center justify-between text-xs text-purple-200 mb-1 font-medium">
+            <span className="flex items-center gap-1">
+              🔊 Master Volume
+            </span>
+            <span className="font-mono text-purple-300">{masterVolume}%</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={masterVolume}
+            onChange={(e) => onVolumeChange?.(Number(e.target.value))}
+            className="h-1.5 w-full cursor-pointer accent-purple-500 rounded bg-zinc-800"
+            title="Adjust master volume for client and server playback"
+          />
+        </div>
+
+        {serverSideMode && (
+          <div className="mt-3 space-y-2 rounded-lg border border-purple-900/60 bg-zinc-950/60 p-2.5">
+            <div className="flex items-center justify-between text-xs text-purple-300 font-medium">
+              <span>Server MIDI / Audio Output:</span>
+              <button
+                className="text-[10px] text-purple-400 hover:text-purple-200 underline"
+                onClick={onRefreshServerDevices}
+                title="Refresh server MIDI devices"
+              >
+                ↻ Refresh
+              </button>
+            </div>
+
+            <div className="relative">
+              <select
+                className="w-full rounded border border-purple-800/60 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-100 font-mono focus:border-purple-500 focus:outline-none"
+                value={serverMidiDevice}
+                onChange={(e) => onServerMidiDeviceChange?.(e.target.value)}
+              >
+                {serverPortsInfo.length > 0
+                  ? serverPortsInfo.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} {p.mpe ? '[MPE]' : ''}
+                      </option>
+                    ))
+                  : serverMidiDevices.map((dev) => (
+                      <option key={dev} value={dev}>
+                        {dev}
+                      </option>
+                    ))}
+              </select>
+            </div>
+
+            {selectedServerPort && (
+              <div className="mt-1 flex items-center justify-between text-[11px]">
+                <span className="text-zinc-400 truncate">{selectedServerPort.name}</span>
+                {selectedServerPort.mpe && (
+                  <span className="rounded bg-indigo-500/20 px-1.5 py-0.5 text-[10px] font-bold text-indigo-300 border border-indigo-500/40">
+                    MPE ENABLED
+                  </span>
+                )}
+              </div>
+            )}
+
+            <div className="flex items-center gap-1.5 text-[10px] text-zinc-400">
+              <span className={`h-1.5 w-1.5 rounded-full ${serverAvailable ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+              <span>{serverAvailable ? 'Live stream connected' : 'Reconnecting to server…'}</span>
+            </div>
+
+            {serverError && <div className="text-[10px] text-amber-400">⚠ {serverError}</div>}
+          </div>
+        )}
+      </div>
+
       {/* ── SECTION 1: MIDI ROUTING ── */}
       <div className="border-b border-zinc-800 px-4 py-3">
         <h2 className="text-sm font-semibold text-zinc-200">MIDI routing</h2>
@@ -74,10 +244,26 @@ export default function MidiPanel({
           <ul className="space-y-3">
             {samples.map(({ name, defaultChannel }) => {
               const route = routes[name];
+              const selectedPortInfo = route ? findPortInfo(route.outputId) : undefined;
+              const isMpe = selectedPortInfo?.mpe === true;
+              const channelEntries = selectedPortInfo?.channels && Object.keys(selectedPortInfo.channels).length > 0
+                ? Object.entries(selectedPortInfo.channels).map(([chStr, instName]) => ({
+                    ch: Number(chStr),
+                    label: `ch ${chStr}: ${instName}`,
+                  }))
+                : CHANNELS.map((ch) => ({ ch, label: `ch ${ch}` }));
+
               return (
                 <li key={name}>
-                  <div className="truncate text-sm font-medium text-zinc-200" title={name}>
-                    {name}
+                  <div className="flex items-center justify-between">
+                    <div className="truncate text-sm font-medium text-zinc-200" title={name}>
+                      {name}
+                    </div>
+                    {isMpe && (
+                      <span className="rounded bg-indigo-500/20 px-1.5 py-0.5 text-[9px] font-bold text-indigo-300 border border-indigo-500/40">
+                        MPE
+                      </span>
+                    )}
                   </div>
                   <div className="mt-1.5 flex items-center gap-1.5">
                     <select
@@ -95,33 +281,49 @@ export default function MidiPanel({
                       }}
                     >
                       <option value="">Built-in synth</option>
-                      {midi.outputs.map((o) => (
-                        <option key={o.id} value={o.id}>
-                          {o.name || o.id}
+                      {allAvailablePorts.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
                         </option>
                       ))}
                     </select>
                     <select
-                      className="rounded border border-zinc-700 bg-zinc-950 px-1.5 py-1 text-xs text-zinc-200 disabled:opacity-40"
-                      disabled={!route}
-                      value={route?.channel ?? defaultChannel}
+                      className="rounded border border-zinc-700 bg-zinc-950 px-1.5 py-1 text-xs text-zinc-200 disabled:opacity-40 max-w-[140px] truncate"
+                      disabled={!route || isMpe}
+                      value={isMpe ? 1 : (route?.channel ?? defaultChannel)}
                       onChange={(e) =>
                         route && onRouteChange(name, { ...route, channel: Number(e.target.value) })
                       }
-                      title="MIDI channel"
+                      title={isMpe ? 'Channel selection disabled for MPE ports' : 'MIDI channel'}
                     >
-                      {CHANNELS.map((ch) => (
-                        <option key={ch} value={ch}>
-                          ch {ch}
-                        </option>
-                      ))}
+                      {isMpe ? (
+                        <option value={1}>MPE (Zone 1-16)</option>
+                      ) : (
+                        channelEntries.map(({ ch, label }) => (
+                          <option key={ch} value={ch}>
+                            {label}
+                          </option>
+                        ))
+                      )}
                     </select>
                     <button
                       className="rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-800 disabled:opacity-40"
-                      disabled={!route || !outputById.has(route.outputId)}
+                      disabled={
+                        !route ||
+                        (serverSideMode
+                          ? !portsInfoById.has(route.outputId)
+                          : !outputById.has(route.outputId))
+                      }
                       onClick={() => {
-                        const output = route && outputById.get(route.outputId);
-                        if (output && route) sendTestNote(output, route.channel);
+                        if (!route) return;
+                        // In server mode the note has to be struck by the
+                        // machine that owns the port, not by this browser.
+                        if (serverSideMode) {
+                          onServerTestNote?.(route.outputId, isMpe ? 1 : route.channel);
+                          return;
+                        }
+                        const output = outputById.get(route.outputId);
+                        if (output) sendTestNote(output, route.channel);
                       }}
                       title="Send a short test note"
                     >

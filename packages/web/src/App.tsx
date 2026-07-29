@@ -11,6 +11,15 @@ import { playingNoteExtension, setPlayingNotes } from './highlight';
 import { useMidi } from './useMidi';
 import MidiPanel, { SampleEntry } from './MidiPanel';
 import { clearShareHash, decodeShareHash, encodeShareHash, isShareHash } from './share';
+import {
+  useServerState,
+  useServerPlayMutation,
+  useServerStopMutation,
+  useServerVolumeMutation,
+  useServerTestNoteMutation,
+  ServerPortInfo,
+  WEBAUDIO_ID,
+} from './serverPlayback';
 
 type Source =
   | { kind: 'example'; name: string }
@@ -20,6 +29,9 @@ type Source =
 const ROUTES_STORAGE_KEY = 'play.yaml:midi-routes';
 const OUTPUT_STORAGE_KEY = 'play.yaml:output-mode';
 const EXAMPLE_STORAGE_KEY = 'play.yaml:example';
+const SERVER_MODE_STORAGE_KEY = 'play.yaml:server-mode';
+const SERVER_MIDI_DEVICE_STORAGE_KEY = 'play.yaml:server-midi-device';
+const MASTER_VOLUME_STORAGE_KEY = 'play.yaml:master-volume';
 
 /** Where playback goes: the bundled sampler/synth, or the WebMIDI routes. */
 type OutputMode = 'builtin' | 'midi';
@@ -76,6 +88,72 @@ export default function App() {
   const [routes, setRoutes] = useState<RouteMap>(loadRoutes);
   const [outputMode, setOutputMode] = useState<OutputMode>(loadOutputMode);
 
+  // Master volume state (0 - 100)
+  const [masterVolume, setMasterVolume] = useState<number>(() => {
+    const saved = localStorage.getItem(MASTER_VOLUME_STORAGE_KEY);
+    return saved != null ? Number(saved) : 80;
+  });
+
+  // Server-side mode state
+  const [serverSideMode, setServerSideMode] = useState<boolean>(() => {
+    return localStorage.getItem(SERVER_MODE_STORAGE_KEY) === 'true';
+  });
+
+  const [serverMidiDevice, setServerMidiDevice] = useState<string>(() => {
+    return localStorage.getItem(SERVER_MIDI_DEVICE_STORAGE_KEY) || WEBAUDIO_ID;
+  });
+
+  // One SSE stream is the whole server-side story: devices, transport, and
+  // playhead. Because it is pushed, the studio never disagrees with the server
+  // about whether something is sounding.
+  const serverQuery = useServerState();
+  const serverState = serverQuery.data;
+  const serverAvailable = Boolean(serverState?.available);
+  const serverPlaying = Boolean(serverState?.playing);
+  const serverPositionBeats = serverState?.positionBeats ?? 0;
+
+  const serverPortsInfo = useMemo<ServerPortInfo[]>(() => serverState?.ports ?? [], [serverState?.ports]);
+  const serverMidiDevices = useMemo(
+    () => serverState?.midiDevices ?? [WEBAUDIO_ID],
+    [serverState?.midiDevices],
+  );
+
+  const serverPlayMutation = useServerPlayMutation();
+  const serverStopMutation = useServerStopMutation();
+  const serverVolumeMutation = useServerVolumeMutation();
+  const serverTestNoteMutation = useServerTestNoteMutation();
+
+  const serverDeviceLabel =
+    serverPortsInfo.find((p) => p.id === serverMidiDevice)?.name ?? serverMidiDevice;
+
+  const handleServerTestNote = (device: string, channel: number) => {
+    serverTestNoteMutation.mutate({ device, channel });
+  };
+
+  const handleVolumeChange = (vol: number) => {
+    const clamped = Math.max(0, Math.min(100, vol));
+    setMasterVolume(clamped);
+    localStorage.setItem(MASTER_VOLUME_STORAGE_KEY, String(clamped));
+    // Both engines take the change live, mid-note.
+    playback.current?.setVolume(clamped / 100);
+    if (serverSideMode) serverVolumeMutation.mutate(clamped / 100);
+  };
+
+  const refreshServerInfo = () => {
+    void serverQuery.refetch();
+  };
+
+  const handleServerSideModeChange = (active: boolean) => {
+    stop();
+    setServerSideMode(active);
+    localStorage.setItem(SERVER_MODE_STORAGE_KEY, String(active));
+  };
+
+  const handleServerMidiDeviceChange = (device: string) => {
+    setServerMidiDevice(device);
+    localStorage.setItem(SERVER_MIDI_DEVICE_STORAGE_KEY, device);
+  };
+
   const selectOutputMode = (mode: OutputMode) => {
     setOutputMode(mode);
     localStorage.setItem(OUTPUT_STORAGE_KEY, mode);
@@ -98,16 +176,52 @@ export default function App() {
     return [...byName.values()];
   }, [lastGoodSong]);
 
+  const stopServer = serverStopMutation.mutate;
   const stop = useCallback(() => {
+    // Stop means stop: both engines, whichever mode the header is in. A score
+    // can be sounding here and on the server at once (mode toggles do not
+    // silence the side you left), and hunting for the right toggle before the
+    // noise stops is not something anyone should have to do. Stopping an idle
+    // engine is a no-op.
+    stopServer();
     playback.current?.stop();
     playback.current = null;
     cancelAnimationFrame(highlightRaf.current);
     editorView.current?.dispatch({ effects: setPlayingNotes.of([]) });
     setPlaying(false);
     setCurrentBeat(0);
-  }, []);
+  }, [stopServer]);
 
+  // Only the browser's own transport is torn down when this component goes
+  // away. Server-side playback belongs to the server: reloading the studio
+  // must not cut the speakers off mid-phrase.
   useEffect(() => () => playback.current?.stop(), []);
+
+  // In server mode the server owns the transport, so the button and the
+  // playhead read straight off the stream. `isPending` only covers the blink
+  // between clicking Play and the first pushed snapshot.
+  const isPlaying = serverSideMode ? serverPlaying || serverPlayMutation.isPending : playing;
+  const displayBeat = serverSideMode ? serverPositionBeats : currentBeat;
+
+  // Light up the score from the server's playhead, the same way the rAF loop
+  // does for local playback.
+  useEffect(() => {
+    if (!serverSideMode || !editorView.current) return;
+    if (!serverPlaying) {
+      editorView.current.dispatch({ effects: setPlayingNotes.of([]) });
+      return;
+    }
+    if (!noteSpans.current.length) noteSpans.current = buildNoteSpans(text);
+    const active = noteSpans.current.filter(
+      (s) => serverPositionBeats >= s.startBeat && serverPositionBeats < s.endBeat,
+    );
+    editorView.current.dispatch({
+      effects: setPlayingNotes.of(active.map(({ from, to, kind }) => ({ from, to, kind }))),
+    });
+    // `text` is deliberately not a dep: re-anchoring mid-playback is handled
+    // by handleEdit, and re-running on every keystroke would fight it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverSideMode, serverPlaying, serverPositionBeats]);
 
   const handleEdit = (value: string) => {
     setText(value);
@@ -233,6 +347,33 @@ export default function App() {
   const play = async () => {
     if (!song) return;
     stop();
+
+    if (serverSideMode) {
+      // Highlighting in server mode is driven by the playhead the stream
+      // reports, so the spans have to exist before the first frame arrives.
+      noteSpans.current = buildNoteSpans(text);
+      setStatus(`Server side playback starting on ${serverDeviceLabel}…`);
+      try {
+        await serverPlayMutation.mutateAsync({
+          code: text,
+          device: serverMidiDevice,
+          // Server mode honours the same routing table the panel edits, so a
+          // track can land on a specific rack port — or on the server's synth.
+          // Routes naming a port this machine doesn't have fall back to the
+          // selected device, server-side.
+          routes: Object.fromEntries(
+            Object.entries(routes).filter(([, r]) => r).map(([k, r]) => [k, r as MidiRoute]),
+          ),
+          volume: masterVolume / 100,
+          loop,
+        });
+        setStatus(`▶ Playing on server (${serverDeviceLabel})`);
+      } catch (err) {
+        setStatus(`Server error: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      return;
+    }
+
     const outputById = new Map(midi.outputs.map((o) => [o.id, o]));
     // Built-in mode parks the MIDI routes: everything renders in the browser.
     const handle = await playSong(song, outputMode === 'midi' ? routes : {}, outputById, {
@@ -369,30 +510,81 @@ export default function App() {
           className="flex overflow-hidden rounded border border-zinc-700 text-xs"
           role="group"
           aria-label="Playback output"
-          title="Where playback goes: the bundled sampler & synth, or your MIDI devices"
+          title="Where playback goes: bundled sampler, WebMIDI, or Server Side audio/MIDI"
         >
           <button
             className={
-              outputMode === 'builtin'
+              !serverSideMode && outputMode === 'builtin'
                 ? 'bg-emerald-600/30 px-2.5 py-1 font-medium text-emerald-300'
                 : 'px-2.5 py-1 text-zinc-400 hover:bg-zinc-800'
             }
-            aria-pressed={outputMode === 'builtin'}
-            onClick={() => selectOutputMode('builtin')}
+            aria-pressed={!serverSideMode && outputMode === 'builtin'}
+            onClick={() => {
+              handleServerSideModeChange(false);
+              selectOutputMode('builtin');
+            }}
           >
             ♪ Built-in
           </button>
           <button
             className={
-              outputMode === 'midi'
+              !serverSideMode && outputMode === 'midi'
                 ? 'bg-emerald-600/30 px-2.5 py-1 font-medium text-emerald-300'
                 : 'px-2.5 py-1 text-zinc-400 hover:bg-zinc-800'
             }
-            aria-pressed={outputMode === 'midi'}
-            onClick={() => selectOutputMode('midi')}
+            aria-pressed={!serverSideMode && outputMode === 'midi'}
+            onClick={() => {
+              handleServerSideModeChange(false);
+              selectOutputMode('midi');
+            }}
           >
             ⌁ MIDI
           </button>
+          <button
+            className={
+              serverSideMode
+                ? 'bg-purple-600/40 px-2.5 py-1 font-medium text-purple-300 border-l border-purple-800/60'
+                : 'px-2.5 py-1 text-zinc-400 hover:bg-zinc-800 border-l border-zinc-800'
+            }
+            aria-pressed={serverSideMode}
+            onClick={() => handleServerSideModeChange(!serverSideMode)}
+          >
+            🖥 Server
+          </button>
+        </div>
+
+        {serverSideMode && (
+          <select
+            className="rounded border border-purple-800/80 bg-purple-950/40 px-2 py-1 text-xs text-purple-200 font-mono focus:outline-none max-w-44 truncate"
+            value={serverMidiDevice}
+            onChange={(e) => handleServerMidiDeviceChange(e.target.value)}
+            title="Selected Server MIDI / Audio Device"
+          >
+            {serverPortsInfo.length > 0
+              ? serverPortsInfo.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} {p.mpe ? '[MPE]' : ''}
+                  </option>
+                ))
+              : serverMidiDevices.map((dev) => (
+                  <option key={dev} value={dev}>
+                    {dev}
+                  </option>
+                ))}
+          </select>
+        )}
+
+        <div className="flex items-center gap-1.5 text-xs text-zinc-400" title="Master volume control">
+          <span>🔊</span>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={masterVolume}
+            onChange={(e) => handleVolumeChange(Number(e.target.value))}
+            className="h-1.5 w-16 cursor-pointer accent-emerald-500 rounded bg-zinc-800"
+          />
+          <span className="w-7 font-mono text-[11px] text-zinc-300">{masterVolume}%</span>
         </div>
 
         <button
@@ -425,14 +617,14 @@ export default function App() {
 
         <button
           className={
-            playing
+            isPlaying
               ? 'rounded bg-red-500 px-4 py-1.5 text-xs font-semibold text-white hover:bg-red-400'
               : 'rounded bg-emerald-500 px-4 py-1.5 text-xs font-semibold text-zinc-950 hover:bg-emerald-400 disabled:opacity-40'
           }
-          onClick={playing ? stop : () => void play()}
-          disabled={!playing && !song}
+          onClick={isPlaying ? stop : () => void play()}
+          disabled={!isPlaying && !song}
         >
-          {playing ? '■ Stop' : '▶ Play'}
+          {isPlaying ? '■ Stop' : '▶ Play'}
         </button>
 
         <button
@@ -485,10 +677,22 @@ export default function App() {
             midi={midi}
             routes={routes}
             onRouteChange={handleRouteChange}
-            disabled={outputMode === 'builtin'}
+            disabled={outputMode === 'builtin' && !serverSideMode}
             song={lastGoodSong}
-            currentBeat={currentBeat}
-            playing={playing}
+            currentBeat={displayBeat}
+            playing={isPlaying}
+            masterVolume={masterVolume}
+            onVolumeChange={handleVolumeChange}
+            serverSideMode={serverSideMode}
+            onServerSideModeChange={handleServerSideModeChange}
+            serverMidiDevice={serverMidiDevice}
+            onServerMidiDeviceChange={handleServerMidiDeviceChange}
+            serverMidiDevices={serverMidiDevices}
+            serverPortsInfo={serverPortsInfo}
+            onRefreshServerDevices={refreshServerInfo}
+            serverAvailable={serverAvailable}
+            serverError={serverState?.error ?? null}
+            onServerTestNote={handleServerTestNote}
           />
         )}
       </main>
@@ -501,6 +705,17 @@ export default function App() {
             ✓ {song!.tracks.length} track(s) · {noteCount} notes · {song!.bpm} bpm
           </span>
         )}
+        {/* A score with unreadable tokens still plays — they just went silent.
+            Say which bar, so a mistyped mark is visible instead of just heard. */}
+        {!error && song?.warnings?.length ? (
+          <span
+            className="truncate text-amber-400"
+            title={song.warnings.join('\n')}
+          >
+            ⚠ {song.warnings[0]}
+            {song.warnings.length > 1 ? ` (+${song.warnings.length - 1} more)` : ''}
+          </span>
+        ) : null}
         <div className="flex-1" />
         {status && <span className="text-zinc-500">{status}</span>}
       </footer>

@@ -14,11 +14,11 @@
     "noFallthroughCasesInSwitch": true,
     "noEmit": true,
     "skipLibCheck": true,
-    "types": ["vite/client", "wicg-file-system-access"],
+    "types": ["vite/client", "wicg-file-system-access", "node"],
     "baseUrl": ".",
     "paths": {
       "@play.yaml/core": ["../core/src/index.ts"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "serverMiddleware.ts", "vite.config.ts"]
 }
