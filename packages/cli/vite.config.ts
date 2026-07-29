@@ -24,7 +24,7 @@ export default defineConfig({
         'path',
         'assert',
         'url',
-        'webaudio-node',
+        '@play.yaml/node-audio',
         '@play.yaml/core',
         'easymidi',
       ],

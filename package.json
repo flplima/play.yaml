@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces",
+    "build": "npm run build -w @play.yaml/core && npm run build -w @play.yaml/node-audio && npm run build -w @play.yaml/cli && npm run build -w @play.yaml/web",
     "test": "npm test --workspaces",
     "dev": "npm run dev -w @play.yaml/web",
     "dev:stop": "npm run dev:stop -w @play.yaml/web",

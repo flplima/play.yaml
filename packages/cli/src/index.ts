@@ -1,47 +1,42 @@
-import { AudioContext } from 'webaudio-node';
-import {
-  CompiledSong, beatsToSeconds, detectPreset, playDrum, playNote, tempoSegments,
-} from '@play.yaml/core';
+import { CompiledSong, beatsToSeconds, detectPreset, panicMessages, tempoSegments } from '@play.yaml/core';
+import { audioRenderingAvailable, createChunkedRender, playChunks } from '@play.yaml/node-audio';
 
 /**
- * Play a compiled song through the speakers, rendering with the core synth
- * presets via webaudio-node. Honours the song's tempo map (ramps stepped the
- * same way the .mid export steps them).
+ * Play a compiled song through the speakers.
+ *
+ * Rendered offline and streamed to a system audio sink by @play.yaml/node-audio
+ * — the same engine the studio's server-side mode uses, and for the same
+ * reason: a realtime Web Audio context in Node either drops every AudioParam
+ * automation (so notes came out as rectangles with no attack or decay, and the
+ * score's expression, bow and sordino never sounded) or does not keep time.
+ * See that package's header for the full list of trade-offs.
  */
 export async function playSong(song: CompiledSong, opts: { fromBeat?: number } = {}): Promise<void> {
-  const ctx = new AudioContext() as any;
-  const segments = tempoSegments(song.bpm || 120, song.tempoMap);
-  const fromBeat = opts.fromBeat ?? 0;
-  const skip = beatsToSeconds(segments, fromBeat);
-  const lead = 0.2; // scheduling offset to prevent clicks/jitter
-  const now: number = ctx.currentTime;
+  if (!(await audioRenderingAvailable())) {
+    throw new Error('node-web-audio-api is not available — cannot render audio on this machine');
+  }
 
   console.log(`Starting playback of "${song.title || 'Untitled'}" at ${song.bpm} BPM...`);
-
-  let end = now;
   for (const track of song.tracks) {
     const preset = track.kit ? null : detectPreset(track);
-    console.log(`  Track: "${track.name}" | ${track.kit ? `Kit: [${track.kit}]` : `Preset: [${preset}]`} | ${track.timeline.length} notes`);
-    for (const note of track.timeline) {
-      if (note.time < fromBeat) continue;
-      const startSec = now + lead + beatsToSeconds(segments, note.time) - skip;
-      const endSec = now + lead + beatsToSeconds(segments, note.time + note.duration) - skip;
-      end = Math.max(end, endSec);
-      if (preset) {
-        playNote(ctx, ctx.destination, preset, note.midi, note.velocity, startSec, endSec - startSec);
-      } else {
-        playDrum(ctx, ctx.destination, note.midi, note.velocity, startSec);
-      }
-    }
+    console.log(`  Track: "${track.name}" | ${track.kit ? `Kit: [${track.kit}]` : `Preset: [${preset}]`} | ${track.timeline.length} notes, ${track.controls.length} CCs`);
   }
 
-  await new Promise<void>((resolve) => setTimeout(resolve, (end - now) * 1000 + 500));
+  const render = await createChunkedRender(song, { fromBeat: opts.fromBeat ?? 0 });
+  const playback = playChunks(render, { startAtMs: Date.now() });
+
+  // Ctrl-C should silence the speakers rather than leave a chunk playing out.
+  const onSignal = () => {
+    playback.stop();
+    process.exit(0);
+  };
+  process.once('SIGINT', onSignal);
+  process.once('SIGTERM', onSignal);
+
+  await playback.done;
+  process.removeListener('SIGINT', onSignal);
+  process.removeListener('SIGTERM', onSignal);
   console.log('Playback finished.');
-  try {
-    await ctx.close?.();
-  } catch {
-    // Context already closed.
-  }
 }
 
 interface MidiMessage {
@@ -143,9 +138,9 @@ export async function playSongMidi(
           const [channel, note] = key.split(',').map(Number);
           output.send('noteoff', { note, velocity: 0, channel } as any);
         }
-        for (let channel = 0; channel < 16; channel++) {
-          output.send('cc', { controller: 123, value: 0, channel } as any);
-          output.send('cc', { controller: 120, value: 0, channel } as any);
+        // Pedals down, then the blanket kills — see core's midiPanic.
+        for (const msg of panicMessages()) {
+          output.send('cc', { controller: msg.controller, value: msg.value, channel: msg.channel } as any);
         }
       } catch {
         // Best effort — the port may already be gone.

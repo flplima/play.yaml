@@ -20,7 +20,10 @@
     "@codemirror/state": "^6.4.0",
     "@codemirror/view": "^6.26.0",
     "@play.yaml/core": "^1.0.0",
+    "@play.yaml/node-audio": "^1.0.0",
+    "@tanstack/react-query": "^5.101.4",
     "@uiw/react-codemirror": "^4.23.0",
+    "easymidi": "^3.2.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tone": "^15.1.22"
