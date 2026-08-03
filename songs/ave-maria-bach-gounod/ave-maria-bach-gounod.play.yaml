@@ -1,0 +1,222 @@
+# Ave Maria — Charles Gounod (1853), over J.S. Bach's Prelude BWV 846.
+#
+#   "Méditation sur le premier Prélude de J. S. Bach". Gounod superimposed a
+#   single sustained cantabile line on Bach's 1722 prelude, leaving the
+#   keyboard writing essentially untouched. Both works are public domain
+#   (Bach d. 1750, Gounod d. 1893).
+#
+#   The piano part here is `examples/bwv846.play.yaml` copied verbatim —
+#   same notes, dynamics, pedalling and tempo shaping, unchanged. The only
+#   addition is the `voice` track.
+#
+#   The melody is transcribed from the 1856 Heugel edition for solo violin as
+#   typeset by the Mutopia Project (Public Domain / CC0) — see
+#   research/report.md. Every melody bar sits over exactly the harmony Gounod
+#   wrote it against: the mapping was derived by aligning our prelude against
+#   Gounod's own piano part bar-by-bar on pitch-class sets, not by ear.
+#
+#   Two of Gounod's bars have no counterpart in this prelude and are dropped
+#   (research/report.md documents both at length):
+#     - his bar 27, the spurious "Schwencke measure" — an inauthentic bar
+#       Bach never wrote, correctly absent here. Gounod sets a repeated
+#       "Maria!" across it and the next bar; we keep the second of the two,
+#       and the 16th-note pickup that leads into it survives intact.
+#     - his bar 31, which corresponds to authentic Bach bar 26 — genuinely
+#       missing from examples/bwv846.play.yaml (that file has 34 bars where
+#       the prelude has 35). Its phrase is omitted rather than reharmonised.
+#
+#   Gounod plays Bach's first four bars twice — once as a piano prelude, then
+#   again as the voice enters. This prelude is a single 34-bar pass, so the
+#   voice enters immediately at bar 1, on the harmony Gounod gave it. Marked
+#   "avec le sentiment contemplatif", sul A, in the original.
+
+title: "Ave Maria (Bach / Gounod)"
+tempo: 72
+measure: 4/4
+
+tracks:
+  piano:
+    sample: epiano
+    dynamic: mezzopiano
+    controls:
+      # cc, plus how far the pedal words are allowed to push it. The curve is
+      # the damper's own travel: the first part of the pedal barely lifts the
+      # felts, most of the damping happens late, and it stops short of 118
+      # because a fully floored damper on this instrument rings into mud.
+      pedal: { cc: 64, range: [0, 24, 96, 118] }
+      soft: { cc: 67, range: 90 }
+    # Bar-by-bar syncopated pedalling, the way this prelude is always played:
+    # each bar is one harmony, so the pedal lifts exactly on the new bass note
+    # and takes it again at once. Written once here instead of per bar.
+    set: legato, pedale sincopato
+  # The added line. A warm synth pad (GM 89) stands in for the voice: it
+  # sustains through the whole notes the way a singer would, and sits above
+  # the prelude's 16th-note wash instead of inside it.
+  voice:
+    sample: pad
+    dynamic: piano
+    set: legato, cantabile
+
+sections:
+  piece:
+    loop: false
+    piano:
+      play:
+        # --- Opening Statement (Bars 1-4): C major, gentle dolce flow ---
+        - "dolce"
+        - "{c4 e4 g4 c5} {e5 g4 c5 e5} {c4 e4 g4 c5} {e5 g4 c5 e5}"
+        - "{c4 d4 a4 d5} {f5 a4 d5 f5} {c4 d4 a4 d5} {f5 a4 d5 f5}"
+        - "{b3 d4 g4 d5} {f5 g4 d5 f5} {b3 d4 g4 d5} {f5 g4 d5 f5}"
+        - "{c4 e4 g4 c5} {e5 g4 c5 e5} {c4 e4 g4 c5} {e5 g4 c5 e5}"
+
+        # --- Harmonic Rise (Bars 5-8): Crescendo toward A minor ---
+        - "crescendo over 4"
+        - "{c4 e4 a4 e5} {a5 a4 e5 a5} {c4 e4 a4 e5} {a5 a4 e5 a5}"
+        - "{c4 d4 f#4 a4} {d5 f#4 a4 d5} {c4 d4 f#4 a4} {d5 f#4 a4 d5}"
+        - "{b3 d4 g4 d5} {g5 g4 d5 g5} {b3 d4 g4 d5} {g5 g4 d5 g5}"
+        - "{b3 c4 e4 g4} {c5 e4 g4 c5} {b3 c4 e4 g4} {c5 e4 g4 c5}"
+
+        # --- Middle Arc (Bars 9-14): D minor / F minor darkening ---
+        - "mezzoforte"
+        - "{a3 c4 e4 g4} {c5 e4 g4 c5} {a3 c4 e4 g4} {c5 e4 g4 c5}"
+        - "{d3 a3 d4 f#4} {c5 d4 f#4 c5} {d3 a3 d4 f#4} {c5 d4 f#4 c5}"
+        - "{g3 b3 d4 g4} {b4 d4 g4 b4} {g3 b3 d4 g4} {b4 d4 g4 b4}"
+        - "diminuendo over 3"
+        - "{g3 bb3 e4 g4} {c#5 e4 g4 c#5} {g3 bb3 e4 g4} {c#5 e4 g4 c#5}"
+        - "{f3 a3 d4 a4} {d5 d4 a4 d5} {f3 a3 d4 a4} {d5 d4 a4 d5}"
+        - "{f3 ab3 d4 f4} {b4 d4 f4 b4} {f3 ab3 d4 f4} {b4 d4 f4 b4}"
+
+        # --- Floating Middle (Bars 15-19): Subdued & cantabile ---
+        - "mezzopiano"
+        - "cantabile"
+        # Half the depth, still re-taken each bar: the texture stays legato
+        # without the wash the full pedal gives it.
+        - "half pedal per bar"
+        - "{e3 g3 c4 g4} {c5 c4 g4 c5} {e3 g3 c4 g4} {c5 c4 g4 c5}"
+        - "{e3 f3 a3 c4} {f4 a3 c4 f4} {e3 f3 a3 c4} {f4 a3 c4 f4}"
+        - "{d3 f3 a3 c4} {f4 a3 c4 f4} {d3 f3 a3 c4} {f4 a3 c4 f4}"
+        - "{g2 d3 g3 b3} {f4 g3 b3 f4} {g2 d3 g3 b3} {f4 g3 b3 f4}"
+        - "{c3 e3 g3 c4} {e4 g3 c4 e4} {c3 e3 g3 c4} {e4 g3 c4 e4}"
+
+        # --- Chromatic Bass Line (Bars 20-24): Building tension over pedal ---
+        - "crescendo over 5"
+        - "{c3 g3 bb3 c4} {e4 bb3 c4 e4} {c3 g3 bb3 c4} {e4 bb3 c4 e4}"
+        - "{f2 f3 a3 c4} {e4 a3 c4 e4} {f2 f3 a3 c4} {e4 a3 c4 e4}"
+        - "{f#2 c3 a3 c4} {eb4 a3 c4 eb4} {f#2 c3 a3 c4} {eb4 a3 c4 eb4}"
+        - "{ab2 f3 b3 c4} {d4 b3 c4 d4} {ab2 f3 b3 c4} {d4 b3 c4 d4}"
+        - "{g2 f3 g3 b3} {d4 g3 b3 d4} {g2 f3 g3 b3} {d4 g3 b3 d4}"
+
+        # --- Dominant Pedal Climax (Bars 25-31): Forte & sostenuto ---
+        - "forte"
+        - "sostenuto"
+        - "pedale sincopato"
+        - "{g2 e3 g3 c4} {e4 g3 c4 e4} {g2 e3 g3 c4} {e4 g3 c4 e4}"
+        - "{g2 d3 g3 b3} {f4 g3 b3 f4} {g2 d3 g3 b3} {f4 g3 b3 f4}"
+        - "{g2 eb3 a3 c4} {f#4 a3 c4 f#4} {g2 eb3 a3 c4} {f#4 a3 c4 f#4}"
+        - "{g2 e3 g3 c4} {g4 g3 c4 g4} {g2 e3 g3 c4} {g4 g3 c4 g4}"
+        - "{g2 d3 g3 c4} {f4 g3 c4 f4} {g2 d3 g3 c4} {f4 g3 c4 f4}"
+        - "{g2 d3 g3 b3} {f4 g3 b3 f4} {g2 d3 g3 b3} {f4 g3 b3 f4}"
+        - "{c2 c3 g3 bb3} {e4 g3 bb3 e4} {c2 c3 g3 bb3} {e4 g3 bb3 e4}"
+
+        # --- Cadenza & Grand Resolution (Bars 32-34) ---
+        - "fortissimo"
+        - "ritardando over 2 to 54"
+        - "{c2 f3 a3 c4} {f4 c4 a3 c4} {a3 f3 a3 f3} {d3 f3 d3 f3}"
+        - "{c2 g4 b4 d5} {f5 d5 b4 d5} {b4 g4 b4 d4} {f4 e4 d4 f4}"
+        - "piano"
+        - "a tempo"
+        # Stop re-taking and hold the last chord under the fermata.
+        - "senza pedale"
+        - "pedal down"
+        - "[c2 c3 e4 g4 c5] _ _ _"
+
+    voice:
+      play:
+        # --- The opening arch (bars 1-4). Four long notes, rising a step at a
+        # time, then falling back — the whole melody in miniature. ---
+        - "e5 _ _ _"
+        - "f5 _ _ _"
+        - "g5 _ _ d5"
+        - "e5 _ _ ~"
+
+        # --- The sighing figure (bars 5-8). Each phrase leaps to a held note,
+        # drops an octave, then climbs back by step. Gounod alternates
+        # crescendo and pianissimo bar by bar. ---
+        - "crescendo over 1"
+        - "a5 _ {_ a4} {b4 c5}"
+        - "pianissimo"
+        - "d5 {_ _ _ e5} d5 ~"
+        - "crescendo over 1"
+        - "g5 _ {_ g4} {a4 b4}"
+        - "pianissimo"
+        - "c5 {_ _ _ d5} c5 ~"
+
+        # --- Bars 9-11: the line reaches its first high C, then the F# turn
+        # bends it down into the B that closes the phrase. ---
+        - "crescendo over 1"
+        - "c6 _ {_ c5} {d5 e5}"
+        - "diminuendo over 1"
+        - "f#5 {_ e5} d5 a4"
+        - "piano"
+        - "b4 _ {_ ~} d5"
+
+        # --- Bars 12-17: the same rising sequence three times over, a step
+        # higher each time (E, D-G, C-F), pushing toward the climax. ---
+        - "crescendo over 1"
+        - "e5 _ {_ e5} {f5 g5}"
+        - "pianissimo"
+        - "a5 _ a4 ~"
+        - "crescendo over 1"
+        - "d5 _ {_ d5} {e5 f5}"
+        - "pianissimo"
+        - "g5 _ g4 ~"
+        - "crescendo over 2"
+        - "c5 _ {_ c5} {d5 e5}"
+        - "f5 _ {_ f5} {g5 a5}"
+
+        # --- Bar 18: the phrase tops out on B5 and falls away. ---
+        - "forte"
+        - "b5 {_ a5} g5 d5"
+
+        # --- Bars 19-23: the great "crescendo molto". One accented half note
+        # per bar, each answered by a 16th-note pickup into the next: E, G, A,
+        # A, then the high C. Gounod writes this over five bars, the fourth of
+        # them the spurious Schwencke measure — dropped here, so the pickup at
+        # the end of bar 22 leads straight into the C6 that follows. ---
+        - "piano"
+        - "e5 _ _ {~ ~ ~ e5}"
+        - "crescendo over 4"
+        - "g5 _ e5 {~ ~ ~ e5}"
+        - "a5 _ a4 {~ ~ ~ a5}"
+        - "a5 _ c5 {~ ~ ~ a5}"
+        - "c6 _ d5 {~ ~ ~ d5}"
+
+        # --- Bars 24-25: the tension releases; the line sinks back to C.
+        # Gounod's next bar rises again from F — it belongs to authentic Bach
+        # bar 26, which this prelude does not have, so it is omitted and the
+        # music goes straight to the climax. ---
+        - "piano"
+        - "d5 _ {_ d5} {c5 b4}"
+        - "g5 {_ e5} c5 ~"
+
+        # --- Bars 26-29: the climax. D6 is the highest note so far; E6 two
+        # bars later is the peak of the whole piece (ff, "tutta forza"). ---
+        - "forte"
+        - "d6 {_ b5} g5 _"
+        - "a5 _ {_ a5} {b5 c6}"
+        - "fortissimo"
+        - "e6 _ {_ c6} {g5 e5}"
+        - "d5 _ {_ a5} {b5 a5}"
+
+        # --- Bar 30: one long scale down through the G7, spanning two
+        # octaves — the descent that ends the piece. ---
+        - "{a5 g5} {f5 d5} {b4 g4} {f4 d4}"
+
+        # --- Bars 31-34: the voice lands low and stays there, holding C then
+        # G underneath the piano's cadenza and final chord. ---
+        - "diminuendo over 2"
+        - "c4 _ _ _"
+        - "_ _ _ _"
+        - "pianissimo"
+        - "g3 _ _ _"
+        - "_ _ _ _"
