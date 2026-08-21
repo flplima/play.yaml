@@ -1,5 +1,139 @@
 @import "tailwindcss";
 
-html, body, #root {
-  height: 100%;
+/*
+ * shadcn/ui design tokens, Tailwind v4 style.
+ *
+ * The studio is a dark-only tool — it sits next to a code editor and is looked
+ * at for hours — so the dark values live in `:root` and are what you get by
+ * default. `.light` is defined too, for the day someone wants it, and nothing
+ * in the app hardcodes a colour: components reference the tokens, so a theme
+ * swap is a change to this file alone.
+ *
+ * The accent is the same emerald the studio has always used for "sounding" and
+ * for the play button, kept as `--primary` so the shadcn components inherit it
+ * rather than fighting it.
+ */
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --radius: 0.5rem;
+
+  --background: oklch(0.16 0.004 285);      /* zinc-950-ish, a shade warmer */
+  --foreground: oklch(0.96 0.002 285);
+  --card: oklch(0.20 0.005 285);
+  --card-foreground: var(--foreground);
+  --popover: oklch(0.19 0.005 285);
+  --popover-foreground: var(--foreground);
+
+  --primary: oklch(0.75 0.17 158);          /* emerald */
+  --primary-foreground: oklch(0.18 0.02 158);
+  --secondary: oklch(0.26 0.006 285);
+  --secondary-foreground: var(--foreground);
+  --muted: oklch(0.24 0.006 285);
+  --muted-foreground: oklch(0.68 0.01 285);
+  --accent: oklch(0.28 0.008 285);
+  --accent-foreground: var(--foreground);
+  --destructive: oklch(0.64 0.21 25);
+  --destructive-foreground: oklch(0.98 0 0);
+
+  --border: oklch(0.28 0.006 285);
+  --input: oklch(0.30 0.006 285);
+  --ring: oklch(0.75 0.17 158 / 55%);
+
+  /* Studio-specific accents, so panels stop inventing their own zinc scale. */
+  --server: oklch(0.72 0.16 305);           /* the purple "server side" mode */
+  --warning: oklch(0.80 0.15 85);           /* compile warnings, unsaved dot */
+  --info: oklch(0.75 0.13 235);             /* rack-translated instrument controls */
+}
+
+.light {
+  --background: oklch(0.99 0 0);
+  --foreground: oklch(0.21 0.006 285);
+  --card: oklch(1 0 0);
+  --card-foreground: var(--foreground);
+  --popover: oklch(1 0 0);
+  --popover-foreground: var(--foreground);
+  --primary: oklch(0.60 0.15 158);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.96 0.002 285);
+  --secondary-foreground: var(--foreground);
+  --muted: oklch(0.96 0.002 285);
+  --muted-foreground: oklch(0.50 0.01 285);
+  --accent: oklch(0.95 0.003 285);
+  --accent-foreground: var(--foreground);
+  --border: oklch(0.90 0.004 285);
+  --input: oklch(0.88 0.004 285);
+  --ring: oklch(0.60 0.15 158 / 45%);
+  --server: oklch(0.52 0.19 305);
+  --warning: oklch(0.60 0.14 70);
+  --info: oklch(0.55 0.15 235);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-server: var(--server);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+}
+
+@layer base {
+  :root {
+    /* Native widgets — scrollbars, the file picker, focus rings — follow this. */
+    color-scheme: dark;
+  }
+  .light {
+    color-scheme: light;
+  }
+  * {
+    border-color: var(--border);
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+}
+
+/*
+ * Radix overlays open and close from a `data-state`; shadcn normally leans on
+ * the tailwindcss-animate plugin for that, which Tailwind v4 does not ship. One
+ * keyframe covers every popper here.
+ */
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+@utility animate-pop {
+  &[data-state='open'] {
+    animation: pop-in 110ms ease-out;
+  }
 }

@@ -191,3 +191,20 @@ export function measureToBeats(measure: string | number | undefined): number {
   }
   return parseInt(m[1], 10) * (4 / parseInt(m[2], 10));
 }
+
+/**
+ * The meter as notated, but only when writing it down is the only way to keep
+ * it. A beat count reconstructs 3/8 (1.5) and 9/8 (4.5) unambiguously as the
+ * smallest denominator that makes the numerator whole; it cannot tell 12/8
+ * from 6/4 or 2/2 from 4/4, because those are whole numbers of quarters.
+ * Returns undefined for everything recoverable, so the compiled shape of a
+ * plain 4/4 score does not grow a field.
+ */
+export function notatedMeter(measure: string | number | undefined): string | undefined {
+  if (typeof measure !== 'string') return undefined;
+  const m = /^(\d+)\s*\/\s*(\d+)$/.exec(measure.trim());
+  if (!m) return undefined;
+  const denominator = parseInt(m[2], 10);
+  if (denominator === 4) return undefined;
+  return Number.isInteger(measureToBeats(measure)) ? `${parseInt(m[1], 10)}/${denominator}` : undefined;
+}

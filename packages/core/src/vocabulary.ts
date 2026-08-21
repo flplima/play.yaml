@@ -227,6 +227,13 @@ export const DEFAULT_CONTROLS: Record<string, ControlSpec> = {
   pedal: { cc: 64 }, // damper — the piano pedal every score means by "pedal"
   sostenuto: { cc: 66 }, // middle pedal: holds what is already down
   soft: { cc: 67 }, // una corda
+  // The mix controls. Unlike the instrument controls above — where every
+  // sampler has its own idea of which CC does what — these four are fixed by
+  // General MIDI, so a score can reach for them without declaring anything.
+  volume: { cc: 7 }, // the channel fader, not the playing
+  pan: { cc: 10 }, // 64 is centre
+  reverb: { cc: 91 }, // send into the room, not a room of its own
+  chorus: { cc: 93 },
 };
 
 /**
@@ -328,6 +335,56 @@ export const CONTROL_TERMS: Record<string, { control: string; amount: number }> 
   'mid position': { control: 'fingering', amount: 0 },
   'high position': { control: 'fingering', amount: 0.5 }, // near the bridge
   'open strings': { control: 'fingering', amount: 1 }, // near the nut + open
+
+  // ── the room (CC91) ──
+  // One send into one shared room, so these words say how far back in it the
+  // player stands — not which hall it is. "cathedral" is a track drenched in
+  // the same reverb "room" barely touches.
+  secco: { control: 'reverb', amount: 0 },
+  dry: { control: 'reverb', amount: 0 },
+  'no reverb': { control: 'reverb', amount: 0 },
+  'senza riverbero': { control: 'reverb', amount: 0 },
+  'small room': { control: 'reverb', amount: 0.2 },
+  room: { control: 'reverb', amount: 0.3 },
+  stage: { control: 'reverb', amount: 0.45 },
+  reverb: { control: 'reverb', amount: 0.5 },
+  hall: { control: 'reverb', amount: 0.62 },
+  church: { control: 'reverb', amount: 0.8 },
+  'in chiesa': { control: 'reverb', amount: 0.8 },
+  cathedral: { control: 'reverb', amount: 0.95 },
+
+  // ── chorus (CC93) ──
+  // The organ and string-machine names are here because that is what those
+  // stops are: ranks tuned slightly apart, beating against each other.
+  'no chorus': { control: 'chorus', amount: 0 },
+  'senza chorus': { control: 'chorus', amount: 0 },
+  'unda maris': { control: 'chorus', amount: 0.35 }, // the gentler celeste rank
+  'light chorus': { control: 'chorus', amount: 0.3 },
+  chorus: { control: 'chorus', amount: 0.55 },
+  celeste: { control: 'chorus', amount: 0.6 },
+  'voix celeste': { control: 'chorus', amount: 0.6 },
+  ensemble: { control: 'chorus', amount: 0.7 },
+  'wide chorus': { control: 'chorus', amount: 0.85 },
+
+  // ── pan (CC10) ──
+  // Where the player sits. Centre is 0.5 and lands exactly on 64.
+  'hard left': { control: 'pan', amount: 0 },
+  'pan left': { control: 'pan', amount: 0.25 },
+  'pan centre': { control: 'pan', amount: 0.5 },
+  'pan center': { control: 'pan', amount: 0.5 },
+  'pan right': { control: 'pan', amount: 0.75 },
+  'hard right': { control: 'pan', amount: 1 },
+
+  // ── the fader (CC7) ──
+  // Not a dynamic: "piano" is how the part is played, "fade out" is the
+  // channel being pulled down under it. Both worth having, and they multiply.
+  //
+  // These are worth most with a span — "fade out over 4" — but a drift starts
+  // from wherever the fader last sat, so a score that has never touched CC7
+  // needs to plant it first: `set: volume 0` then `fade in over 4`.
+  'fade out': { control: 'volume', amount: 0 },
+  'fade in': { control: 'volume', amount: 1 },
+  'full volume': { control: 'volume', amount: 1 },
 };
 
 /** Resolve a named control to its CC and range, falling back to convention. */

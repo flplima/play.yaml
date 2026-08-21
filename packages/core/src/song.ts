@@ -7,7 +7,7 @@
  */
 
 import {
-  DEFAULT_MEASURE, DEFAULT_OCTAVE, ScaleInfo, degreeToMidi, measureToBeats,
+  DEFAULT_MEASURE, DEFAULT_OCTAVE, ScaleInfo, degreeToMidi, measureToBeats, notatedMeter,
   midiToName, noteToMidi, parseScale,
 } from './theory';
 import {
@@ -38,6 +38,19 @@ export interface TrackProps {
   sample?: string;
   scale?: string; // "g major", "a minor" — the key for degree tokens
   octave?: number;
+  /**
+   * Semitones added to every pitch this track sounds, after the notes are
+   * read. `octave:` cannot do this job: it is the octave a *bare* note name
+   * defaults to, so a line written in absolute pitches (`e4 f4 g4`) ignores
+   * it entirely. Transposition is what voicing the same line on a different
+   * instrument needs — `transpose: -12` puts a violin melody on a cello
+   * without touching a single written note, and the score still reads as the
+   * composer wrote it.
+   *
+   * Kit tracks are left alone: a drum token names a GM percussion key, and
+   * shifting it would pick a different instrument rather than a lower pitch.
+   */
+  transpose?: number;
   channel?: number;
   program?: number;
   velocity?: number;
@@ -80,8 +93,50 @@ export interface TrackProps {
   rubato?: number;
   /** A dynamic or character mark ("mf", "dolce") — the worded form of `velocity`. */
   dynamic?: string;
+  /**
+   * Remap this track's velocities into a band, so the dynamic marks keep
+   * their written meaning while the instrument plays in a usable part of its
+   * range. A solo line over a busy accompaniment is the usual reason: leave
+   * the score's `pianissimo` where the composer put it and lift the band
+   * instead of rewriting the marks.
+   *
+   * Takes the same shapes as a control `range:` — the whole 0..127 velocity
+   * domain is mapped through it:
+   *   velocityRange: 100             → 0 … 100   (a ceiling)
+   *   velocityRange: [64, 112]       → 64 … 112  (a band; write it backwards
+   *                                   to invert)
+   *   velocityRange: [0, 40, 90, 112] → a curve through those breakpoints
+   *
+   * Applies to note velocities only, after accents and humanize, so nothing
+   * escapes the band. An `expression` control keeps its own range.
+   */
+  velocityRange?: number | number[];
   /** An articulation mark ("legato", "tenuto") — the worded form of `gate`. */
   articulation?: string;
+  /**
+   * How a sustained voice lets go into a rest.
+   *
+   * A bowed or blown line does not stop dead at a pause: the player eases off
+   * over the last part of the note. On a physical model that easing *is* the
+   * expression control falling away — a note-off at full bow speed is the
+   * sound of a tape being cut, which is exactly what a written rest should
+   * not sound like. So this rides the track's `expression` control down over
+   * the tail of the last note before every pause, and puts it back where it
+   * was for the next phrase.
+   *
+   * Needs an `expression` control to do anything; without one there is
+   * nothing to ease off. Notes that merely change (a slur, a legato overlap)
+   * are untouched — only a real silence counts.
+   *
+   *   release: 0.5                          → taper over the last half-beat
+   *   release: { over: 0.75, to: 0.2 }      → longer, and not quite to nothing
+   *   release: { over: 0.5, gap: 1 }        → only into pauses of a beat or more
+   *
+   * `to` is a position along the expression control's own range (0 = its
+   * floor), so a control declared `range: [78, 127]` still releases to 78 —
+   * the quietest this instrument speaks at, not silence.
+   */
+  release?: number | { over?: number; to?: number; gap?: number };
   /**
    * Names a drum kit ("acoustic", "808", "percussion") and switches the
    * track's tokens from pitches to drum names: `bd hh sd hh` instead of
@@ -119,6 +174,19 @@ export interface TrackProps {
    * `{time: beats, velocity: steps}`.
    */
   humanize?: number | { time?: number; velocity?: number };
+}
+
+/**
+ * A preset or sound change at a point in the timeline, named rather than
+ * numbered. Not a control change and not a program change: the racks this
+ * targets select presets by name over a control port, which is the only route
+ * that reaches plugins exposing no MIDI-addressable programs — and the only
+ * one that can name more than 128 of them.
+ */
+export interface PatchEvent {
+  time: number; // in quarter-note beats
+  kind: 'preset' | 'sound';
+  name: string;
 }
 
 /** A control-change emitted at a point in the timeline. */
@@ -243,12 +311,22 @@ export interface CompiledTrack {
   timeline: TimelineEvent[];
   /** CC changes declared mid-song, in beat order. */
   controls: ControlEvent[];
+  /** Preset/sound changes declared mid-song, in beat order. */
+  patches: PatchEvent[];
 }
 
 export interface CompiledSong {
   title?: string;
   bpm: number;
   measureBeats: number;
+  /**
+   * The meter as notated ("12/8"), carried only when the beat count alone
+   * would lose it — 12/8 and 6/4 are both 6 beats, and the `.mid` export
+   * writes a time signature that a re-import reads back. Simple meters
+   * (4/4, 3/4, 3/8, 9/8) are recoverable from `measureBeats`, so they are
+   * left undefined rather than moving every score's compiled shape.
+   */
+  measureSig?: string;
   /** Song length in beats — the longest track, whole measures. */
   lengthBeats: number;
   /**
@@ -293,6 +371,8 @@ interface EmitCtx {
   drums: boolean;
   scale: ScaleInfo;
   octave: number;
+  /** Semitones added to every pitch, after the token is read. */
+  transpose: number;
   velocity: number;
   gate: number;
   /** Beats between successive notes of a `~`-rolled chord. */
@@ -547,7 +627,7 @@ function placeToken(token: string, start: number, span: number, ctx: EmitCtx, bo
   const raw = /^-?\d/.test(core)
     ? degreeToMidi(core, ctx.scale, ctx.octave)
     : noteToMidi(core, ctx.octave);
-  const midi = raw === null ? null : raw - 12 * octavesDown;
+  const midi = raw === null ? null : raw - 12 * octavesDown + ctx.transpose;
   if (midi === null) {
     noteUnknownToken(ctx, token);
     return; // unknown token → treat as a rest, stay robust
@@ -714,6 +794,7 @@ export function playToMeasures(play: PlayInput | undefined): string[] {
 export interface PlayResult {
   timeline: TimelineEvent[];
   controls: ControlEvent[];
+  patches: PatchEvent[];
   tempos: TempoEvent[];
   /** Where the last sounding measure ends, in beats — honours meter changes. */
   lengthBeats: number;
@@ -727,7 +808,18 @@ export interface PlayResult {
  * update the running scale/octave/velocity/gate, and emit control or tempo
  * events at the beat where they appear, without advancing time.
  */
-export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResult {
+export function parsePlayFull(
+  play: PlayInput,
+  props: TrackProps = {},
+  /**
+   * Controls the track opens on, from a `set:` on the track itself. They are
+   * emitted by the caller (at beat 0); what they are needed for here is the
+   * starting point of a later drift. Without them a track that opens
+   * `set: volume 127` and later says `fade out over 4` has nowhere to fade
+   * *from*, and the ramp collapses to a jump.
+   */
+  opening: ControlEvent[] = [],
+): PlayResult {
   let measureBeats = measureToBeats(props.measure);
   const controlAliases = props.controls ?? {};
   const baseTempo = props.tempo ?? DEFAULT_TEMPO;
@@ -741,6 +833,7 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
     drums: props.kit != null,
     scale: parseScale(props.scale),
     octave: props.octave ?? DEFAULT_OCTAVE,
+    transpose: props.transpose ?? 0,
     velocity: clampVelocity(props.velocity ?? worded.velocity ?? DEFAULT_VELOCITY),
     gate: props.gate ?? worded.gate ?? DEFAULT_GATE,
     strum: props.strum ?? DEFAULT_STRUM,
@@ -753,9 +846,10 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
     humanize: normalizeHumanize(props.humanize),
   };
   const controls: ControlEvent[] = [];
+  const patches: PatchEvent[] = [];
   const tempos: TempoEvent[] = [];
   /** Last value emitted per CC, so a drift knows where it starts. */
-  const lastCc = new Map<number, number>();
+  const lastCc = new Map<number, number>(opening.map((c) => [c.cc, c.value]));
 
   // Physical models (SWAM and friends) take their loudness from a continuous
   // expression controller, not from note velocity. When a track declares an
@@ -875,6 +969,9 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
       setTempo(target, patch.tempo.overMeasures, at);
     }
 
+    for (const p of patch.patches ?? []) {
+      patches.push({ time: round(at), kind: p.kind, name: p.name });
+    }
     for (const c of patch.ccs ?? []) {
       controls.push({ time: round(at), cc: c.cc, value: c.value });
       lastCc.set(c.cc, c.value);
@@ -1016,9 +1113,89 @@ export function parsePlayFull(play: PlayInput, props: TrackProps = {}): PlayResu
     lastByPitch.set(e.midi, e);
   }
 
+  /*
+   * Bow release. Run over the finished timeline rather than while compiling,
+   * because "is a rest coming?" is only answerable once the notes after this
+   * one exist — and a phrase ends where the *sound* stops, which under a
+   * legato overlap or a held chord is not where any single note ends.
+   */
+  if (exprSpec && props.release !== undefined && props.release !== null) {
+    const cfg = typeof props.release === 'number' ? { over: props.release } : props.release;
+    const over = Math.max(0, cfg.over ?? 0.5);
+    const minGap = Math.max(0, cfg.gap ?? 0.25);
+    const floor = Math.round(controlValue(exprSpec, Math.max(0, Math.min(1, cfg.to ?? 0))));
+    const notes = [...ctx.events].sort((a, b) => a.time - b.time);
+    const exprEvents = controls
+      .filter((c) => c.cc === exprSpec.cc)
+      .sort((a, b) => a.time - b.time);
+    /** The expression the score has called for at this beat. */
+    const exprAt = (beat: number): number | null => {
+      let value: number | null = null;
+      for (const e of exprEvents) {
+        if (e.time > beat + 1e-9) break;
+        value = e.value;
+      }
+      return value;
+    };
+    const added: ControlEvent[] = [];
+
+    // Walk the sounding span: a pause opens where nothing is left ringing and
+    // the next attack is far enough away to read as silence.
+    let i = 0;
+    while (i < notes.length) {
+      let soundingUntil = notes[i].time + notes[i].duration;
+      let lastOnset = notes[i].time;
+      let j = i + 1;
+      while (j < notes.length && notes[j].time < soundingUntil + minGap - 1e-9) {
+        soundingUntil = Math.max(soundingUntil, notes[j].time + notes[j].duration);
+        lastOnset = Math.max(lastOnset, notes[j].time);
+        j++;
+      }
+      const nextOnset = j < notes.length ? notes[j].time : Infinity;
+
+      // Never start the taper before the note it belongs to, or the bow would
+      // be dying away through a note that has only just been attacked.
+      const start = Math.max(lastOnset, soundingUntil - over);
+      const held = exprAt(start);
+      if (held !== null && held > floor && soundingUntil > start + 1e-9) {
+        // Fine enough that the fall reads as a bow slowing rather than a
+        // staircase: a half-beat release at 4 steps/beat is two values.
+        const steps = Math.max(4, Math.ceil((soundingUntil - start) * 16));
+        for (let s = 1; s <= steps; s++) {
+          const t = s / steps;
+          added.push({
+            time: round(start + (soundingUntil - start) * t),
+            cc: exprSpec.cc,
+            value: Math.round(held + (floor - held) * t),
+          });
+        }
+        // Put the bow back for the next phrase — unless the score itself has
+        // something to say at the entry, in which case that wins.
+        const spoken = exprEvents.some((e) => e.time > soundingUntil + 1e-9 && e.time <= nextOnset + 1e-9);
+        if (nextOnset !== Infinity && !spoken) {
+          added.push({ time: round(nextOnset), cc: exprSpec.cc, value: held });
+        }
+      }
+      i = j;
+    }
+    controls.push(...added);
+  }
+
   controls.sort((a, b) => a.time - b.time);
+  patches.sort((a, b) => a.time - b.time);
   tempos.sort((a, b) => a.time - b.time);
-  return { timeline: ctx.events, controls, tempos, lengthBeats: endBeat, warnings: ctx.warnings ?? [] };
+  // A track-level velocity band. Applied last, over the finished timeline, so
+  // it catches every velocity the compiler produced — dynamic marks, hairpin
+  // ramps, accents, rolls and humanize alike — and nothing escapes the band.
+  // The written dynamics keep their relative shape; only where they land moves.
+  if (props.velocityRange !== undefined) {
+    const band: ControlSpec = { cc: 0, range: props.velocityRange };
+    for (const event of ctx.events) {
+      event.velocity = clampVelocity(controlValue(band, event.velocity / 127));
+    }
+  }
+
+  return { timeline: ctx.events, controls, patches, tempos, lengthBeats: endBeat, warnings: ctx.warnings ?? [] };
 }
 
 /** Compile one track's measures to its note timeline. */
@@ -1203,9 +1380,9 @@ export function expandSections(doc: SongDoc): { doc: SongDoc; loopStartBar: numb
 // ---------------------------------------------------------------------------
 
 const INHERITED: (keyof TrackProps)[] = [
-  'tempo', 'measure', 'sample', 'scale', 'octave', 'channel', 'program', 'velocity',
-  'gate', 'rubato', 'dynamic', 'articulation', 'controls', 'strum', 'voices', 'strumTail', 'kit',
-  'pedal', 'seed', 'chance', 'humanize',
+  'tempo', 'measure', 'sample', 'scale', 'octave', 'transpose', 'channel', 'program', 'velocity',
+  'gate', 'rubato', 'dynamic', 'articulation', 'release', 'controls', 'strum', 'voices', 'strumTail', 'kit',
+  'pedal', 'seed', 'chance', 'humanize', 'velocityRange',
 ];
 
 function effectiveProps(node: TrackNode, inherited: TrackProps): TrackProps {
@@ -1264,15 +1441,21 @@ export function compileDoc(doc: SongDoc): CompiledSong {
     const props = node === doc ? rootProps : effectiveProps(node, inherited);
 
     if (node.play != null) {
-      const { timeline, controls, tempos, lengthBeats: trackBeats, warnings: trackWarnings } =
-        parsePlayFull(node.play, props);
+      // A `set:` on the track itself opens the instrument at beat 0 — and is
+      // where any drift later in the track starts from, so it is resolved
+      // before the play list is walked.
+      const opening = (node.set !== undefined ? parseSet(node.set, props.controls).ccs ?? [] : [])
+        .map((c) => ({ time: 0, cc: c.cc, value: c.value }));
+      const { timeline, controls, patches, tempos, lengthBeats: trackBeats, warnings: trackWarnings } =
+        parsePlayFull(node.play, props, opening);
+      // A `set:` on the track can name a preset too — that lands at beat 0.
+      const openingPatches: PatchEvent[] = (node.set !== undefined
+        ? parseSet(node.set, props.controls).patches ?? []
+        : []).map((p) => ({ time: 0, kind: p.kind, name: p.name }));
       for (const w of trackWarnings) {
         const tagged = `${name}: ${w}`;
         if (!warnings.includes(tagged)) warnings.push(tagged);
       }
-      // A `set:` on the track itself opens the instrument at beat 0.
-      const opening = (node.set !== undefined ? parseSet(node.set, props.controls).ccs ?? [] : [])
-        .map((c) => ({ time: 0, cc: c.cc, value: c.value }));
       lengthBeats = Math.max(lengthBeats, trackBeats);
       const sample = props.sample ?? DEFAULT_SAMPLE;
       // Tempo belongs to the song, not a voice — merge every track's changes.
@@ -1291,6 +1474,7 @@ export function compileDoc(doc: SongDoc): CompiledSong {
           : props.program ?? SAMPLE_PROGRAMS[sample.toLowerCase()],
         timeline,
         controls: [...opening, ...controls],
+        patches: [...openingPatches, ...patches],
       });
     }
 
@@ -1315,6 +1499,7 @@ export function compileDoc(doc: SongDoc): CompiledSong {
     title: doc.title,
     bpm: rootProps.tempo ?? DEFAULT_TEMPO,
     measureBeats: measureToBeats(rootProps.measure),
+    measureSig: notatedMeter(rootProps.measure),
     lengthBeats,
     // Loop markers assume the root meter at the cycle boundary (numbered
     // jumps make the same assumption).

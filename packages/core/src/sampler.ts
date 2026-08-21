@@ -13,6 +13,7 @@
 
 import { playDrum } from './synth';
 import { drumChoke } from './vocabulary';
+import { glideParam } from './bus';
 import type { TrackBus } from './bus';
 
 // ---------------------------------------------------------------------------
@@ -355,7 +356,10 @@ async function loadDrums(
     if (group) {
       const voices = bus.chokes.get(group) ?? bus.chokes.set(group, new Set()).get(group)!;
       for (const voice of voices) {
-        voice.gain.gain.setTargetAtTime(0, startSec, 0.008);
+        // Anchored: an unanchored choke curve is extrapolated backwards by
+        // node-web-audio-api and renders the whole track at 1e37 (see
+        // `glideParam`).
+        glideParam(voice.gain.gain, 0, startSec, 0.008);
         try {
           voice.source.stop(startSec + 0.05);
         } catch {

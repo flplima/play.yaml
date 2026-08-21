@@ -103,8 +103,9 @@ export function scheduleSong(
   for (const track of tracks) {
     const controls = (track.controls ?? []).filter((c) => c.time < limit);
     const hasExpression = controls.some((c) => c.cc === 11);
+    const usesCC = new Set(controls.map((c) => c.cc));
     const makeBus = () => {
-      const bus = createTrackBus(ctx, destination, { hasExpression, immediate: segmented });
+      const bus = createTrackBus(ctx, destination, { hasExpression, usesCC, immediate: segmented });
       buses.push(bus);
       return bus;
     };

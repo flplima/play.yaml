@@ -6,9 +6,27 @@ A project dedicated to the `play.yaml` format — a human-readable, developer-fr
 
 This is a monorepo managed with npm workspaces:
 
-- `packages/core/`: The `play.yaml` engine — dependency-free and environment-free (no Node or DOM APIs), so it runs identically in Node and browsers. Layered as: `theory` (pitch/scale/meter math) → `vocabulary` (dynamics, articulations, tempo marks, techniques, named controls) → `set` (the `set:` shorthand) → `tokens` (measure tokenizing) → `song` (the compiler), plus the zero-dep YAML subset (`yaml`), the `.mid` encoder (`exporter`), the `.mid` decoder + musical fidelity comparator (`fidelity`), beat→seconds tempo mapping (`time`) and the shared Web Audio instrument presets (`synth`). Everything re-exports from the package root.
+- `packages/core/`: The `play.yaml` engine — dependency-free and environment-free (no Node or DOM APIs), so it runs identically in Node and browsers. Layered as: `theory` (pitch/scale/meter math) → `vocabulary` (dynamics, articulations, tempo marks, techniques, named controls) → `set` (the `set:` shorthand) → `tokens` (measure tokenizing) → `song` (the compiler), plus the zero-dep YAML subset (`yaml`), the `.mid` encoder (`exporter`), the `.mid` decoder + musical fidelity comparator (`fidelity`), beat→seconds tempo mapping (`time`), the shared Web Audio instrument presets (`synth`) and the VST-rack control surfaces (`surface` — see below). Everything re-exports from the package root.
 - `packages/cli/`: Command-line tools built on core: `play-yaml` exports scores to `.mid`; `play-yaml-play` plays them through the speakers (via `webaudio-node`) or streams live MIDI — notes, the score's CC automation and the tempo map — to a virtual MIDI port; `play-yaml-fidelity` scores a `.play.yaml` against a reference `.mid` and flags where they diverge.
-- `packages/web/`: The browser studio (Vite/React): CodeMirror editor with played-note highlighting, Tone.js transport playback with the built-in sampler & synth, and per-instrument WebMIDI routing. Consumes core by source, so core edits hot-reload without a rebuild.
+- `packages/web/`: The browser studio (Vite/React): CodeMirror editor with played-note highlighting, Tone.js transport playback with the built-in sampler & synth, per-instrument WebMIDI routing, and the instrument panel (🎛) for tweaking the VSTs a score is playing on. Consumes core by source, so core edits hot-reload without a rebuild. The interface is [shadcn/ui](https://ui.shadcn.com) (Radix primitives, vendored into `src/components/ui/`) on Tailwind v4; every colour comes from the tokens in `src/index.css`, which hold a dark palette in `:root` — the studio is a dark-only tool — and a `.light` block beside it.
+
+### Tweaking the instruments a score plays on
+
+A score says what to play; the instrument panel says what to play it *on*. When
+a rack of real VSTs is listening — [jukebox](file:///home/felipe/workbench/jukebox)
+hosting Pianoteq, SWAM, Surge and ROLI Studio — the panel shows each plugin's
+options as sliders and dropdowns and sends the changes over MIDI.
+
+Roughly half of those options are not a control change and cannot be. SWAM
+Cello 3 exposes 2,220 parameters and documents one factory CC mapping; ROLI
+Studio Player exposes 72 and answers to none — a host writes those through the
+plugin API, and there is no MIDI message for it. So a control declares how it
+travels: an ordinary CC the plugin already understands, or a small SysEx the
+rack decodes and applies for us. Both go to the same port.
+
+[docs/instrument-surfaces.md](docs/instrument-surfaces.md) has the design;
+`packages/core/src/surface.ts` is the encoder, checked against jukebox's
+independent decoder by a shared table of byte vectors.
 
 ## Getting Started
 
@@ -54,6 +72,28 @@ You can compile `.play.yaml` scores into Standard MIDI Files:
 node packages/cli/dist/export.js --input examples/my-score.play.yaml --output track.mid
 ```
 
+#### Import a `.mid` into a score
+
+The inverse direction: a Standard MIDI File becomes a `.play.yaml`, and
+`--verify` proves it did not lose anything by compiling the result and diffing
+it against the source file note by note.
+
+```bash
+node packages/cli/dist/import-midi.js song.mid -o songs/x/x.play.yaml --verify
+# verify: source 851 notes | score 851 | missing 0 extra 0 | moved 0 (max 0.0000 beat) | EXACT ✓
+```
+
+It reads the file's meter, key, tempo, track names and program changes, splits
+each channel into monophonic-with-chords voices (a play.yaml track holds a
+chord but not two independent rhythms), and writes GM channel 10 as a `kit:`
+track in drum tokens. Recorded playing needs `--snap 48 --legato`, and the
+report then says `COMPLETE (quantized)` with the largest onset it moved —
+notes moving is what `--snap` is for, notes vanishing never is.
+
+This is the workflow the SNES collection below was built by hand with;
+`docs/audio-and-midi-import.md` covers it, and the audio → MIDI stage in front
+of it.
+
 #### Play `play.yaml` through speakers
 You can play a score in real-time through your speakers using the Web Audio synthesizer:
 
@@ -96,7 +136,7 @@ npm run logs:follow  # stream logs live
 npm run dev:stop     # stop the dev server
 ```
 
-It offers a YAML editor with syntax highlighting, the bundled example scores (editable in-session, never persisted), opening/saving local `.play.yaml` files via the File System Access API, playback through a built-in Web Audio engine, and per-instrument routing to your MIDI devices via WebMIDI (with a per-mapping test note). A header toggle picks the output: **Built-in** renders everything in the browser, **MIDI** uses the panel's routes. The **⬇ MP3** button renders the score offline with the built-in sounds (tempo map included) and downloads it as an MP3.
+It offers a YAML editor with syntax highlighting, the bundled example scores (editable in-session, never persisted), opening/saving local `.play.yaml` files via the File System Access API, playback through a built-in Web Audio engine, and per-instrument routing to your MIDI devices via WebMIDI (with a per-mapping test note). A header toggle picks the output: **Built-in** renders everything in the browser, **MIDI** uses the panel's routes, and **Server** hands the score to the machine running the dev server, so it plays on that machine's speakers or its hardware MIDI ports — which is how a phone or tablet on the LAN drives the rack. The **⬇ MP3** button renders the score offline with the built-in sounds (tempo map included) and downloads it as an MP3.
 
 To play the studio through real VST instruments (Pianoteq, SWAM, …),
 `scripts/vst-rack.py` runs a tiny headless [Carla](https://kx.studio/Applications:Carla)
@@ -115,6 +155,18 @@ the kernel's "Midi Through Port-0" — pick that device in the MIDI panel);
 on macOS Carla's CoreMIDI port shows up directly. Then: **⌁ MIDI** toggle,
 route each track's instrument to the port on its channel, play. The channel
 map is also saved to `~/.cache/play.yaml/vst-rack-channels.json`.
+
+Server-side playback has an end-to-end test, because every part of it can
+report success while nothing is audible — the transport runs, the HTTP call
+returns `ok`, and the sink is muted or routed somewhere else. So the test does
+not trust the answer: it posts a one-note score over the network, records the
+sink's own monitor, and measures the level and the pitch that actually came out
+of the speakers.
+
+```bash
+scripts/test-server-audio.sh                       # https://play-yaml.dev.local, a4
+scripts/test-server-audio.sh https://host:5173 c5  # another studio, another note
+```
 
 Two studio behaviors worth knowing:
 
@@ -289,6 +341,7 @@ Performance is written the way a score marks it, not in numbers. Every term belo
 - **Rubato** — `rubato` `poco rubato` `molto rubato` (or `rubato 0.4`); `a battuta`, `tempo giusto` and `senza rubato` play strictly again
 - **Character** — `dolce` `cantabile` `espressivo` `sotto voce` `leggiero` `grazioso` `marcato` `pesante` `maestoso` `agitato` `tranquillo`, each standing for a dynamic and a bowing together
 - **Playing technique** — bow position `sul tasto` `flautando` `poco sul tasto` `ordinario` `poco sul ponticello` `sul ponticello` `molto sul ponticello`; bow pressure `sfiorando` `light bow` `normal bow` `heavy bow` `premuto`; vibrato `senza vibrato` `poco vibrato` `vibrato` `molto vibrato`
+- **The mix** — the room `dry` `room` `hall` `church` `cathedral`; chorus `light chorus` `chorus` `celeste` `ensemble` `wide chorus`; position `hard left` `pan left` `pan centre` `pan right` `hard right`; the fader `fade out` `fade in`. [More below.](#the-mix-volume-pan-reverb-chorus)
 
 ```yaml
 dynamic: mf
@@ -379,6 +432,126 @@ play:
   # ...
   - "bow to 64 over 2"             # numeric form; also "cc74 to 90 over 2"
 ```
+
+### Transposing a line onto another instrument
+
+`transpose:` shifts every pitch a track sounds, in semitones, after the notes
+are read. `octave:` cannot do this — it is only the octave a *bare* note name
+defaults to, so a line written in absolute pitches ignores it:
+
+```yaml
+voice:
+  transpose: -12    # Gounod's violin melody, played by a cello
+  play: ["e5 _ _ _", "f5 _ _ _"]
+```
+
+The written notes stay as the composer put them, so the score still reads
+against the source, and the register is one number to change instead of an
+edit per note. Kit tracks are left alone — a drum token names a percussion
+key, and shifting it would pick a different instrument.
+
+### Letting go: `release`
+
+A bowed or blown line does not stop dead at a rest. On a physical model the
+easing off *is* the expression control falling away, and a note-off at full
+bow speed sounds like tape being cut. `release:` rides the track's
+`expression` down over the tail of the last note before every pause, then puts
+it back for the next entry:
+
+```yaml
+voice:
+  controls: { expression: { cc: 11, range: [78, 127] } }
+  release: 0.5                        # taper over the last half-beat
+  # release: { over: 0.75, to: 0.2, gap: 1 }   # longer, not quite to nothing,
+  #                                            # and only into pauses of a beat+
+```
+
+Only real silence counts — notes that merely change, including legato
+overlaps and slurs, are untouched. `to` is a position along the expression
+control's own range, so `to: 0` on the declaration above releases to 78, the
+quietest that instrument speaks at, rather than to nothing. Needs an
+`expression` control; without one there is nothing to ease off.
+
+### Changing a preset mid-score
+
+`preset` and `sound` name one of the instrument's own patches, at a point in
+the timeline:
+
+```yaml
+voice:
+  channel: 8
+  set: sound "Angelic Choir"      # what it opens on
+  play:
+    - "c5 _ _ _"
+    - set: sound "Deep and High Choir"
+    - "e5 _ _ _"
+```
+
+`preset` selects a program the plugin exposes; `sound` selects a ROLI Studio
+sound, which is a different mechanism in the rack. Names are quoted, and may
+contain commas — the clause splitter respects quotes, because real racks ship
+sounds called `Strings - Loud Sustain, Big`.
+
+**Why not program change.** MIDI's own answer to this is a Program Change, and
+it does not work: measured through a Carla rack, PC moves neither Pianoteq nor
+SWAM Cello (identical RMS and spectral centroid across four program numbers),
+because a host selects programs through its API and nothing wires PC to it.
+ROLI Studio exposes no programs at all, so PC could never reach its 1,196
+sounds. Names also have no 128-per-bank ceiling and read as what they are. So
+these travel as SysEx on the rack's control port instead, and the rack resolves
+the name — see `core/src/surface.ts` for the protocol.
+
+**Timing.** Measured round-trip to a live rack, including the rack's
+acknowledgement: a `preset` change on a plugin that exposes programs is 20 ms.
+A ROLI `sound` change is **1.9 s**, because it rewrites and reloads the
+plugin's saved state — and 1.5 s of that is a fixed settle the rack waits out,
+not work. Either is fine at a section boundary; only the second is worth
+keeping out of the middle of a phrase.
+
+`preset` works on instruments that have no programs at all: the rack falls
+through to its sound catalogue rather than refusing on a distinction only the
+plugin API cares about. So one keyword covers every instrument, and `sound`
+stays for when you want to be explicit about which mechanism you mean.
+
+### The mix: volume, pan, reverb, chorus
+
+Past the instrument itself are the four controls every General MIDI device
+has. Unlike `bow` or `pressure` — where every sampler picks its own CC — these
+are fixed by the standard, so they need no `controls:` block:
+
+| control | CC | words |
+| --- | --- | --- |
+| `volume` | 7 | `fade out`, `fade in`, `full volume` |
+| `pan` | 10 | `hard left`, `pan left`, `pan centre`, `pan right`, `hard right` |
+| `reverb` | 91 | `dry` / `secco`, `small room`, `room`, `stage`, `reverb`, `hall`, `church`, `cathedral` |
+| `chorus` | 93 | `no chorus`, `unda maris`, `light chorus`, `chorus`, `celeste` / `voix celeste`, `ensemble`, `wide chorus` |
+
+```yaml
+tracks:
+  violin: { sample: violin, set: "pan left, hall" }
+  cello:  { sample: cello,  set: "pan right, room" }
+  organ:  { sample: piano,  set: "cathedral, voix celeste" }
+```
+
+They behave like any other control: drift them with a span (`fade out over 4`,
+`reverb to 90 over 8`), address them numerically (`pan 20`, `cc91 64`), or
+retarget them under `controls:` if your rack disagrees.
+
+Two things worth knowing:
+
+- **`volume` is not a dynamic.** `piano` is how the part is *played* — it
+  drives velocity and expression, the bow slowing down. `fade out` is the
+  channel being pulled down under it. They multiply, and you want both words
+  for the different jobs.
+- **A drift starts from wherever the control last sat**, so a fade-in needs
+  somewhere to fade from: `set: volume 0` first, then `fade in over 4`.
+
+The room is *one* room shared by every track — `reverb` is a send into it, the
+way a desk works, not a reverb of its own per track. So the words say how far
+back in the hall a player stands, and tracks sharing a space is what makes
+them sound like they are in one. It renders identically in the browser, the
+offline MP3 export, the CLI and server playback, and any track routed out to
+MIDI sends the same CCs to the hardware or plugin instead.
 
 ### Physical models (SWAM and friends)
 

@@ -45,6 +45,10 @@ interface BuildTrackOptions {
   tempoMap?: TempoEvent[];
   /** Forever-loop start, in beats — written as a "loopStart" marker. */
   loopStartBeats?: number;
+  /** Measure length in quarter-note beats — written as a time signature. */
+  measureBeats?: number;
+  /** The meter as notated, when a beat count alone would lose it (12/8). */
+  measureSig?: string;
 }
 
 /** A ramped tempo change becomes this many stepped meta-events in the file. */
@@ -54,6 +58,29 @@ const RAMP_STEPS = 16;
 function tempoMeta(bpm: number): number[] {
   const mpq = Math.round(60000000 / Math.max(1, bpm));
   return [0xff, 0x51, 0x03, (mpq >> 16) & 0xff, (mpq >> 8) & 0xff, mpq & 0xff];
+}
+
+/**
+ * Time-signature meta-event for a measure length in quarter-note beats.
+ *
+ * Compilation keeps only the length (`measure: 9/8` → 4.5 beats), so the
+ * denominator is inferred as the smallest one that makes the numerator whole:
+ * 4.5 → 9/8, 3.5 → 7/8, 4 → 4/4. That is exact except where two notations
+ * share a beat count (12/8 vs 6/4), which is what `notated` carries.
+ */
+function timeSigMeta(measureBeats: number, notated?: string): number[] {
+  let numerator: number;
+  let denominator: number;
+  const m = notated ? /^(\d+)\/(\d+)$/.exec(notated) : null;
+  if (m) {
+    numerator = parseInt(m[1], 10);
+    denominator = parseInt(m[2], 10);
+  } else {
+    denominator = 4;
+    while (denominator < 32 && Math.abs(measureBeats * (denominator / 4) % 1) > 1e-9) denominator *= 2;
+    numerator = Math.max(1, Math.round(measureBeats * (denominator / 4)));
+  }
+  return [0xff, 0x58, 0x04, numerator & 0xff, Math.round(Math.log2(denominator)), 24, 8];
 }
 
 interface MidiInternalEvent {
@@ -68,13 +95,16 @@ interface MidiInternalEvent {
  */
 function buildTrackBytes(
   timeline: TimelineEvent[],
-  { tpqn, bpm, channel, tempo, name, program, controls, tempoMap, loopStartBeats }: BuildTrackOptions,
+  { tpqn, bpm, channel, tempo, name, program, controls, tempoMap, loopStartBeats, measureBeats, measureSig }: BuildTrackOptions,
 ): number[] {
   const events: MidiInternalEvent[] = [];
 
   if (tempo) {
     // Tempo meta at the very start (conductor / single-track use).
     events.push({ tick: 0, order: 0, data: tempoMeta(bpm) });
+    if (measureBeats && measureBeats > 0) {
+      events.push({ tick: 0, order: 0, data: timeSigMeta(measureBeats, measureSig) });
+    }
 
     if (loopStartBeats != null) {
       // SMF has no loop notion — a "loopStart" marker is the widespread
@@ -175,6 +205,8 @@ function normalizeInput(input: EncodeMidiInput, opts: EncodeMidiOptions): {
   bpm: number;
   tempoMap: TempoEvent[];
   loopStartBeats?: number;
+  measureBeats?: number;
+  measureSig?: string;
 } {
   if (!Array.isArray(input)) {
     return {
@@ -182,6 +214,8 @@ function normalizeInput(input: EncodeMidiInput, opts: EncodeMidiOptions): {
       bpm: opts.bpm || input.bpm || DEFAULT_BPM,
       tempoMap: input.tempoMap ?? [],
       loopStartBeats: input.loopStartBeats,
+      measureBeats: input.measureBeats,
+      measureSig: input.measureSig,
     };
   }
   const bpm = opts.bpm || DEFAULT_BPM;
@@ -193,6 +227,7 @@ function normalizeInput(input: EncodeMidiInput, opts: EncodeMidiOptions): {
         channel: opts.channel || 1,
         timeline: input as TimelineEvent[],
         controls: [],
+        patches: [],
       }],
       bpm,
       tempoMap: [],
@@ -208,7 +243,7 @@ function normalizeInput(input: EncodeMidiInput, opts: EncodeMidiOptions): {
  */
 export function encodeMidi(input: EncodeMidiInput, opts: EncodeMidiOptions = {}): Uint8Array {
   const tpqn = opts.tpqn || DEFAULT_TPQN;
-  const { tracks, bpm, tempoMap, loopStartBeats } = normalizeInput(input, opts);
+  const { tracks, bpm, tempoMap, loopStartBeats, measureBeats, measureSig } = normalizeInput(input, opts);
 
   if (tracks.length <= 1) {
     const t = tracks[0] || { name: 'Track 1', channel: 1, timeline: [], controls: [] };
@@ -218,6 +253,8 @@ export function encodeMidi(input: EncodeMidiInput, opts: EncodeMidiOptions = {})
       tempo: true,
       tempoMap,
       loopStartBeats,
+      measureBeats,
+      measureSig,
       controls: t.controls,
       name: t.name,
       program: t.program,
@@ -229,7 +266,7 @@ export function encodeMidi(input: EncodeMidiInput, opts: EncodeMidiOptions = {})
   // Format 1: conductor track (tempo) + one MTrk per song track.
   const chunks = [
     mtrk(buildTrackBytes([], {
-      tpqn, bpm, tempo: true, tempoMap, loopStartBeats, channel: 0, name: 'Conductor',
+      tpqn, bpm, tempo: true, tempoMap, loopStartBeats, measureBeats, measureSig, channel: 0, name: 'Conductor',
     })),
   ];
   for (const t of tracks) {

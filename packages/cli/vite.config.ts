@@ -9,6 +9,7 @@ export default defineConfig({
         cli: resolve(__dirname, 'src/cli.ts'),
         export: resolve(__dirname, 'src/export.ts'),
         fidelity: resolve(__dirname, 'src/fidelity.ts'),
+        'import-midi': resolve(__dirname, 'src/import-midi.ts'),
       },
       formats: ['cjs', 'es'],
       fileName: (format, entryName) => {
@@ -30,7 +31,7 @@ export default defineConfig({
       ],
       output: {
         banner: (chunk) => {
-          if (chunk.name === 'cli' || chunk.name === 'export' || chunk.name === 'fidelity') {
+          if (['cli', 'export', 'fidelity', 'import-midi'].includes(chunk.name)) {
             return '#!/usr/bin/env node\n';
           }
           return '';

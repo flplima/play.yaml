@@ -20,7 +20,11 @@ export default defineConfig(({ mode }) => {
     resolve: {
       // Use the core package's source directly (mirrored in tsconfig `paths`),
       // so core edits hot-reload here without a `npm run build -w core`.
-      alias: { '@play.yaml/core': resolve(__dirname, '../core/src/index.ts') },
+      alias: {
+        '@play.yaml/core': resolve(__dirname, '../core/src/index.ts'),
+        // shadcn's convention, mirrored in tsconfig `paths`.
+        '@': resolve(__dirname, 'src'),
+      },
     },
     server: {
       port,

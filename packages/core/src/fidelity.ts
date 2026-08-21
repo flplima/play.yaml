@@ -28,6 +28,23 @@ export interface MidiNote {
   pitch: number; // 0..127
   velocity: number; // 1..127
   channel: number;
+  /** index of the MTrk chunk this note came from (0-based). */
+  track: number;
+}
+
+/** A meter in force from `beat` onwards, as written (4/4, 6/8, …). */
+export interface TimeSignature {
+  beat: number;
+  numerator: number;
+  denominator: number;
+}
+
+/** A key in force from `beat` onwards. `sharps` is the circle-of-fifths count. */
+export interface KeySignature {
+  beat: number;
+  /** -7..7; negative means flats. */
+  sharps: number;
+  minor: boolean;
 }
 
 export interface ParsedMidi {
@@ -35,6 +52,17 @@ export interface ParsedMidi {
   notes: MidiNote[];
   /** tempo changes sorted by beat; always carries an entry at beat 0. */
   tempoMap: { beat: number; bpm: number }[];
+  /**
+   * meter changes sorted by beat; always carries an entry at beat 0 (4/4 when
+   * the file never says). Needed to lay notes out in measures.
+   */
+  timeSignatures: TimeSignature[];
+  /** key changes sorted by beat; always carries an entry at beat 0 (C major). */
+  keySignatures: KeySignature[];
+  /** MTrk names from meta 0x03, indexed by track; '' where unnamed. */
+  trackNames: string[];
+  /** Program changes in file order — what instrument each channel was set to. */
+  programs: { track: number; channel: number; program: number; beat: number }[];
   /** total length in quarter-note beats (last note-off). */
   lengthBeats: number;
 }
@@ -69,6 +97,10 @@ export function decodeMidi(bytes: Uint8Array): ParsedMidi {
 
   const notes: MidiNote[] = [];
   const tempos: { tick: number; bpm: number }[] = [];
+  const meters: { tick: number; numerator: number; denominator: number }[] = [];
+  const keys: { tick: number; sharps: number; minor: boolean }[] = [];
+  const trackNames: string[] = [];
+  const programs: { track: number; channel: number; program: number; beat: number }[] = [];
   let p = 8 + headerLen;
 
   for (let t = 0; t < ntrks && p + 8 <= bytes.length; t++) {
@@ -78,6 +110,7 @@ export function decodeMidi(bytes: Uint8Array): ParsedMidi {
     if (end > bytes.length) end = bytes.length;
     p += 8;
 
+    trackNames[t] = '';
     let tick = 0;
     let status = 0;
     // active note-ons keyed by (channel<<8)|pitch, oldest-first, so repeated
@@ -117,12 +150,14 @@ export function decodeMidi(bytes: Uint8Array): ParsedMidi {
               pitch,
               velocity: vel0,
               channel: ch,
+              track: t,
             });
           }
         }
       } else if (hi === 0xa0 || hi === 0xb0 || hi === 0xe0) {
         p += 2; // 2-byte channel messages
       } else if (hi === 0xc0 || hi === 0xd0) {
+        if (hi === 0xc0) programs.push({ track: t, channel: ch, program: bytes[p], beat: tick / tpqn });
         p += 1; // 1-byte channel messages
       } else if (status === 0xff) {
         const type = bytes[p++];
@@ -131,6 +166,18 @@ export function decodeMidi(bytes: Uint8Array): ParsedMidi {
         if (type === 0x51 && ml.value === 3) {
           const mpq = (bytes[p] << 16) | (bytes[p + 1] << 8) | bytes[p + 2];
           if (mpq > 0) tempos.push({ tick, bpm: 60000000 / mpq });
+        } else if (type === 0x58 && ml.value >= 2) {
+          // nn dd cc bb — dd is the power of two, so 3 means an eighth.
+          const numerator = bytes[p];
+          const denominator = 1 << bytes[p + 1];
+          if (numerator > 0 && denominator > 0) meters.push({ tick, numerator, denominator });
+        } else if (type === 0x59 && ml.value >= 2) {
+          // sf mi — sf is signed (negative = flats), mi is 1 for minor.
+          keys.push({ tick, sharps: (bytes[p] << 24) >> 24, minor: bytes[p + 1] === 1 });
+        } else if (type === 0x03 && ml.value > 0 && !trackNames[t]) {
+          let name = '';
+          for (let i = 0; i < ml.value; i++) name += String.fromCharCode(bytes[p + i]);
+          trackNames[t] = name.trim();
         }
         p += ml.value;
       } else if (status === 0xf0 || status === 0xf7) {
@@ -147,7 +194,7 @@ export function decodeMidi(bytes: Uint8Array): ParsedMidi {
       const chn = key >> 8;
       for (const packed of stk) {
         const onTick = Math.floor(packed / 1000);
-        notes.push({ startBeat: onTick / tpqn, durBeat: 0, pitch, velocity: packed % 1000, channel: chn });
+        notes.push({ startBeat: onTick / tpqn, durBeat: 0, pitch, velocity: packed % 1000, channel: chn, track: t });
       }
     }
     p = end;
@@ -157,10 +204,38 @@ export function decodeMidi(bytes: Uint8Array): ParsedMidi {
   const tempoMap = tempos.map((t) => ({ beat: t.tick / tpqn, bpm: t.bpm }));
   if (!tempoMap.length || tempoMap[0].beat > 0) tempoMap.unshift({ beat: 0, bpm: 120 });
 
+  // A format-1 file repeats the same meter/key on several tracks; sort by beat
+  // and drop anything that does not actually change the value in force.
+  meters.sort((a, b) => a.tick - b.tick);
+  const timeSignatures: TimeSignature[] = [];
+  for (const m of meters) {
+    const beat = m.tick / tpqn;
+    const last = timeSignatures[timeSignatures.length - 1];
+    if (last && last.numerator === m.numerator && last.denominator === m.denominator) continue;
+    if (last && last.beat === beat) timeSignatures.pop();
+    timeSignatures.push({ beat, numerator: m.numerator, denominator: m.denominator });
+  }
+  if (!timeSignatures.length || timeSignatures[0].beat > 0) {
+    timeSignatures.unshift({ beat: 0, numerator: 4, denominator: 4 });
+  }
+
+  keys.sort((a, b) => a.tick - b.tick);
+  const keySignatures: KeySignature[] = [];
+  for (const k of keys) {
+    const beat = k.tick / tpqn;
+    const last = keySignatures[keySignatures.length - 1];
+    if (last && last.sharps === k.sharps && last.minor === k.minor) continue;
+    if (last && last.beat === beat) keySignatures.pop();
+    keySignatures.push({ beat, sharps: k.sharps, minor: k.minor });
+  }
+  if (!keySignatures.length || keySignatures[0].beat > 0) {
+    keySignatures.unshift({ beat: 0, sharps: 0, minor: false });
+  }
+
   let lengthBeats = 0;
   for (const n of notes) lengthBeats = Math.max(lengthBeats, n.startBeat + n.durBeat);
 
-  return { tpqn, notes, tempoMap, lengthBeats };
+  return { tpqn, notes, tempoMap, timeSignatures, keySignatures, trackNames, programs, lengthBeats };
 }
 
 /** Median bpm across a tempo map, weighted by how long each tempo holds. */

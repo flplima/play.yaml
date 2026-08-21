@@ -1,44 +1,98 @@
-# J.S. Bach — Cantata BWV 106: IIb. In deine Hände befehle ich meinen Geist
-# Alto Aria with Viola da Gamba & Organ. 4/4 meter, C minor, quarter=58.
+# J.S. Bach — Cantata BWV 106 "Gottes Zeit ist die allerbeste Zeit"
+# (Actus tragicus) — 3a. ARIA (alto): "In deine Hände befehl ich meinen Geist".
+#
+# "Into your hands I commend my spirit; you have redeemed me, Lord, faithful
+# God" (Psalm 31:5). Twenty-four bars in B-flat minor — the darkest key in the
+# cantata — that open its second half, the New Testament's answer to the death
+# of the first.
+#
+# SCORING: alto and continuo, nothing else. Reference works often list this
+# aria as "alto with two viole da gamba"; in the score the gambas are silent
+# here and do not enter until bar 39, which is inside 3b ("Heute wirst du mit
+# mir im Paradies sein"). The two parts below are what actually sounds.
+#
+# WHAT TO LISTEN FOR
+#   1. The alto does not begin until bar 3 — the continuo lays the ground
+#      first, and it never stops walking underneath.
+#   2. B-flat minor is spelled out in the line itself: b-flat, d-flat, g-flat,
+#      a-flat. Against the cantata's two-flat signature that is a lot of
+#      written accidentals, and it is what makes the movement sound so far from
+#      the E-flat major it started in.
+#
+# WHERE THE NOTES COME FROM (2026-08-06)
+#   Ramon Casadesus-Masanell's engraving of the complete cantata (IMSLP
+#   #752782, "Engraving files", CC BY-SA-NC 4.0, 2021), imported from its
+#   MusicXML/MIDI export with `play-yaml-import --verify`. Bach's notes are
+#   public domain; the engraving is not, so no file from it is committed —
+#   only this transcription. Structure cross-checked against the Wikipedia
+#   movement table; see ../bwv-106-sonatina/research/ for the full report.
+#
+# CASTING: alto -> strings (the DSL has no vocal sample), continuo -> keys.
 
-title: "BWV 106: IIb. In deine Hände befehle ich meinen Geist"
-tempo: 58
+title: "BWV 106: 3a. In deine Hände befehl ich meinen Geist"
+composer: "Johann Sebastian Bach"
+tempo: 60
+measure: 4/4
+scale: bb minor
+dynamic: piano
+articulation: legato
 
 tracks:
-  alto: { sample: piano }
-  gamba: { sample: cello }
-  continuo: { sample: organ }
+  alto: { sample: strings }
+  continuo: { sample: keys }
 
 sections:
   piece:
     loop: false
     alto:
       play:
-        - "c4 c4 c4 d4"
-        - "eb4 _ d4 _"
-        - "c4 c4 d4 eb4"
-        - "f4 _ eb4 _"
-        - "g4 g4 f4 eb4"
-        - "d4 c4 b3 _"
-        - "c4 eb4 d4 c4"
-        - "c4 _ ~ ~"
-    gamba:
-      play:
-        - "{c4 eb4 g4 c5} {eb4 g4 c5 eb5} {d4 f4 b4 d5} {c4 eb4 g4 c5}"
-        - "{ab3 c4 f4 ab4} {g3 b3 d4 g4} {c4 eb4 g4 c5} {g3 b3 d4 g4}"
-        - "{c4 eb4 g4 c5} {eb4 g4 c5 eb5} {f4 ab4 c5 f5} {eb4 g4 c5 eb5}"
-        - "{d4 f4 b4 d5} {g3 b3 d4 g4} {c4 eb4 g4 c5} {eb4 g4 c5 eb5}"
-        - "{eb4 g4 c5 eb5} {d4 f4 b4 d5} {c4 eb4 g4 c5} {c4 eb4 g4 c5}"
-        - "{b3 d4 g4 b4} {c4 eb4 g4 c5} {d4 f4 b4 d5} {g3 b3 d4 g4}"
-        - "{c4 eb4 g4 c5} {c4 eb4 f4 ab4} {b3 d4 g4 b4} {c4 eb4 g4 c5}"
-        - "{c4 eb4 g4 c5} _ ~ ~"
+        - "~ ~ ~ ~"
+        - "~ ~ ~ ~"
+        - "{~ f4} {db4 _ c4 bb3} {f4 f4} ~"
+        - "{~ f4} {db5 _ c5 bb4} {a4 f4} {~ ~ ~ f4}"
+        - "{gb4 f4 bb4 c5} {a4 _ _ bb4} {bb4 _ bb3 c4} {db4 eb4 f4 g4}"
+        - "{ab4 f4} ~ {~ c4} {ab4 _ g4 f4}"
+        - "{e4 c4} {~ ~ ~ c4} {db4 c4 f4 g4} {ab4 _ g4 f4}"
+        - "{f4 _ f4 g4} {a4 bb4 c5 a4} {db5 bb4} ~"
+        - "{~ f4} {db4 bb3 bb4 c5} {a4 f4} {~ ~ ~ a4}"
+        - "{bb4 a4 bb4 c5} {a4 _ _ bb4} {bb4 db5} {db5 _ db5 db5}"
+        - "{db5 c5} c5 {~ bb4} {bb4 _ bb4 bb4}"
+        - "{bb4 ab4} {ab4 db5} {gb4 _ f4 gb4} {eb4 _ _ db4}"
+        - "{db4 _ db4 eb4} {f4 gb4 ab4 bb4} {c5 ab4} ~"
+        - "{~ ~ eb4 f4} {gb4 ab4 bb4 c5} {db5 bb4} ~"
+        - "{~ f4} {db4 bb3 bb4 c5} {a4 _ g4 f4} {~ ~ ~ f4}"
+        - "{gb4 f4 a4 bb4} {db4 _ c4 bb3} {bb3 bb4} {bb4 _ bb4 bb4}"
+        - "{bb4 ab4} ab4 {~ gb4} {gb4 _ gb4 gb4}"
+        - "{gb4 f4} {f4 b4} {bb4 _ _ eb5} {gb4 _ f4 eb4}"
+        - "{eb4 gb4} {gb4 _ gb4 gb4} {gb4 f4} f4"
+        - "{~ bb4} {bb4 _ bb4 bb4} {bb4 a4} {a4 _ _ bb4}"
+        - "{b4 a4 bb4 c5} {db5 _ c5 bb4} bb4 {~ ~ ~ f4}"
+        - "{gb4 f4 eb4 f4} {db4 _ c4 bb3} {bb3 _ bb4 c5} {a4 _ _ bb4}"
+        - "bb4 ~ ~ ~"
+        - "~ ~ ~ ~"
     continuo:
       play:
-        - "c3 c3 b2 c3"
-        - "f2 g2 c3 g2"
-        - "c3 c3 f3 eb3"
-        - "d3 g2 c3 c3"
-        - "c3 b2 c3 c3"
-        - "g2 c3 g2 g1"
-        - "c2 f2 g2 c2"
-        - "c2 _ ~ ~"
+        - "{~ ~ bb2 c3} {db3 eb3 f3 g3} {a3 f3 g3 a3} {bb3 c4 db4 eb4}"
+        - "{f4 _ _ f4} {gb4 f4 gb4 f4} {gb4 f4 bb4 eb4} {f4 f3}"
+        - "bb3 ~ {~ ~ bb2 c3} {db3 eb3 f3 g3}"
+        - "{a3 f3 g3 a3} {bb3 c4 db4 eb4} {f4 _ _ f4} {gb4 f4 gb4 f4}"
+        - "{gb4 f4 bb4 eb4} {f4 f3} bb3 ~"
+        - "{~ ~ f2 g2} {ab2 bb2 c3 d3} {e3 c3 d3 e3} {f3 g3 ab3 bb3}"
+        - "{c4 _ _ c4} {db4 c4 db4 c4} {db4 c4 f4 bb3} {c4 c3}"
+        - "f3 ~ {~ ~ bb2 c3} {db3 eb3 f3 g3}"
+        - "{a3 f3 g3 a3} {bb3 c4 db4 eb4} {f4 _ _ f4} {gb4 f4 gb4 f4}"
+        - "{gb4 f4 bb4 eb4} {f4 f3} {bb3 _ bb2 c3} {db3 eb3 f3 gb3}"
+        - "{ab3 _ ab2 bb2} {c3 db3 eb3 f3} {gb3 _ gb2 ab2} {bb2 c3 db3 eb3}"
+        - "{f3 _ db3 eb3} {f3 gb3 ab3 bb3} {c4 ab3 db4 gb3} {ab3 ab2}"
+        - "{db3 db2} ~ {~ ~ ab2 bb2} {c3 db3 eb3 f3}"
+        - "{gb3 eb3} ~ {~ ~ bb2 c3} {db3 eb3 f3 g3}"
+        - "{a3 f3 g3 a3} {bb3 c4 db4 eb4} {f4 _ _ f4} {gb4 f4 gb4 f4}"
+        - "{gb4 f4 gb4 eb4} {f4 f3} {bb3 _ bb2 c3} {db3 c3 db3 eb3}"
+        - "{f3 _ bb2 c3} {d3 eb3 f3 d3} {eb3 _ eb2 f2} {gb2 ab2 bb2 gb2}"
+        - "b2 {~ b3 bb3 ab3} {gb3 f3 gb3 ab3} {bb3 bb2}"
+        - "{eb3 _ eb3 f3} {gb3 ab3 bb3 c4} {db4 _ f4 eb4} {db4 c4 bb3 ab3}"
+        - "{gb3 _ bb3 ab3} {gb3 f3 eb3 db3} {c3 _ f3 eb3} {db3 c3 bb2 ab2}"
+        - "{gb2 f2 gb2 eb2} {f2 f2} {bb2 _ _ a3} {bb3 a3 bb3 a3}"
+        - "{bb3 ab3 gb3 eb3} {f3 f2} {bb2 ab2 gb2 eb2} f2"
+        - "{~ ~ bb2 c3} {db3 eb3 f3 g3} {a3 f3 g3 a3} {bb3 c4 db4 eb4}"
+        - "{f4 _ _ f4} {gb4 f4 gb4 f4} {gb4 f4 bb4 eb4} {f4 f3}"

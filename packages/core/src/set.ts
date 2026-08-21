@@ -47,6 +47,13 @@ export interface SetPatch {
    */
   strumTail?: number;
   ccs?: { cc: number; value: number }[];
+  /**
+   * Preset and sound changes, by name — `preset "Classic Flute - Bass"`,
+   * `sound "Angelic Choir"`. Not control changes: a rack selects these by
+   * name over its control port, because the plugins that have the most to
+   * offer here expose no MIDI-addressable programs at all.
+   */
+  patches?: { kind: 'preset' | 'sound'; name: string }[];
   /** Control drifts: reach `to` over `overMeasures`, from wherever the
    *  control last sat ("sul ponticello over 6", "bow to 110 over 4"). */
   ccRamps?: { cc: number; to: number; overMeasures: number }[];
@@ -75,6 +82,36 @@ const clamp127 = (v: number) => Math.max(0, Math.min(127, Math.round(v)));
  *   "cc74 30"                     → a raw control change
  *   "bow 30"                      → a control change via the track's `controls`
  */
+/**
+ * Split a `set:` string on commas, ignoring commas inside quotes.
+ *
+ * Everything else in a set clause is a word or a number, so a plain split was
+ * enough until preset names arrived: real racks ship sounds called
+ * "Strings - Loud Sustain, Big", and cutting that in half would look for a
+ * preset that does not exist.
+ */
+function splitClauses(text: string): string[] {
+  const out: string[] = [];
+  let current = '';
+  let quote: string | null = null;
+  for (const ch of text) {
+    if (quote) {
+      if (ch === quote) quote = null;
+      current += ch;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+      current += ch;
+    } else if (ch === ',') {
+      out.push(current);
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  out.push(current);
+  return out;
+}
+
 export function parseSet(
   value: string | string[],
   controls: Record<string, number | ControlSpec> = {},
@@ -82,7 +119,7 @@ export function parseSet(
 ): SetPatch {
   const patch: SetPatch = {};
   const clauses = (Array.isArray(value) ? value : [value])
-    .flatMap((v) => String(v).split(','))
+    .flatMap((v) => splitClauses(String(v)))
     .map((c) => c.trim())
     .filter(Boolean);
 
@@ -91,6 +128,28 @@ export function parseSet(
   };
 
   for (const clause of clauses) {
+    // `preset "Classic Flute - Bass"` / `sound "Angelic Choir"`. Checked before
+    // anything else: the name is free text and would otherwise be picked apart
+    // by the word-matching below.
+    const patchClause = /^(preset|sound)\s+(?:"([^"]*)"|'([^']*)')$/i.exec(clause);
+    if (patchClause) {
+      const name = (patchClause[2] ?? patchClause[3] ?? '').trim();
+      if (!name) throw new Error(`"${clause}" names no ${patchClause[1].toLowerCase()}`);
+      (patch.patches ??= []).push({
+        kind: patchClause[1].toLowerCase() as 'preset' | 'sound',
+        name,
+      });
+      continue;
+    }
+    // The same words without quotes are a common slip, and the message should
+    // say so rather than "unknown set clause".
+    if (/^(preset|sound)\s+\S/i.test(clause)) {
+      throw new Error(
+        `"${clause}" — a preset or sound name must be quoted, e.g. ` +
+          `set: ${clause.split(/\s+/)[0]} "${clause.replace(/^\S+\s+/, '')}"`,
+      );
+    }
+
     const oct = /^oct(?:ave)?\s+(up|down|-?\d+)$/i.exec(clause);
     if (oct) {
       if (oct[1] === 'up') patch.octaveDelta = (patch.octaveDelta ?? 0) + 1;

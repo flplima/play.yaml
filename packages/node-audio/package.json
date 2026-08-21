@@ -16,7 +16,7 @@
   },
   "scripts": {
     "build": "vite build",
-    "test": "tsc --noEmit"
+    "test": "tsc --noEmit && tsx test.ts"
   },
   "dependencies": {
     "@play.yaml/core": "^1.0.0",
@@ -24,6 +24,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
     "typescript": "^5.0.0",
     "vite": "^5.0.0",
     "vite-plugin-dts": "^4.0.0"

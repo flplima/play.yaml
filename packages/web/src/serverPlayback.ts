@@ -24,6 +24,21 @@ export interface ServerPortInfo {
   channels: Record<number, string>;
 }
 
+/**
+ * How far along the server's standing render is. Server mode renders the score
+ * as soon as it settles rather than when Play is pressed, and this is how the
+ * studio knows — and, in Client speaker mode, which render the audio it holds
+ * belongs to.
+ */
+export interface PreparedStatus {
+  status: 'idle' | 'rendering' | 'ready' | 'error';
+  progress: number;
+  key: string;
+  hasAudio: boolean;
+  durationSec: number;
+  error: string | null;
+}
+
 export interface ServerSnapshot {
   available: boolean;
   ports: ServerPortInfo[];
@@ -34,6 +49,7 @@ export interface ServerSnapshot {
   loop: boolean;
   positionBeats: number;
   totalBeats: number;
+  prepared: PreparedStatus;
   error: string | null;
 }
 
@@ -41,6 +57,15 @@ export interface ServerRoute {
   outputId: string;
   channel: number;
 }
+
+export const IDLE_PREPARED: PreparedStatus = {
+  status: 'idle',
+  progress: 0,
+  key: '',
+  hasAudio: false,
+  durationSec: 0,
+  error: null,
+};
 
 const OFFLINE: ServerSnapshot = {
   available: false,
@@ -52,6 +77,7 @@ const OFFLINE: ServerSnapshot = {
   loop: false,
   positionBeats: 0,
   totalBeats: 0,
+  prepared: IDLE_PREPARED,
   error: null,
 };
 
@@ -122,7 +148,36 @@ export function useServerPlayMutation() {
       volume?: number;
       loop?: boolean;
       fromBeat?: number;
+      speaker?: 'server' | 'client';
     }) => post<{ ok: boolean }>('/api/server-play', opts),
+  });
+}
+
+/** What `/api/server-prepare` answers: which render is now standing. */
+export interface PrepareResult {
+  ok: boolean;
+  key: string;
+  status: PreparedStatus['status'];
+  hasAudio: boolean;
+  durationSec: number;
+  error: string | null;
+}
+
+/**
+ * Ask the server to render a score and hold it. Cheap and idempotent for a
+ * score already prepared, which is what lets the studio call it on every edit
+ * and again on the way into Play.
+ */
+export function useServerPrepareMutation() {
+  return useMutation({
+    mutationFn: (opts: {
+      code: string;
+      device?: string;
+      routes?: Record<string, ServerRoute>;
+      fromBeat?: number;
+      /** Re-render even if this exact score is already prepared. */
+      force?: boolean;
+    }) => post<PrepareResult>('/api/server-prepare', opts),
   });
 }
 

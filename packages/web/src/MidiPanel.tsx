@@ -1,11 +1,20 @@
 import { useMemo } from 'react';
+import { MonitorSpeaker, Music2, RefreshCw, TriangleAlert, Volume2, Zap } from 'lucide-react';
 import type { CompiledSong } from '@play.yaml/core';
 import type { MidiState } from './useMidi';
 import type { MidiRoute, RouteMap } from './player';
 import { sendTestNote } from './player';
 import { calculateRealTempo, getLiveTrackStates } from './trackMonitor';
+import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Slider } from '@/components/ui/slider';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
-import type { ServerPortInfo } from './serverPlayback';
+import { IDLE_PREPARED, type PreparedStatus, type ServerPortInfo } from './serverPlayback';
 
 /** A distinct `sample:` from the current score, with the channel it declares. */
 export interface SampleEntry {
@@ -28,9 +37,28 @@ interface MidiPanelProps {
   masterVolume?: number;
   onVolumeChange?: (volume: number) => void;
 
+  /*
+   * Output configuration. This all used to live in the navbar; it is
+   * configuration rather than transport, so it sits with the routing it
+   * governs instead of beside the play button.
+   */
+  outputMode?: 'builtin' | 'midi' | 'server';
+  onOutputModeChange?: (mode: 'builtin' | 'midi' | 'server') => void;
+  /** Where a server-rendered track is heard. Only meaningful on Server MIDI. */
+  speaker?: 'server' | 'client';
+  onSpeakerChange?: (speaker: 'server' | 'client') => void;
+  /** The server's standing render — the thing Play will start. */
+  prepared?: PreparedStatus;
+  /** False while this browser is still pulling that render down. */
+  clientAudioReady?: boolean;
+  onRefreshPrepared?: () => void;
+  loop?: boolean;
+  onLoopChange?: (loop: boolean) => void;
+  metronome?: boolean;
+  onMetronomeChange?: (on: boolean) => void;
+
   // Server-side mode props
   serverSideMode?: boolean;
-  onServerSideModeChange?: (active: boolean) => void;
   serverMidiDevice?: string;
   onServerMidiDeviceChange?: (device: string) => void;
   serverMidiDevices?: string[];
@@ -43,6 +71,52 @@ interface MidiPanelProps {
 
 const CHANNELS = Array.from({ length: 16 }, (_, i) => i + 1);
 
+/** The "Built-in synth" option needs a non-empty value: Radix reserves ''. */
+const BUILTIN = '__builtin__';
+
+function clock(sec: number): string {
+  const total = Math.max(0, Math.round(sec));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+}
+
+/** One line describing the standing render, for the Speaker section. */
+function preparedLabelFor(
+  prepared: PreparedStatus,
+  clientAudioReady: boolean,
+  speaker: 'server' | 'client',
+): { label: string; tone: 'idle' | 'busy' | 'ready' | 'warn' | 'error' } {
+  switch (prepared.status) {
+    case 'rendering':
+      return { label: `Rendering… ${Math.round(prepared.progress * 100)}%`, tone: 'busy' };
+    case 'error':
+      return { label: `Render failed — ${prepared.error ?? 'unknown error'}`, tone: 'error' };
+    case 'ready':
+      /*
+       * A score whose every track is routed out to a MIDI port renders no
+       * audio here at all — the rack at the other end of the cable is what
+       * sounds. Ordinary on Server speaker, but on Client it is the whole
+       * answer to "why is it still coming out of the server?", so it is said
+       * plainly rather than left as a grey aside: no setting in this panel can
+       * move audio a downstream synth is producing.
+       */
+      if (!prepared.hasAudio) {
+        return speaker === 'client'
+          ? {
+            label: 'Nothing to send — every track goes out as MIDI, so the rack sounds on the server',
+            tone: 'warn',
+          }
+          : { label: 'No audio to render — every track goes out as MIDI', tone: 'idle' };
+      }
+      if (!clientAudioReady) return { label: 'Sending the render to this browser…', tone: 'busy' };
+      return {
+        label: `Ready · ${clock(prepared.durationSec)}${speaker === 'client' ? ' · here' : ''}`,
+        tone: 'ready',
+      };
+    default:
+      return { label: 'Nothing rendered yet', tone: 'idle' };
+  }
+}
+
 export default function MidiPanel({
   samples,
   midi,
@@ -54,8 +128,18 @@ export default function MidiPanel({
   playing = false,
   masterVolume = 80,
   onVolumeChange,
+  outputMode = 'builtin',
+  onOutputModeChange,
+  speaker = 'server',
+  onSpeakerChange,
+  prepared = IDLE_PREPARED,
+  clientAudioReady = true,
+  onRefreshPrepared,
+  loop = true,
+  onLoopChange,
+  metronome = false,
+  onMetronomeChange,
   serverSideMode = false,
-  onServerSideModeChange,
   serverMidiDevice = 'Server Audio Output (Web Audio)',
   onServerMidiDeviceChange,
   serverMidiDevices = ['Server Audio Output (Web Audio)'],
@@ -67,6 +151,7 @@ export default function MidiPanel({
 }: MidiPanelProps) {
   const outputById = new Map(midi.outputs.map((o) => [o.id, o]));
   const portsInfoById = new Map(serverPortsInfo.map((p) => [p.id, p]));
+  const preparedState = preparedLabelFor(prepared, clientAudioReady, speaker);
 
   const findPortInfo = (outputId?: string): ServerPortInfo | undefined => {
     if (!outputId) return undefined;
@@ -122,124 +207,248 @@ export default function MidiPanel({
   const selectedServerPort = findPortInfo(serverMidiDevice);
 
   return (
-    <aside className="flex w-80 shrink-0 flex-col overflow-y-auto border-l border-zinc-800 bg-zinc-900">
-      {/* ── SECTION 0: SERVER SIDE PLAYBACK & VOLUME ── */}
-      <div className="border-b border-zinc-800 px-4 py-3 bg-purple-950/20">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-purple-200">Server Side Mode</span>
-            {serverSideMode && (
-              <span className="rounded bg-purple-500/20 border border-purple-500/40 px-1.5 py-0.5 text-[10px] font-bold text-purple-300 animate-pulse">
-                ACTIVE
-              </span>
-            )}
-          </div>
-          <label className="relative inline-flex cursor-pointer items-center">
-            <input
-              type="checkbox"
-              className="peer sr-only"
-              checked={serverSideMode}
-              onChange={(e) => onServerSideModeChange?.(e.target.checked)}
-            />
-            <div className="peer h-5 w-9 rounded-full bg-zinc-700 after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-purple-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none" />
-          </label>
+    <aside className="flex w-80 shrink-0 flex-col overflow-y-auto border-l border-border bg-card">
+      {/* ── SECTION 0: OUTPUT ── the configuration the navbar used to hold ── */}
+      <div className="border-b border-border bg-server/5 px-4 py-3">
+        <div className="mb-1.5 flex items-center justify-between">
+          <span className="text-sm font-semibold">Output mode</span>
+          {serverSideMode && (
+            <Badge variant="server" className={playing ? 'animate-pulse' : undefined}>
+              Server
+            </Badge>
+          )}
         </div>
 
-        <p className="mt-1 text-xs text-zinc-400">
-          Play music through server speakers or server hardware MIDI devices.
+        <ToggleGroup
+          type="single"
+          className="w-full"
+          value={outputMode}
+          onValueChange={(v) => v && onOutputModeChange?.(v as 'builtin' | 'midi' | 'server')}
+          aria-label="Output mode"
+        >
+          <ToggleGroupItem value="builtin" className="flex-1 text-xs">
+            <Music2 />
+            Built-in samples
+          </ToggleGroupItem>
+          <ToggleGroupItem value="midi" className="flex-1 border-l border-border text-xs">
+            <Zap />
+            Web MIDI
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            value="server"
+            className="flex-1 border-l border-border text-xs data-[state=on]:bg-server/20 data-[state=on]:text-server"
+          >
+            <MonitorSpeaker />
+            Server MIDI
+          </ToggleGroupItem>
+        </ToggleGroup>
+
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          {outputMode === 'builtin'
+            ? 'The bundled sampler and synth, in this browser.'
+            : outputMode === 'midi'
+              ? 'The WebMIDI routes below, straight from this browser.'
+              : "The server's own MIDI ports — the VST rack."}
         </p>
 
-        {/* Master Volume Slider */}
-        <div className="mt-2.5 pt-2 border-t border-purple-900/40">
-          <div className="flex items-center justify-between text-xs text-purple-200 mb-1 font-medium">
-            <span className="flex items-center gap-1">
-              🔊 Master Volume
-            </span>
-            <span className="font-mono text-purple-300">{masterVolume}%</span>
+        {serverSideMode && (
+          <div className="mt-2.5 border-t border-server/25 pt-2">
+            <div className="mb-1.5 text-xs font-medium text-server">Speaker</div>
+            <ToggleGroup
+              type="single"
+              className="w-full"
+              value={speaker}
+              onValueChange={(v) => v && onSpeakerChange?.(v as 'server' | 'client')}
+              aria-label="Speaker"
+            >
+              <ToggleGroupItem value="server" className="flex-1 text-xs">
+                <MonitorSpeaker />
+                Server
+              </ToggleGroupItem>
+              <ToggleGroupItem value="client" className="flex-1 border-l border-border text-xs">
+                <Volume2 />
+                Client
+              </ToggleGroupItem>
+            </ToggleGroup>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              {speaker === 'server'
+                ? "Rendered audio plays on the server's own speakers."
+                : 'Rendered on the server and streamed here, to this browser.'}
+            </p>
+
+            {/*
+              The render is made when the score settles, not when Play is
+              pressed, so its state has to be visible: this is what says
+              whether Play will start instantly or have to wait. The refresh
+              button throws it away and builds it again — for when the sound
+              changed underneath the score (a sample library, a rack preset)
+              and the server cannot know the render is stale.
+            */}
+            <div
+              className={cn(
+                'mt-2 flex items-start gap-2 rounded-md px-2 py-1.5',
+                preparedState.tone === 'warn' ? 'bg-warning/15' : 'bg-muted/40',
+              )}
+            >
+              <span
+                className={cn(
+                  'mt-1 size-1.5 shrink-0 rounded-full',
+                  preparedState.tone === 'ready'
+                    ? 'bg-primary'
+                    : preparedState.tone === 'busy'
+                      ? 'bg-warning animate-pulse'
+                      : preparedState.tone === 'warn'
+                        ? 'bg-warning'
+                        : preparedState.tone === 'error'
+                          ? 'bg-destructive'
+                          : 'bg-muted-foreground',
+                )}
+              />
+              <span
+                className={cn(
+                  'min-w-0 flex-1 text-xs',
+                  // The one state that is a dead end gets to wrap and be read;
+                  // the rest are short and stay on their line.
+                  preparedState.tone === 'warn'
+                    ? 'text-warning'
+                    : 'truncate text-muted-foreground',
+                )}
+                title={prepared.error ?? undefined}
+              >
+                {preparedState.label}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-6 shrink-0 text-server hover:text-server"
+                onClick={onRefreshPrepared}
+                aria-label="Re-render the audio output"
+                title="Re-render the audio output"
+              >
+                <RefreshCw className={cn('size-3', prepared.status === 'rendering' && 'animate-spin')} />
+              </Button>
+            </div>
           </div>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={masterVolume}
-            onChange={(e) => onVolumeChange?.(Number(e.target.value))}
-            className="h-1.5 w-full cursor-pointer accent-purple-500 rounded bg-zinc-800"
-            title="Adjust master volume for client and server playback"
+        )}
+
+        {/* Master volume */}
+        <div className="mt-2.5 border-t border-server/25 pt-2">
+          <div className="mb-1.5 flex items-center justify-between text-xs font-medium">
+            <span className="flex items-center gap-1.5">
+              <Volume2 className="size-3.5" /> Master volume
+            </span>
+            <span className="font-mono">{masterVolume}%</span>
+          </div>
+          <Slider
+            min={0}
+            max={100}
+            step={1}
+            value={[masterVolume]}
+            onValueChange={([v]) => onVolumeChange?.(v)}
+            aria-label="Master volume"
           />
         </div>
 
+        <div className="mt-2.5 flex items-center gap-4 border-t border-border pt-2 text-xs">
+          <label className="flex cursor-pointer items-center gap-1.5">
+            <Checkbox checked={loop} onCheckedChange={(v) => onLoopChange?.(v === true)} aria-label="Loop" />
+            Loop
+          </label>
+          <label className="flex cursor-pointer items-center gap-1.5">
+            <Checkbox
+              checked={metronome}
+              onCheckedChange={(v) => onMetronomeChange?.(v === true)}
+              aria-label="Metronome"
+            />
+            Metronome
+          </label>
+        </div>
+
         {serverSideMode && (
-          <div className="mt-3 space-y-2 rounded-lg border border-purple-900/60 bg-zinc-950/60 p-2.5">
-            <div className="flex items-center justify-between text-xs text-purple-300 font-medium">
+          <Card className="mt-3 space-y-2 border-server/40">
+            <div className="flex items-center justify-between text-xs font-medium text-server">
               <span>Server MIDI / Audio Output:</span>
-              <button
-                className="text-[10px] text-purple-400 hover:text-purple-200 underline"
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-[10px] text-server hover:text-server"
                 onClick={onRefreshServerDevices}
                 title="Refresh server MIDI devices"
               >
-                ↻ Refresh
-              </button>
+                <RefreshCw />
+                Refresh
+              </Button>
             </div>
 
-            <div className="relative">
-              <select
-                className="w-full rounded border border-purple-800/60 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-100 font-mono focus:border-purple-500 focus:outline-none"
-                value={serverMidiDevice}
-                onChange={(e) => onServerMidiDeviceChange?.(e.target.value)}
-              >
+            <Select value={serverMidiDevice} onValueChange={(v) => onServerMidiDeviceChange?.(v)}>
+              <SelectTrigger className="w-full border-server/40 font-mono" aria-label="Server MIDI / audio output">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
                 {serverPortsInfo.length > 0
                   ? serverPortsInfo.map((p) => (
-                      <option key={p.id} value={p.id}>
+                      <SelectItem key={p.id} value={p.id}>
                         {p.name} {p.mpe ? '[MPE]' : ''}
-                      </option>
+                      </SelectItem>
                     ))
                   : serverMidiDevices.map((dev) => (
-                      <option key={dev} value={dev}>
+                      <SelectItem key={dev} value={dev}>
                         {dev}
-                      </option>
+                      </SelectItem>
                     ))}
-              </select>
-            </div>
+              </SelectContent>
+            </Select>
 
             {selectedServerPort && (
-              <div className="mt-1 flex items-center justify-between text-[11px]">
-                <span className="text-zinc-400 truncate">{selectedServerPort.name}</span>
-                {selectedServerPort.mpe && (
-                  <span className="rounded bg-indigo-500/20 px-1.5 py-0.5 text-[10px] font-bold text-indigo-300 border border-indigo-500/40">
-                    MPE ENABLED
-                  </span>
-                )}
+              <div className="flex items-center justify-between gap-2 text-[11px]">
+                <span className="truncate text-muted-foreground">{selectedServerPort.name}</span>
+                {selectedServerPort.mpe && <Badge>MPE enabled</Badge>}
               </div>
             )}
 
-            <div className="flex items-center gap-1.5 text-[10px] text-zinc-400">
-              <span className={`h-1.5 w-1.5 rounded-full ${serverAvailable ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+              <span
+                className={cn(
+                  'size-1.5 rounded-full',
+                  serverAvailable ? 'bg-primary' : 'bg-warning',
+                )}
+              />
               <span>{serverAvailable ? 'Live stream connected' : 'Reconnecting to server…'}</span>
             </div>
 
-            {serverError && <div className="text-[10px] text-amber-400">⚠ {serverError}</div>}
-          </div>
+            {serverError && (
+              <div className="flex items-center gap-1.5 text-[10px] text-warning">
+                <TriangleAlert className="size-3 shrink-0" />
+                {serverError}
+              </div>
+            )}
+          </Card>
         )}
       </div>
 
       {/* ── SECTION 1: MIDI ROUTING ── */}
-      <div className="border-b border-zinc-800 px-4 py-3">
-        <h2 className="text-sm font-semibold text-zinc-200">MIDI routing</h2>
-        <p className="mt-1 text-xs text-zinc-500">
+      <div className="border-b border-border px-4 py-3">
+        <h2 className="text-sm font-semibold">MIDI routing</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
           Send each instrument to a MIDI in. Unrouted ones play on the built-in synth.
         </p>
-        {status && <p className="mt-2 text-xs text-amber-400">{status}</p>}
+        {status && <p className="mt-2 text-xs text-warning">{status}</p>}
         {disabled && (
-          <p className="mt-2 rounded border border-emerald-900 bg-emerald-950/40 px-2 py-1.5 text-xs text-emerald-400">
+          <p className="mt-2 rounded-md border border-primary/40 bg-primary/10 px-2 py-1.5 text-xs text-primary">
             Output is set to Built-in — everything plays on the bundled sampler
             &amp; synth. Switch the header toggle to MIDI to use these routes.
           </p>
         )}
       </div>
 
-      <div className={disabled ? 'pointer-events-none border-b border-zinc-800 px-4 py-3 opacity-40' : 'border-b border-zinc-800 px-4 py-3'}>
+      <div
+        className={cn(
+          'border-b border-border px-4 py-3',
+          disabled && 'pointer-events-none opacity-40',
+        )}
+      >
         {samples.length === 0 ? (
-          <p className="text-xs text-zinc-500">No instruments in the current score.</p>
+          <p className="text-xs text-muted-foreground">No instruments in the current score.</p>
         ) : (
           <ul className="space-y-3">
             {samples.map(({ name, defaultChannel }) => {
@@ -255,23 +464,17 @@ export default function MidiPanel({
 
               return (
                 <li key={name}>
-                  <div className="flex items-center justify-between">
-                    <div className="truncate text-sm font-medium text-zinc-200" title={name}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="truncate text-sm font-medium" title={name}>
                       {name}
                     </div>
-                    {isMpe && (
-                      <span className="rounded bg-indigo-500/20 px-1.5 py-0.5 text-[9px] font-bold text-indigo-300 border border-indigo-500/40">
-                        MPE
-                      </span>
-                    )}
+                    {isMpe && <Badge>MPE</Badge>}
                   </div>
                   <div className="mt-1.5 flex items-center gap-1.5">
-                    <select
-                      className="min-w-0 flex-1 rounded border border-zinc-700 bg-zinc-950 px-1.5 py-1 text-xs text-zinc-200"
-                      title="MIDI in to send this instrument to"
-                      value={route?.outputId ?? ''}
-                      onChange={(e) => {
-                        const outputId = e.target.value;
+                    <Select
+                      value={route?.outputId ?? BUILTIN}
+                      onValueChange={(value) => {
+                        const outputId = value === BUILTIN ? '' : value;
                         onRouteChange(
                           name,
                           outputId
@@ -280,34 +483,49 @@ export default function MidiPanel({
                         );
                       }}
                     >
-                      <option value="">Built-in synth</option>
-                      {allAvailablePorts.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      className="rounded border border-zinc-700 bg-zinc-950 px-1.5 py-1 text-xs text-zinc-200 disabled:opacity-40 max-w-[140px] truncate"
+                      <SelectTrigger
+                        className="min-w-0 flex-1"
+                        title="MIDI in to send this instrument to"
+                        aria-label={`MIDI output for ${name}`}
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={BUILTIN}>Built-in synth</SelectItem>
+                        {allAvailablePorts.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select
                       disabled={!route || isMpe}
-                      value={isMpe ? 1 : (route?.channel ?? defaultChannel)}
-                      onChange={(e) =>
-                        route && onRouteChange(name, { ...route, channel: Number(e.target.value) })
+                      value={String(isMpe ? 1 : (route?.channel ?? defaultChannel))}
+                      onValueChange={(value) =>
+                        route && onRouteChange(name, { ...route, channel: Number(value) })
                       }
-                      title={isMpe ? 'Channel selection disabled for MPE ports' : 'MIDI channel'}
                     >
-                      {isMpe ? (
-                        <option value={1}>MPE (Zone 1-16)</option>
-                      ) : (
-                        channelEntries.map(({ ch, label }) => (
-                          <option key={ch} value={ch}>
-                            {label}
-                          </option>
-                        ))
-                      )}
-                    </select>
-                    <button
-                      className="rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-800 disabled:opacity-40"
+                      <SelectTrigger
+                        className="max-w-[140px]"
+                        title={isMpe ? 'Channel selection disabled for MPE ports' : 'MIDI channel'}
+                        aria-label={`MIDI channel for ${name}`}
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {isMpe ? (
+                          <SelectItem value="1">MPE (Zone 1-16)</SelectItem>
+                        ) : (
+                          channelEntries.map(({ ch, label }) => (
+                            <SelectItem key={ch} value={String(ch)}>
+                              {label}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <Button
                       disabled={
                         !route ||
                         (serverSideMode
@@ -328,7 +546,7 @@ export default function MidiPanel({
                       title="Send a short test note"
                     >
                       Test
-                    </button>
+                    </Button>
                   </div>
                 </li>
               );
@@ -340,144 +558,140 @@ export default function MidiPanel({
       {/* ── SECTION 2: REAL TEMPO & LIVE TRACK MONITOR ── */}
       <div className="flex-1 px-4 py-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-zinc-200">Track Monitor</h2>
-          <span className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-400">
+          <h2 className="text-sm font-semibold">Track Monitor</h2>
+          <span className="flex items-center gap-1.5 text-[11px] font-medium">
             {playing ? (
-              <span className="flex items-center gap-1 text-emerald-400">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+              <span className="flex items-center gap-1 text-primary">
+                <span className="relative flex size-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                  <span className="relative inline-flex size-2 rounded-full bg-primary" />
                 </span>
                 LIVE
               </span>
             ) : (
-              <span className="text-zinc-500">STOPPED</span>
+              <span className="text-muted-foreground">STOPPED</span>
             )}
           </span>
         </div>
-        <p className="mt-1 text-xs text-zinc-500">
+        <p className="mt-1 text-xs text-muted-foreground">
           Last played note, MIDI CC parameters &amp; real-time tempo calculation.
         </p>
 
         {/* Real Tempo Display Card */}
-        <div className="mt-3 rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 shadow-inner">
+        <Card className="mt-3 shadow-inner">
           <div className="flex items-baseline justify-between">
-            <span className="text-xs uppercase tracking-wider text-zinc-400">Calculated Tempo</span>
-            {realTempo.effectLabel && (
-              <span className="rounded bg-emerald-950/80 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400 border border-emerald-800/50">
-                {realTempo.effectLabel}
-              </span>
-            )}
+            <span className="text-xs uppercase tracking-wider text-muted-foreground">
+              Calculated Tempo
+            </span>
+            {realTempo.effectLabel && <Badge>{realTempo.effectLabel}</Badge>}
           </div>
           <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono tracking-tight text-emerald-400">
+            <span className="font-mono text-2xl font-bold tracking-tight text-primary">
               {realTempo.bpm}
             </span>
-            <span className="text-xs text-zinc-400">BPM</span>
+            <span className="text-xs text-muted-foreground">BPM</span>
             {realTempo.baseBpm !== realTempo.bpm && (
-              <span className="ml-auto text-[11px] text-zinc-500">
+              <span className="ml-auto text-[11px] text-muted-foreground">
                 (base: {realTempo.baseBpm} BPM)
               </span>
             )}
           </div>
-          <div className="mt-1 flex items-center justify-between text-[11px] text-zinc-500">
+          <div className="mt-1 flex items-center justify-between text-[11px] text-muted-foreground">
             <span>Transport Beat: {currentBeat.toFixed(2)}</span>
           </div>
-        </div>
+        </Card>
 
         {/* Live Track Monitor List */}
         <div className="mt-4 space-y-3">
           {liveTracks.length === 0 ? (
-            <p className="text-xs text-zinc-500">No active tracks to monitor.</p>
+            <p className="text-xs text-muted-foreground">No active tracks to monitor.</p>
           ) : (
             liveTracks.map((track) => {
               const { lastNote, expression, sustain, controls } = track;
               return (
-                <div
+                <Card
                   key={track.name}
-                  className={`rounded-lg border p-3 transition-colors ${
-                    lastNote?.isSounding
-                      ? 'border-emerald-500/50 bg-emerald-950/20 shadow-sm shadow-emerald-950/30'
-                      : 'border-zinc-800 bg-zinc-950/40'
-                  }`}
+                  className={cn(
+                    'transition-colors',
+                    lastNote?.isSounding && 'border-primary/50 bg-primary/5',
+                  )}
                 >
                   {/* Track Header */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 overflow-hidden">
                       <span
-                        className={`h-2 w-2 shrink-0 rounded-full ${
-                          lastNote?.isSounding ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-700'
-                        }`}
+                        className={cn(
+                          'size-2 shrink-0 rounded-full',
+                          lastNote?.isSounding ? 'animate-pulse bg-primary' : 'bg-secondary',
+                        )}
                       />
-                      <span className="truncate text-xs font-semibold text-zinc-200" title={track.name}>
+                      <span className="truncate text-xs font-semibold" title={track.name}>
                         {track.name}
                       </span>
                     </div>
-                    <span className="rounded border border-zinc-800 bg-zinc-900 px-1.5 py-0.5 text-[10px] text-zinc-400">
+                    <Badge variant="outline" className="normal-case">
                       ch {track.channel}
-                    </span>
+                    </Badge>
                   </div>
 
                   {/* Last Played Note Details */}
-                  <div className="mt-2.5 rounded bg-zinc-900/80 p-2 border border-zinc-800/80">
+                  <div className="mt-2.5 rounded-md border border-border bg-card p-2">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-zinc-500 text-[11px]">Last Note:</span>
+                      <span className="text-[11px] text-muted-foreground">Last Note:</span>
                       {lastNote ? (
                         <div className="flex items-center gap-1.5">
-                          <span className="font-mono font-bold text-zinc-100">{lastNote.pitch}</span>
-                          <span className="text-[10px] text-zinc-500 font-mono">({lastNote.midi})</span>
-                          {lastNote.isSounding && (
-                            <span className="rounded bg-emerald-500/20 px-1 py-0.2 text-[9px] font-semibold text-emerald-300">
-                              SOUNDING
-                            </span>
-                          )}
+                          <span className="font-mono font-bold">{lastNote.pitch}</span>
+                          <span className="font-mono text-[10px] text-muted-foreground">
+                            ({lastNote.midi})
+                          </span>
+                          {lastNote.isSounding && <Badge>Sounding</Badge>}
                         </div>
                       ) : (
-                        <span className="text-zinc-600 font-mono text-[11px]">—</span>
+                        <span className="font-mono text-[11px] text-muted-foreground">—</span>
                       )}
                     </div>
                     {lastNote && (
-                      <div className="mt-1 flex items-center justify-between text-[11px] text-zinc-400 font-mono">
-                        <span>vel: <strong className="text-zinc-200">{lastNote.velocity}</strong></span>
-                        <span>dur: <strong className="text-zinc-200">{lastNote.duration}b</strong></span>
-                        <span>at: <strong className="text-zinc-200">{lastNote.time}b</strong></span>
+                      <div className="mt-1 flex items-center justify-between font-mono text-[11px] text-muted-foreground">
+                        <span>vel: <strong className="text-foreground">{lastNote.velocity}</strong></span>
+                        <span>dur: <strong className="text-foreground">{lastNote.duration}b</strong></span>
+                        <span>at: <strong className="text-foreground">{lastNote.time}b</strong></span>
                       </div>
                     )}
                   </div>
 
                   {/* MIDI Parameters Grid */}
                   <div className="mt-2 grid grid-cols-2 gap-1.5 text-[11px]">
-                    <div className="rounded bg-zinc-900/50 p-1.5 border border-zinc-800/50">
-                      <div className="text-[10px] text-zinc-500">Expression (CC11)</div>
+                    <div className="rounded-md border border-border bg-card p-1.5">
+                      <div className="text-[10px] text-muted-foreground">Expression (CC11)</div>
                       <div className="mt-0.5 flex items-baseline justify-between font-mono">
-                        <span className="font-semibold text-zinc-200">{expression}</span>
-                        <span className="text-[9px] text-zinc-500">/ 127</span>
+                        <span className="font-semibold">{expression}</span>
+                        <span className="text-[9px] text-muted-foreground">/ 127</span>
                       </div>
                     </div>
 
-                    <div className="rounded bg-zinc-900/50 p-1.5 border border-zinc-800/50">
-                      <div className="text-[10px] text-zinc-500">Sustain (CC64)</div>
+                    <div className="rounded-md border border-border bg-card p-1.5">
+                      <div className="text-[10px] text-muted-foreground">Sustain (CC64)</div>
                       <div className="mt-0.5 flex items-baseline justify-between font-mono">
-                        <span className={`font-semibold ${sustain > 0 ? 'text-amber-300' : 'text-zinc-400'}`}>
+                        <span className={cn('font-semibold', sustain > 0 ? 'text-warning' : 'text-muted-foreground')}>
                           {sustain > 0 ? sustain : 'Off'}
                         </span>
-                        {sustain > 0 && <span className="text-[9px] text-amber-500/80">PEDAL</span>}
+                        {sustain > 0 && <span className="text-[9px] text-warning/80">PEDAL</span>}
                       </div>
                     </div>
 
                     {controls.map((ctrl) => (
-                      <div key={ctrl.cc} className="rounded bg-zinc-900/50 p-1.5 border border-zinc-800/50">
-                        <div className="text-[10px] text-zinc-500 truncate" title={`${ctrl.name} (CC${ctrl.cc})`}>
+                      <div key={ctrl.cc} className="rounded-md border border-border bg-card p-1.5">
+                        <div className="truncate text-[10px] text-muted-foreground" title={`${ctrl.name} (CC${ctrl.cc})`}>
                           {ctrl.name}
                         </div>
                         <div className="mt-0.5 flex items-baseline justify-between font-mono">
-                          <span className="font-semibold text-zinc-200">{ctrl.value}</span>
-                          <span className="text-[9px] text-zinc-500">CC{ctrl.cc}</span>
+                          <span className="font-semibold">{ctrl.value}</span>
+                          <span className="text-[9px] text-muted-foreground">CC{ctrl.cc}</span>
                         </div>
                       </div>
                     ))}
                   </div>
-                </div>
+                </Card>
               );
             })
           )}

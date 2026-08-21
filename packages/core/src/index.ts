@@ -8,3 +8,5 @@ export * from './midiPanic';
 export * from './bus';
 export * from './sampler';
 export * from './schedule';
+export * from './surface';
+export * from './notate';

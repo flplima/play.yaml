@@ -7,7 +7,8 @@
   "bin": {
     "play-yaml": "./dist/export.js",
     "play-yaml-play": "./dist/cli.js",
-    "play-yaml-fidelity": "./dist/fidelity.js"
+    "play-yaml-fidelity": "./dist/fidelity.js",
+    "play-yaml-import": "./dist/import-midi.js"
   },
   "exports": {
     ".": {

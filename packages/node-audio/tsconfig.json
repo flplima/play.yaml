@@ -13,5 +13,5 @@
     "baseUrl": ".",
     "paths": { "@play.yaml/core": ["../core/src/index.ts"] }
   },
-  "include": ["src", "types"]
+  "include": ["src", "types", "test.ts"]
 }

@@ -17,7 +17,8 @@
     "types": ["vite/client", "wicg-file-system-access", "node"],
     "baseUrl": ".",
     "paths": {
-      "@play.yaml/core": ["../core/src/index.ts"]
+      "@play.yaml/core": ["../core/src/index.ts"],
+      "@/*": ["src/*"]
     }
   },
   "include": ["src", "serverMiddleware.ts", "vite.config.ts"]

@@ -1,118 +1,191 @@
-# J.S. Bach — Organ Sonata No. 4 in E minor, BWV 528: II. Andante (in B minor)
-# 3/8 meter, quarter=60, B minor.
-# 3 Organ parts: Manual I (soprano), Manual II (alto/tenor), Pedal (bass).
+# J.S. Bach — Trio Sonata No. 4 in E minor, BWV 528: II. ANDANTE
+#
+# The slow movement of the fourth of the six organ trio sonatas (c.1730),
+# written for Wilhelm Friedemann Bach. A trio in the strict sense: three real
+# voices, one per limb — right hand, left hand, and pedal — each on its own
+# manual so that none can hide inside another. **B minor**, common time.
+#
+# WHAT TO LISTEN FOR
+#   1. The two hands are equals, trading the same material a bar apart, while
+#      the pedal walks underneath in a line of its own. Nothing here is
+#      accompaniment.
+#   2. The right hand's opening — f#, b, e, c#, e, a, d — is a chain of
+#      falling fourths, and it comes back transposed all through the movement.
+#   3. It is the only movement of the sonata in B minor; the outer two are in
+#      E minor.
+#
+# WHERE THE NOTES COME FROM (2026-08-06)
+#   The Mutopia Project's LilyPond edition, imported from its rendered MIDI
+#   with `play-yaml-import --verify`: 1356 source notes in, 1356 in the score,
+#   none missing, none invented, none moved. Mutopia's typesetter placed the
+#   engraving in the public domain outright, and Bach has been there since
+#   1750 — but by this repo's rule only the transcription is committed.
+#     https://www.mutopiaproject.org/ftp/BachJS/BWV528/SonataIV/
+#
+#   Two things the previous version of this file had wrong, both fixed by the
+#   import: the movement is in common time, not 3/8 (that is the third
+#   movement, Un poco allegro), and it runs 45 bars, not 32. It also asked for
+#   `sample: organ`, which is not a sample the DSL knows — the request fell
+#   through to the default synth.
+#
+# CASTING: the DSL has no organ sample; `keys` sustains where `bass` would
+# pluck, so all three voices take it and the pedal simply sits an octave down
+# where Bach put it.
 
-title: "BWV 528: II. Andante (Organ Sonata No. 4)"
-tempo: 60
-measure: 3/8
+title: "BWV 528: II. Andante (Trio Sonata No. 4)"
+composer: "Johann Sebastian Bach"
+tempo: 39           # Mutopia's marking for the Andante
+measure: 4/4
+scale: b minor
+dynamic: mezzopiano
+articulation: legato
 
 tracks:
-  manual1: { sample: organ }
-  manual2: { sample: organ }
-  pedal: { sample: organ }
+  manual1: { sample: keys }
+  manual2: { sample: keys }
+  pedal: { sample: keys }
 
 sections:
   piece:
     loop: false
     manual1:
       play:
-        - "f#4 b4 e5"
-        - "c#5 e4 a4"
-        - "d5 b4 g5"
-        - "a#4 c#5 b4"
-        - "b4 d5 c#5"
-        - "b4 g#4 b4"
-        - "a4 c#5 e5"
-        - "d5 b4 g#4"
-        - "a4 e4 c#5"
-        - "d5 g4 b4"
-        - "a4 dis5 e5"
-        - "c#5 d5 b4"
-        - "a4 f#4 d5"
-        - "b4 g4 e5"
-        - "c#5 a4 f#5"
-        - "d5 b4 g#4"
-        - "a4 c#5 e5"
-        - "d5 fis5 e5"
-        - "d5 c#5 b4"
-        - "a#4 c#5 f#4"
-        - "b4 d5 f#5"
-        - "e5 c#5 a4"
-        - "d5 f#4 b4"
-        - "g#4 e4 c#5"
-        - "a4 c#5 e5"
-        - "d5 b4 g5"
-        - "c#5 e5 a5"
-        - "f#5 d5 b4"
-        - "g5 e5 c#5"
-        - "d5 f#4 b4"
-        - "a#4 c#5 b4"
-        - "b4 ~ ~"
+        - "{~ f#4} {b4 e5} {c#5 e4} {a4 d5}"
+        - "{b4 d4} {g4 c5} {a#4 e5 d5 c#5} {c#5 _ _ b4}"
+        - "{b4 _ b4 c#5 d5 _ b4 _} {e4 b4 g5 _} {_ _ a4 b4 c#5 _ a4 _} {d4 a4 f#5 _}"
+        - "{_ _ g4 a4 b4 _ g4 _} {c4 g4 e5 _} {_ a#4 b4 c#5} {a#4 _ _ b4}"
+        - "{b4 ~} {~ ~ d5 c#5 d5 _ b5 _} {c#5 ~} {~ ~ c#5 b4 c#5 _ a5 _}"
+        - "{b4 _ b4 c#5 d5 _ b4 _} {g#4 d5 b5 _} {_ _ a5 g#5 a5 _ f#5 _} {f5 _ _ f#5}"
+        - "{f#5 c#5} {f#5 b5} {g#5 b4} {e5 a5}"
+        - "{f#5 a4} {d5 g5} {f5 b5 a5 g#5} {g#5 _ _ f#5}"
+        - "{f#5 _ f#4 g#4 a4 _ f#4 _} {b3 f#4 d5 _} {_ _ e4 f#4 g#4 _ e4 _} {a3 e4 c#5 _}"
+        - "{_ _ d4 e4 f#4 _ d4 _} {g3 d4 b4 _} {_ f4 f#4 g#4} {f4 _ _ f#4}"
+        - "{f#4 ~} ~ {~ ~ b4 c#5 d5 _ b4 _} {e5 b4 f#5 b4}"
+        - "g5 _ {_ _ a4 b4 c#5 b4 a4 _} {d5 a4 e5 a4}"
+        - "f#5 _ {_ _ g4 a4 b4 g4 f#4 g4} {c#5 g4 f#4 g4 d5 g4 f#4 g4}"
+        - "{e5 g4 f#4 e4 f#4 _ d5 _} {c#5 _ _ d5} d5 ~"
+        - "{~ ~ e5 d5 c#5 _ e5 _} {b4 e5 a4 e5} {g4 e4 b4 _} ~"
+        - "{~ ~ f#5 e5 d5 e5 f#5 _} {c#5 f#5 b4 f#5} {a4 f#4 c#5 _} ~"
+        - "{~ ~ c#5 b4 a4 c#5 d5 c#5} {g#4 c#5 d5 c#5 f#4 c#5 d5 c#5} {f4 f#5} {f5 d#5}"
+        - "{c#5 f5 f#5 g#5 a5 f#5 c#5 a5} {g#5 f5 c#5 g#5 f#5 d#5 c5 f#5} {f5 _ c#5 d#5 f5 _ c#5 _} {f#5 c#5 g#5 c#5}"
+        - "a5 _ {_ _ b4 c#5 d5 c#5 b4 _} {e5 b4 f#5 b4}"
+        - "g#5 _ {_ _ a4 b4 c#5 a4 g#4 a4} {d5 a4 g#4 a4 e5 a4 g#4 a4}"
+        - "f#5 {~ d5} {_ _ e5 f#5 e5 _ d5 c#5} {b4 _ _ a4}"
+        - "{a4 _ a4 b4 c5 _ a4 _} {d#4 c5 a5 _} {_ _ b4 c#5 d#5 _ b4 _} {e5 a4 c5 _}"
+        - "{_ b4 g5 _} {_ f#5 e5 d5 c5 b4 a4 g4} {c5 _ _ a5} {e5 _ _ _ d#5 _ _ e5}"
+        - "{e5 b4} {e5 a5} {f#5 a4} {d5 g5}"
+        - "{e5 g4} {c5 f5} {d#5 a5 g5 f#5} {f#5 _ _ e5}"
+        - "{e5 _ e5 f#5 g5 _ e5 _} {a4 e5 c6 _} {_ _ d5 e5 f#5 _ d5 _} {g4 d5 b5 _}"
+        - "{_ _ c5 d5 e5 _ c5 _} {f4 c5 a5 _} {_ d#5 e5 f#5} {d#5 _ _ e5}"
+        - "{e5 ~} ~ {~ ~ a4 b4 c5 _ a4 _} {d5 a4 e5 a4}"
+        - "f#5 _ {_ _ g4 a4 b4 a4 g4 _} {c5 g4 d5 g4}"
+        - "e5 _ {_ _ d5 e5 f#5 d5 c#5 d5} {g5 d5 c#5 d5 a5 d5 c#5 d5}"
+        - "{b5 a5 g5 f#5 g5 _ e5 _} {f#5 _ _ g5} {g5 ~} ~"
+        - "{~ ~ a5 g5 f#5 _ a5 _} {e5 a5 d5 a5} {c5 a4 e5 _} ~"
+        - "{~ ~ b5 a5 g5 a5 b5 _} {f#5 b5 e5 b5} {d5 b4 f#5 _} ~"
+        - "{~ ~ f#5 e5 d5 f#5 g5 f#5} {c#5 f#5 g5 f#5 b4 f#5 g5 f#5} {a#4 b5} {a#5 g#5}"
+        - "{f#5 e5 d5 c#5 d5 b4 f#4 d5} {c#5 a#4 f#4 c#5 b4 g#4 f4 b4} {a#4 ~} ~"
+        - "{~ ~ b4 c#5 d5 _ b4 _} {e5 b4 f#5 b4} g5 _"
+        - "{_ _ a4 b4 c#5 b4 a4 _} {d5 a4 e5 a4} f#5 _"
+        - "{_ _ g4 a4 b4 g4 f#4 g4} {c#5 g4 f#4 g4 d5 g4 f#4 g4} {e5 g4 f#4 d5} {e4 d5 c#5 e4}"
+        - "{c#5 e4 d4 b4} {c#4 b4 a4 c4} {a4 c4 b3 g4} {a3 g4 f#4 a3}"
+        - "{f#4 a3 g3 e4} {f#3 e4 d4 b4} {a#4 f#4} {b4 e5}"
+        - "{c#5 e4} {a4 d5} {b4 d4} {g4 c5}"
+        - "{a#4 g5 f#5 e5} {d5 _ c#5 b4} {b4 _ b4 c#5 d5 _ b4 _} {e4 b4 g5 _}"
+        - "{_ _ a4 b4 c#5 _ a4 _} {d4 a4 f#5 _} {_ _ g4 a4 b4 _ g4 _} {c4 g4 e5 _}"
+        - "{_ a#4 b4 c#5} {a#4 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ b4 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ f#4 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _} f4 {~ e4}"
+        - "{_ _ d4 e4} {c#4 _ _ b3} b3 _"
     manual2:
       play:
-        - "d4 f#4 g4"
-        - "e4 c#4 f#4"
-        - "f#4 d4 e5"
-        - "e4 e4 d4"
-        - "d4 f#4 a4"
-        - "g4 e4 g4"
-        - "f#4 a4 c#5"
-        - "b4 g4 e4"
-        - "f#4 c#4 a4"
-        - "b4 e4 g4"
-        - "f#4 b4 c#5"
-        - "a#4 b4 g4"
-        - "f#4 d4 b4"
-        - "g4 e4 c5"
-        - "a4 f#4 d5"
-        - "b4 g4 e4"
-        - "f#4 a4 c#5"
-        - "b4 d5 c#5"
-        - "b4 a4 g4"
-        - "f#4 a#4 c#4"
-        - "d4 f#4 d5"
-        - "c#5 a4 f#4"
-        - "b4 d4 g4"
-        - "e4 c#4 a4"
-        - "f#4 a4 c#5"
-        - "b4 g4 e5"
-        - "a4 c#5 f#5"
-        - "d5 b4 g4"
-        - "e5 c#5 a4"
-        - "b4 d4 g4"
-        - "e4 e4 d4"
-        - "d4 ~ ~"
+        - "~ ~ ~ ~"
+        - "~ ~ ~ ~"
+        - "{~ f#4} {b4 e5} {c#5 e4} {a4 d5}"
+        - "{b4 d4} {g4 c5} {a#4 e5 d5 c#5} {c#5 _ _ b4}"
+        - "{b4 _ b4 c#5 d5 _ b4 _} {e4 b4 g#5 _} {_ _ a4 b4 c#5 _ a4 _} {d4 a4 f#5 _}"
+        - "{_ f5} {~ ~ g#5 f#5 g#5 _ f5 _} {c#5 _ _ d5} {g#4 _ _ f#4}"
+        - "{f#4 _ f#4 g#4 a4 _ f#4 _} {b3 f#4 d5 _} {_ _ e4 f#4 g#4 _ e4 _} {a3 e4 c#5 _}"
+        - "{_ _ d4 e4 f#4 _ d4 _} {g3 d4 b4 _} {_ f4 f#4 g#4} {f4 _ _ f#4}"
+        - "{f#4 c#4} {f#4 b4} {g#4 b3} {e4 a4}"
+        - "{f#4 a3} {d4 g4} {f4 b4 a4 g#4} {g#4 _ _ f#4}"
+        - "{f#4 _ f#4 g#4 a#4 _ f#4 _} {b4 f#4 c#5 f#4} d5 _"
+        - "{_ _ e4 f#4 g4 f#4 e4 _} {a4 e4 b4 e4} c#5 _"
+        - "{_ _ d4 e4 f#4 d4 c#4 d4} {g4 d4 c#4 d4 a4 d4 c#4 d4} b4 {~ g4}"
+        - "{_ _ a4 b4 a4 _ g4 f#4} {e4 _ _ d4} {d4 _ a4 g4 f#4 _ a4 _} {e4 a4 d4 a4}"
+        - "{c#4 a3 e4 _} ~ {~ ~ b4 a4 g4 a4 b4 _} {f#4 b4 e4 b4}"
+        - "{d4 b3 f#4 _} ~ {~ ~ c#5 b4 a4 c#5 d5 c#5} {g#4 c#5 d5 c#5 f#4 c#5 d5 c#5}"
+        - "{f4 f#5} {f5 d#5} {c#5 f5 f#5 g#5 a5 f#5 c#5 a5} {g#5 f5 c#5 g#5 f#5 d#5 c5 f#5}"
+        - "{f5 f#4} {f4 d#4} {c#4 ~} ~"
+        - "{~ ~ f#4 g#4 a4 _ f#4 _} {b4 f#4 c#5 f#4} d5 _"
+        - "{_ _ e4 f#4 g#4 f#4 e4 _} {a4 e4 b4 e4} c#5 _"
+        - "{_ _ d4 e4 f#4 d4 c#4 d4} {g#4 d4 c#4 d4 a4 d4 c#4 d4} {b4 d4 c#4 b3 c#4 _ a4 _} {g#4 _ _ a4}"
+        - "a4 {~ ~ d#5 e5 f#5 _ c5 _} {b4 ~} {~ ~ d#5 e5 f#5 _ a4 _}"
+        - "{g4 _ g4 a4 b4 _ g4 _} {e4 a4 e5 _} {_ d5 c5 b4 a4 g4 f#4 e4} {g4 _ _ _ f#4 _ _ e4}"
+        - "{e4 _ e4 f#4 g4 _ e4 _} {a3 e4 c5 _} {_ _ d4 e4 f#4 _ d4 _} {g3 d4 b4 _}"
+        - "{_ _ c4 d4 e4 _ c4 _} {f3 c4 a4 _} {_ d#4 e4 f#4} {d#4 _ _ e4}"
+        - "{e4 b3} {e4 a4} {f#4 a3} {d4 g4}"
+        - "{e4 g3} {c4 f4} {d#4 a4 g4 f#4} {f#4 _ _ e4}"
+        - "{e4 _ e4 f#4 g4 _ e4 _} {a4 e4 b4 e4} c5 _"
+        - "{_ _ d4 e4 f#4 e4 d4 _} {g4 d4 a4 d4} b4 _"
+        - "{_ _ c4 d4 e4 c4 b3 c4} {f#4 c4 b3 c4 g4 c4 b3 c4} a4 {~ d4}"
+        - "{_ _ g4 a4 b4 g4 c5 _} {b4 _ a4 g4} {g4 _ d5 c5 b4 _ d5 _} {a4 d5 g4 d5}"
+        - "{f#4 d4 a4 _} ~ {~ ~ e5 d5 c5 d5 e5 _} {b4 e5 a4 e5}"
+        - "{g4 e4 b4 _} ~ {~ ~ f#5 e5 d5 f#5 g5 f#5} {c#5 f#5 g5 f#5 b4 f#5 g5 f#5}"
+        - "{a#4 b4} {a#4 g#4} {f#4 a#4 b4 c#5 d5 b4 f#4 d5} {c#5 a#4 f#4 c#5 b4 g#4 f4 b4}"
+        - "{a#4 b4} {a#4 g#4} {f#4 _ f#4 g#4 a#4 _ f#4 _} {b4 f#4 c#5 f#4}"
+        - "d5 _ {_ _ e4 f#4 g4 f#4 e4 _} {a4 e4 b4 e4}"
+        - "c#5 _ {_ _ d4 e4 f#4 d4 c#4 d4} {g4 d4 c#4 d4 a4 d4 c#4 d4}"
+        - "b4 {~ b4} a4 g4"
+        - "f#4 e4 d4 c4"
+        - "{b3 e4} {_ _ f#4 g4 f#4 e4 d4 _} c#4 {~ b3}"
+        - "{e4 a4} {f#4 a3} {d4 g4} {e4 g3}"
+        - "{f#3 a#3 b3 c#4} {a#3 _ _ b3} {b3 f#4} {b4 e5}"
+        - "{c#5 e4} {a4 d5} {b4 d4} {g4 c5}"
+        - "{a#4 e5 d5 c#5} {c#5 _ _ b4} b4 {~ ~ ~ ~ c#5 _ d5 e5}"
+        - "{a#4 _ b4 c#5} {a#4 _ _ b4} b4 _"
     pedal:
       play:
-        - "b2 b2 c#3"
-        - "a2 a2 d3"
-        - "b2 g2 e2"
-        - "f#2 f#2 b2"
-        - "b2 b2 a2"
-        - "e3 e3 e3"
-        - "f#3 f#3 c#3"
-        - "d3 d3 e3"
-        - "f#3 f#2 f#2"
-        - "g2 g2 e2"
-        - "f#2 f#2 g2"
-        - "e2 f#2 b2"
-        - "d3 d3 b2"
-        - "e3 e3 c3"
-        - "f#3 f#3 d3"
-        - "g3 g3 e3"
-        - "f#3 f#3 a2"
-        - "b2 b2 c#3"
-        - "d3 d3 e3"
-        - "f#3 f#2 f#2"
-        - "b2 b2 b2"
-        - "a2 a2 a2"
-        - "g2 g2 g2"
-        - "e2 e2 e2"
-        - "f#2 f#2 a2"
-        - "g2 g2 e2"
-        - "a2 a2 f#2"
-        - "b2 b2 g2"
-        - "c#3 c#3 a2"
-        - "b2 g2 e2"
-        - "f#2 f#1 b2"
-        - "b2 ~ ~"
+        - "{b3 ~} {g3 ~} {a3 ~} {f#3 ~}"
+        - "{g3 ~} {e3 ~} {f#3 b2} {f#3 f#2}"
+        - "{b2 ~} {g2 ~} {a2 ~} {f#2 ~}"
+        - "{g2 ~} {e2 ~} {f#2 b2} {f#3 f#2}"
+        - "{b2 b3} {g#3 e3} {a2 a3} {f#3 d3}"
+        - "{g#2 g#3} {f3 c#3} {f#3 b3} {c#4 c#3}"
+        - "{f#3 ~} {d3 ~} {e3 ~} {c#3 ~}"
+        - "{d3 ~} {b2 ~} {c#3 f#3} {c#4 c#3}"
+        - "{f#3 ~} {d3 ~} {e3 ~} {c#3 ~}"
+        - "{d3 ~} {b2 ~} {c#3 f#2} {c#3 c#3}"
+        - "{f#2 f#3} {g#3 a#3} {b3 b2} {c#3 d3}"
+        - "{e2 e3} {f#3 g3} {a3 a2} {b2 c#3}"
+        - "{d2 d3} {e3 f#3} {g2 g3} {a3 b3}"
+        - "{c#3 d3} {a3 a2} {d2 d3} {c#3 b2}"
+        - "{a2 a3} {g3 f#3} {e3 e3} {d3 c#3}"
+        - "{b2 b3} {a3 g#3} {f#3 f#3} {e3 d3}"
+        - "{c#3 ~} ~ {c#3 ~} ~"
+        - "{c#3 ~} ~ {~ c#3} {d#3 f3}"
+        - "{f#3 f#3} {g#3 a3} {b3 b2} {c#3 d3}"
+        - "{e3 e3} {f#3 g#3} {a3 a2} {b2 c#3}"
+        - "{d3 d3} {e3 f#3} {g#2 a2} {e3 e2}"
+        - "{a2 g3} {f#3 e3} {d#3 b2} {c#3 d#3}"
+        - "{e3 d3} {c3 b2} {a2 f#2} {b2 b2}"
+        - "{e3 ~} {c3 ~} {d3 ~} {b2 ~}"
+        - "{c3 ~} {a2 ~} {b2 e3} {b3 b2}"
+        - "{e3 ~} {c3 ~} {d3 ~} {b2 ~}"
+        - "{c3 ~} {a2 ~} {b2 e3} {b3 b2}"
+        - "{e2 e3} {f#3 g3} {a3 a3} {b3 c4}"
+        - "{d3 d3} {e3 f#3} {g3 g3} {a3 b3}"
+        - "{c3 b3} {a3 g3} {f#3 d3} {e3 f#3}"
+        - "{g3 c3} {d3 d2} {g2 g3} {f#3 e3}"
+        - "{d3 d3} {c3 b2} {a2 a3} {g3 f#3}"
+        - "{e3 e3} {d3 c#3} {b2 b3} {a3 g3}"
+        - "{f#3 ~} ~ {f#3 ~} ~"
+        - "{f#3 ~} ~ {~ f#3} {g#3 a#3}"
+        - "{b3 b3} {c#4 d4} {e3 e3} {f#3 g3}"
+        - "{a3 a3} {b3 c#4} {d3 d3} {e3 f#3}"
+        - "{g3 g3} {a3 b3} {c#3 d3} {a3 a#3}"
+        - "{b3 d3} {e3 f#3} {g3 b2} {c3 d#2}"
+        - "{e2 c#3} {a#2 b2} {f#2 f#3 e3 f#3} {d3 b3 g3 _}"
+        - "{_ a3 c#3 a3} {d3 a3 f#3 _} {_ g3 b2 g3} {c3 g3 e3 _}"
+        - "{_ c#3 d3 b2} {f#3 f#2} {b2 ~} {g2 ~}"
+        - "{a2 ~} {f#2 ~} {g2 ~} {e2 ~}"
+        - "{f#2 b2} {f#3 f#2} g#2 {~ g2}"
+        - "{f#2 b2} {f#3 f#2} b2 _"

@@ -15,20 +15,22 @@
 #   wrote it against: the mapping was derived by aligning our prelude against
 #   Gounod's own piano part bar-by-bar on pitch-class sets, not by ear.
 #
-#   Two of Gounod's bars have no counterpart in this prelude and are dropped
-#   (research/report.md documents both at length):
-#     - his bar 27, the spurious "Schwencke measure" — an inauthentic bar
-#       Bach never wrote, correctly absent here. Gounod sets a repeated
-#       "Maria!" across it and the next bar; we keep the second of the two,
-#       and the 16th-note pickup that leads into it survives intact.
-#     - his bar 31, which corresponds to authentic Bach bar 26 — genuinely
-#       missing from examples/bwv846.play.yaml (that file has 34 bars where
-#       the prelude has 35). Its phrase is omitted rather than reharmonised.
+#   One of Gounod's bars has no counterpart here and is dropped: his bar 27,
+#   the spurious "Schwencke measure" — an inauthentic bar Bach never wrote,
+#   correctly absent from the prelude. Gounod sets a repeated "Maria!" across
+#   it and the bar after; we keep the second of the two, and the 16th-note
+#   pickup that leads into it survives intact.
+#
+#   (Earlier revisions also dropped his bar 31, because authentic Bach bar 26
+#   was missing from examples/bwv846.play.yaml. That bar has since been
+#   restored in both files — 35 bars now, matching the prelude — so Gounod's
+#   phrase over it is back.)
 #
 #   Gounod plays Bach's first four bars twice — once as a piano prelude, then
-#   again as the voice enters. This prelude is a single 34-bar pass, so the
-#   voice enters immediately at bar 1, on the harmony Gounod gave it. Marked
-#   "avec le sentiment contemplatif", sul A, in the original.
+#   again as the voice enters. Both passes are here: an `intro` section of the
+#   prelude's first four bars with the voice tacet, then the full 35-bar
+#   prelude with the melody over it. 39 bars in all; the voice enters at
+#   bar 5, marked "avec le sentiment contemplatif", sul A, in the original.
 
 title: "Ave Maria (Bach / Gounod)"
 tempo: 72
@@ -52,31 +54,110 @@ tracks:
   # The added line. A warm synth pad (GM 89) stands in for the voice: it
   # sustains through the whole notes the way a singer would, and sits above
   # the prelude's 16th-note wash instead of inside it.
+  #
+  # Gounod's marks are kept exactly as he wrote them — pianissimo really is
+  # pianissimo here. What moves is where they land: a solo line that is
+  # literally softer than its own accompaniment disappears, and the prelude
+  # sits at mezzopiano-to-forte for most of its length.
+  #
+  # WHERE THE DYNAMICS LIVE. A singer does not attack notes harder to get
+  # louder — they lean on the breath, and the note swells while it is already
+  # sounding. So the velocity band here is deliberately narrow and high
+  # (114..124, which lands every mark between 117 and 123, six values in all)
+  # and does almost nothing but set a consistent attack. Everything that used
+  # to be written in velocity has moved to expression:
+  #
+  #   expression (CC11), band 56..127 — the real loudness, on a perceptual
+  #     curve, and the only thing that changes while a note is held. Every
+  #     dynamic drives it, and `crescendo over 4` becomes a ramp of CCs at
+  #     eighth-note steps *through* the whole notes rather than a staircase of
+  #     attacks. 132 events across the line, running roughly 74 to 125.
+  #   vibrato (CC1) — the track's LFO into every sounding note's detune, up to
+  #     22 cents. 117 events, because it is nearly all *ramps*: the tone opens
+  #     and closes with the phrase instead of switching between settings.
+  #   vibrato_rate (CC76) — 3.2 Hz at `slow vibrato` to 7.7 at `fast`, also
+  #     ramped.
+  #
+  # Measured on the voice track alone, against the version that carried its
+  # dynamics in velocity:
+  #
+  #                         velocity-only     now
+  #     pianissimo bar 12   -29.4 dB          -30.6 dB
+  #     fortissimo bar 33   -22.5 dB          -23.1 dB
+  #     span                  6.9 dB            7.5 dB
+  #
+  # — a wider dynamic range than before, about a decibel lower at the quiet
+  # end, and all of it now moving continuously instead of only at note starts.
+  #
+  # THE VIBRATO ARC, bar by bar (CC1, 0-127), is the shape a singer actually
+  # uses rather than a constant:
+  #
+  #     5      26   the voice enters almost straight
+  #     6-9    58   warmed to an ordinary tone across the opening arch
+  #     10-13  68→78  the sighing figures
+  #     14-16  96   the first high C
+  #     17-21  72   back to an ordinary tone for the rising sequence
+  #     22    127   the B5 climax, and the rate goes with it
+  #     23-24  32   pulled straight again, so the long climb has somewhere to
+  #                 grow from
+  #     25-28  54→75→97→118   four bars of widening under the crescendo molto
+  #     29-30  92   eased off, so the peak is still an arrival
+  #     31-36 127   D6, then the E6 that is the top of the piece
+  #     37     80   settling under the piano's cadenza
+  #     38      0   senza vibrato: the final held G is sung straight
+  #
+  # Verified in the render: 17.7 cents of pitch movement on the opening note,
+  # 36.6 at the peak. (On the final low G the probe's own floor is ~26 cents,
+  # so that one was checked by A/B instead: senza reads 26.5, molto 46.7.)
   voice:
     sample: pad
     dynamic: piano
-    set: legato, cantabile
+    velocityRange: [114, 124]
+    controls:
+      expression: { cc: 11, range: [56, 127] }
+      vibrato: 1
+      vibrato_rate: 76
+    # A singer does not vibrate at a constant depth, and never from the first
+    # instant of a phrase. The default is nearly straight; the marks below open
+    # it up at the climaxes and close it again after.
+    set: legato, cantabile, vibrato 26, slow vibrato
 
 sections:
-  piece:
+  # Gounod's opening, as he wrote it: Bach's first four bars played once on
+  # their own, voice tacet, before the same four bars come round again with
+  # the melody over them. (The voice track simply doesn't appear in this
+  # section, so it rests through it.) This is why his bar 5 is Bach's bar 1 —
+  # and why, with the intro restored, the bar numbers in this file line up
+  # with Gounod's own from here on.
+  intro:
     loop: false
     piano:
       play:
-        # --- Opening Statement (Bars 1-4): C major, gentle dolce flow ---
         - "dolce"
         - "{c4 e4 g4 c5} {e5 g4 c5 e5} {c4 e4 g4 c5} {e5 g4 c5 e5}"
         - "{c4 d4 a4 d5} {f5 a4 d5 f5} {c4 d4 a4 d5} {f5 a4 d5 f5}"
         - "{b3 d4 g4 d5} {f5 g4 d5 f5} {b3 d4 g4 d5} {f5 g4 d5 f5}"
         - "{c4 e4 g4 c5} {e5 g4 c5 e5} {c4 e4 g4 c5} {e5 g4 c5 e5}"
 
-        # --- Harmonic Rise (Bars 5-8): Crescendo toward A minor ---
+  piece:
+    loop: false
+    piano:
+      play:
+        # --- Opening Statement (Bars 5-8 = Bach 1-4): the repeat, voice in ---
+        - "dolce"
+        - "{c4 e4 g4 c5} {e5 g4 c5 e5} {c4 e4 g4 c5} {e5 g4 c5 e5}"
+        - "{c4 d4 a4 d5} {f5 a4 d5 f5} {c4 d4 a4 d5} {f5 a4 d5 f5}"
+        - "{b3 d4 g4 d5} {f5 g4 d5 f5} {b3 d4 g4 d5} {f5 g4 d5 f5}"
+        - "{c4 e4 g4 c5} {e5 g4 c5 e5} {c4 e4 g4 c5} {e5 g4 c5 e5}"
+
+        # --- Harmonic Rise (Bars 9-12 = Bach 5-8): Crescendo toward A minor ---
         - "crescendo over 4"
         - "{c4 e4 a4 e5} {a5 a4 e5 a5} {c4 e4 a4 e5} {a5 a4 e5 a5}"
         - "{c4 d4 f#4 a4} {d5 f#4 a4 d5} {c4 d4 f#4 a4} {d5 f#4 a4 d5}"
         - "{b3 d4 g4 d5} {g5 g4 d5 g5} {b3 d4 g4 d5} {g5 g4 d5 g5}"
         - "{b3 c4 e4 g4} {c5 e4 g4 c5} {b3 c4 e4 g4} {c5 e4 g4 c5}"
 
-        # --- Middle Arc (Bars 9-14): D minor / F minor darkening ---
+        # --- Middle Arc (Bars 13-18 = Bach 9-14): D minor / F minor darkening ---
         - "mezzoforte"
         - "{a3 c4 e4 g4} {c5 e4 g4 c5} {a3 c4 e4 g4} {c5 e4 g4 c5}"
         - "{d3 a3 d4 f#4} {c5 d4 f#4 c5} {d3 a3 d4 f#4} {c5 d4 f#4 c5}"
@@ -86,7 +167,7 @@ sections:
         - "{f3 a3 d4 a4} {d5 d4 a4 d5} {f3 a3 d4 a4} {d5 d4 a4 d5}"
         - "{f3 ab3 d4 f4} {b4 d4 f4 b4} {f3 ab3 d4 f4} {b4 d4 f4 b4}"
 
-        # --- Floating Middle (Bars 15-19): Subdued & cantabile ---
+        # --- Floating Middle (Bars 19-23 = Bach 15-19): Subdued & cantabile ---
         - "mezzopiano"
         - "cantabile"
         # Half the depth, still re-taken each bar: the texture stays legato
@@ -98,7 +179,7 @@ sections:
         - "{g2 d3 g3 b3} {f4 g3 b3 f4} {g2 d3 g3 b3} {f4 g3 b3 f4}"
         - "{c3 e3 g3 c4} {e4 g3 c4 e4} {c3 e3 g3 c4} {e4 g3 c4 e4}"
 
-        # --- Chromatic Bass Line (Bars 20-24): Building tension over pedal ---
+        # --- Chromatic Bass Line (Bars 24-28 = Bach 20-24): Building tension over pedal ---
         - "crescendo over 5"
         - "{c3 g3 bb3 c4} {e4 bb3 c4 e4} {c3 g3 bb3 c4} {e4 bb3 c4 e4}"
         - "{f2 f3 a3 c4} {e4 a3 c4 e4} {f2 f3 a3 c4} {e4 a3 c4 e4}"
@@ -106,11 +187,12 @@ sections:
         - "{ab2 f3 b3 c4} {d4 b3 c4 d4} {ab2 f3 b3 c4} {d4 b3 c4 d4}"
         - "{g2 f3 g3 b3} {d4 g3 b3 d4} {g2 f3 g3 b3} {d4 g3 b3 d4}"
 
-        # --- Dominant Pedal Climax (Bars 25-31): Forte & sostenuto ---
+        # --- Dominant Pedal Climax (Bars 29-36 = Bach 25-32): Forte & sostenuto ---
         - "forte"
         - "sostenuto"
         - "pedale sincopato"
         - "{g2 e3 g3 c4} {e4 g3 c4 e4} {g2 e3 g3 c4} {e4 g3 c4 e4}"
+        - "{g2 d3 g3 c4} {f4 g3 c4 f4} {g2 d3 g3 c4} {f4 g3 c4 f4}"
         - "{g2 d3 g3 b3} {f4 g3 b3 f4} {g2 d3 g3 b3} {f4 g3 b3 f4}"
         - "{g2 eb3 a3 c4} {f#4 a3 c4 f#4} {g2 eb3 a3 c4} {f#4 a3 c4 f#4}"
         - "{g2 e3 g3 c4} {g4 g3 c4 g4} {g2 e3 g3 c4} {g4 g3 c4 g4}"
@@ -118,7 +200,7 @@ sections:
         - "{g2 d3 g3 b3} {f4 g3 b3 f4} {g2 d3 g3 b3} {f4 g3 b3 f4}"
         - "{c2 c3 g3 bb3} {e4 g3 bb3 e4} {c2 c3 g3 bb3} {e4 g3 bb3 e4}"
 
-        # --- Cadenza & Grand Resolution (Bars 32-34) ---
+        # --- Cadenza & Grand Resolution (Bars 37-39 = Bach 33-35) ---
         - "fortissimo"
         - "ritardando over 2 to 54"
         - "{c2 f3 a3 c4} {f4 c4 a3 c4} {a3 f3 a3 f3} {d3 f3 d3 f3}"
@@ -132,17 +214,22 @@ sections:
 
     voice:
       play:
-        # --- The opening arch (bars 1-4). Four long notes, rising a step at a
+        # --- The opening arch (bars 5-8). Four long notes, rising a step at a
         # time, then falling back — the whole melody in miniature. ---
+        # the voice warms: almost straight on the first note, a normal tone
+        # by the end of the opening arch
+        - "vibrato to 58 over 3"
         - "e5 _ _ _"
         - "f5 _ _ _"
         - "g5 _ _ d5"
         - "e5 _ _ ~"
 
-        # --- The sighing figure (bars 5-8). Each phrase leaps to a held note,
+        # --- The sighing figure (bars 9-12). Each phrase leaps to a held note,
         # drops an octave, then climbs back by step. Gounod alternates
         # crescendo and pianissimo bar by bar. ---
         - "crescendo over 1"
+        # the tone opens as the phrase does, rather than switching on
+        - "vibrato to 78 over 2"
         - "a5 _ {_ a4} {b4 c5}"
         - "pianissimo"
         - "d5 {_ _ _ e5} d5 ~"
@@ -151,18 +238,20 @@ sections:
         - "pianissimo"
         - "c5 {_ _ _ d5} c5 ~"
 
-        # --- Bars 9-11: the line reaches its first high C, then the F# turn
+        # --- Bars 13-15: the line reaches its first high C, then the F# turn
         # bends it down into the B that closes the phrase. ---
         - "crescendo over 1"
+        - "vibrato to 96 over 1"
         - "c6 _ {_ c5} {d5 e5}"
         - "diminuendo over 1"
         - "f#5 {_ e5} d5 a4"
         - "piano"
         - "b4 _ {_ ~} d5"
 
-        # --- Bars 12-17: the same rising sequence three times over, a step
+        # --- Bars 16-21: the same rising sequence three times over, a step
         # higher each time (E, D-G, C-F), pushing toward the climax. ---
         - "crescendo over 1"
+        - "vibrato to 72 over 1"
         - "e5 _ {_ e5} {f5 g5}"
         - "pianissimo"
         - "a5 _ a4 ~"
@@ -174,49 +263,69 @@ sections:
         - "c5 _ {_ c5} {d5 e5}"
         - "f5 _ {_ f5} {g5 a5}"
 
-        # --- Bar 18: the phrase tops out on B5 and falls away. ---
+        # --- Bar 22: the phrase tops out on B5 and falls away. The voice
+        # opens right up here — widest and fastest vibrato so far. ---
         - "forte"
+        - "molto vibrato"
+        - "fast vibrato"
         - "b5 {_ a5} g5 d5"
 
-        # --- Bars 19-23: the great "crescendo molto". One accented half note
+        # --- Bars 23-27: the great "crescendo molto". One accented half note
         # per bar, each answered by a 16th-note pickup into the next: E, G, A,
         # A, then the high C. Gounod writes this over five bars, the fourth of
         # them the spurious Schwencke measure — dropped here, so the pickup at
         # the end of bar 22 leads straight into the C6 that follows. ---
+        # …and pulls straight again for the quiet start of the long climb,
+        # so the growth through it has somewhere to come from.
         - "piano"
+        - "poco vibrato"
+        - "slow vibrato"
         - "e5 _ _ {~ ~ ~ e5}"
         - "crescendo over 4"
+        # the long climb: the vibrato widens with the breath, four bars of it
+        - "vibrato to 118 over 4"
+        - "fast vibrato over 4"
         - "g5 _ e5 {~ ~ ~ e5}"
         - "a5 _ a4 {~ ~ ~ a5}"
         - "a5 _ c5 {~ ~ ~ a5}"
         - "c6 _ d5 {~ ~ ~ d5}"
 
-        # --- Bars 24-25: the tension releases; the line sinks back to C.
-        # Gounod's next bar rises again from F — it belongs to authentic Bach
-        # bar 26, which this prelude does not have, so it is omitted and the
-        # music goes straight to the climax. ---
+        # --- Bars 28-30: the tension releases and the line sinks back to C,
+        # then bar 26 rises again from F — the last gathering before the
+        # climax. (This is the bar Bach's prelude was missing here; with it
+        # restored, Gounod's phrase over it comes back too.) ---
         - "piano"
+        - "vibrato to 92 over 1"
         - "d5 _ {_ d5} {c5 b4}"
         - "g5 {_ e5} c5 ~"
+        - "crescendo over 1"
+        - "f5 _ {_ f5} {e5 d5}"
 
-        # --- Bars 26-29: the climax. D6 is the highest note so far; E6 two
+        # --- Bars 31-34: the climax. D6 is the highest note so far; E6 two
         # bars later is the peak of the whole piece (ff, "tutta forza"). ---
         - "forte"
+        - "molto vibrato"
         - "d6 {_ b5} g5 _"
         - "a5 _ {_ a5} {b5 c6}"
         - "fortissimo"
+        - "fast vibrato"
         - "e6 _ {_ c6} {g5 e5}"
         - "d5 _ {_ a5} {b5 a5}"
 
-        # --- Bar 30: one long scale down through the G7, spanning two
+        # --- Bar 35: one long scale down through the G7, spanning two
         # octaves — the descent that ends the piece. ---
         - "{a5 g5} {f5 d5} {b4 g4} {f4 d4}"
 
-        # --- Bars 31-34: the voice lands low and stays there, holding C then
+        # --- Bars 36-39: the voice lands low and stays there, holding C then
         # G underneath the piano's cadenza and final chord. ---
+        # The voice settles under the piano's cadenza: vibrato narrows and
+        # slows to almost nothing, the way a held final note is sung.
         - "diminuendo over 2"
+        - "poco vibrato over 2"
+        - "slow vibrato over 2"
         - "c4 _ _ _"
         - "_ _ _ _"
         - "pianissimo"
+        - "senza vibrato"
         - "g3 _ _ _"
         - "_ _ _ _"

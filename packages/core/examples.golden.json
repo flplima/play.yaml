@@ -3,300 +3,300 @@
     "tracks": 1,
     "notes": 656,
     "lengthBeats": 168,
-    "sha256": "9588523ee5d04e7e9665315cf00511ec145f6eb8933227068f553474d2d96e8e"
+    "sha256": "f90b98adfec812e12cdaba97d51f83d6f7ac3def8e54e7a8c65176d708c3fc6f"
   },
   "bwv846.play.yaml": {
     "tracks": 1,
-    "notes": 533,
-    "lengthBeats": 136,
-    "sha256": "d73fc09bfb36ff44905ff6f5a220ac2c1dd328bfe43090e99cb21b8c19caa836"
+    "notes": 549,
+    "lengthBeats": 140,
+    "sha256": "fb9b0ed634c66f0e232dd111bee5526b08a4f9b267bd3a8d0ba17d4d73ff8064"
   },
   "bwv881.play.yaml": {
     "tracks": 2,
-    "notes": 375,
-    "lengthBeats": 96,
-    "sha256": "adf7d3338b8036c088a8ccb6dcf9e8ff3c4fa3272d077d0d1744891d42381ae3"
+    "notes": 1473,
+    "lengthBeats": 282,
+    "sha256": "5f55ada218b1f29a2ee0cecd1f07aa3e3ff3976ff56215dced6909faf3f49e10"
   },
   "clair-de-lune.play.yaml": {
     "tracks": 9,
     "notes": 1608,
     "lengthBeats": 324,
-    "sha256": "a905d4bc871c0cd624b35512e5786d5f2111a70c507dc6dca2a481e5294102af"
+    "sha256": "c3a8d5eca8a36a13687cd839a3dad73178145060eddb150369e6a3f2be3b4b44"
   },
   "corridors-of-time.play.yaml": {
     "tracks": 3,
     "notes": 612,
     "lengthBeats": 128,
-    "sha256": "13d1c0d65ed8515c9abe3d52401f93dde42ce15499a196744804515b063420b1"
+    "sha256": "af5e34a719b6784c943c9c9bff5d86faf99a1180bef8e88ebe50438986b0b918"
   },
   "drum-lab.play.yaml": {
     "tracks": 6,
     "notes": 389,
     "lengthBeats": 96,
-    "sha256": "cdd415ef8dd3a74cc33fdca6cdb25e4c0280c2bfb223ae88f2d755f59c14ebaa"
+    "sha256": "343aedbbfbe4c4bba7f283ec3599e2882f9e5523c22078274ac94839c3fed592"
   },
   "experiments-cello.play.yaml": {
     "tracks": 2,
     "notes": 47,
     "lengthBeats": 32,
-    "sha256": "a1d245504688be9ab4df06e5c96f0001020ba303af4bb2c0e79d4c9f761306b5"
+    "sha256": "02a7048e462309937911930742dd080f5eef4e54559c2b8a9eb82f3527d2a5df"
   },
   "fur-elise.play.yaml": {
     "tracks": 2,
     "notes": 901,
     "lengthBeats": 159,
-    "sha256": "cd1f12a0cdcf9234c092465708332aec215cd6f9948363e1e6f694698a61ac6c"
+    "sha256": "676c916444603d0283c0eb92eee8d56350d498ee3937ce9f09231d0572f73998"
   },
   "generative-lab.play.yaml": {
     "tracks": 4,
     "notes": 205,
     "lengthBeats": 36,
-    "sha256": "c8caade796b3c71a3353dc3e6fc1f328e99e7b5f143a1e747069226852455027"
+    "sha256": "77da3a7ff57b16c52bc16e4f94ce99015b338beaea4e5d36b75a02f1f329c4f2"
   },
   "lost-woods-vst.play.yaml": {
     "tracks": 4,
     "notes": 227,
     "lengthBeats": 72,
-    "sha256": "d0ed8206e6772897b1a250b2753994e86abcc9de2d202d99c208037f0b89c845"
+    "sha256": "692e9eecf714e91d640dc9f54249f4248086977123061b888adf7f020b793a76"
   },
   "lost-woods.play.yaml": {
     "tracks": 3,
     "notes": 191,
     "lengthBeats": 72,
-    "sha256": "e6800c3db4b5def1ed00e68e6ba4ded3074d3f6f5b358ae2fe5f928ab5f4d5ad"
+    "sha256": "1f3172e2d59d19de569ccbcfe2c1355251dcfc32c9ac7e00ca9823bc758718df"
   },
   "my-score.play.yaml": {
     "tracks": 2,
     "notes": 28,
     "lengthBeats": 16,
-    "sha256": "ceba51585f0e5d6245455b15f880c8d9c786bb7285526ce3090c887bc9f42f78"
+    "sha256": "d75b4c7e4dc3699a43121cb7f9a82f272b162e5c52be6a35bd687b2523c66a3a"
   },
   "nocturne-op9-no2.play.yaml": {
     "tracks": 2,
     "notes": 1231,
     "lengthBeats": 224,
-    "sha256": "1e3da05aa473cfe18bcc7e61f2063ce41605f2cc20cc74a4070913186505764b"
+    "sha256": "dc5dbe7375b79a4749926e6db795b25418b54fce5c72a28aa372680fd68963ca"
   },
   "preciso-me-encontrar-vst.play.yaml": {
     "tracks": 2,
     "notes": 294,
     "lengthBeats": 52,
-    "sha256": "f64e83e248ff0f6957a1e8d7fc632f916304428f5144dbc48a3cd1bc70b2ac89"
+    "sha256": "a8b3ef73bf3d66c5624ffafd35a597ceaca58dec059739ca3125393c5eb3027d"
   },
   "preciso-me-encontrar.play.yaml": {
     "tracks": 2,
-    "notes": 271,
+    "notes": 269,
     "lengthBeats": 52,
-    "sha256": "89401215f6a4a5560a85ddc9bf1fe0ba8477f4b79df7ad452413a4e32036354a"
+    "sha256": "a2e1bd10d9815db244baad508944758e1bdeff290da18183473fbfdcc9358544"
   },
   "severance.play.yaml": {
     "tracks": 1,
     "notes": 44,
     "lengthBeats": 48,
-    "sha256": "dc3e36753cf4901546195224e7c00aa9eb27cc12da50fdb033debad51eb69666"
+    "sha256": "c49c755419f17c2e0fe2a428991b060c94e5cb34b4a891cfe2e0022a9f883b02"
   },
   "showcase.play.yaml": {
     "tracks": 5,
     "notes": 74,
     "lengthBeats": 16,
-    "sha256": "d51b87f2ec604981a63900f5365b106d79c51434a8426f5500d209281a9b534a"
+    "sha256": "de60a6c704728bfd5a1d65c57f7acb1eb16bb4463f88baa807ab15da2b5841c5"
   },
   "sur-le-fil-cello-vst.play.yaml": {
     "tracks": 1,
     "notes": 1435,
     "lengthBeats": 410,
-    "sha256": "b66ce6d68ba75aee359fc8d026f7c010d14d286d88e8fa2e653737e801dce867"
+    "sha256": "0fdac693c06c06c6220310e677cfc4feaae09cacda325271eddb92fe68032065"
   },
   "sur-le-fil.play.yaml": {
     "tracks": 1,
     "notes": 1555,
     "lengthBeats": 410,
-    "sha256": "ff12c892879647a3e33c5abdbfa32a9e1b191771bf9d5b66062f83ba0f474d2f"
+    "sha256": "8d364f61dfdaa1b076d1f9ef8c4b41935c2a63d4ed8ddf0573378521c846da7b"
   },
   "swam-chord-lab.play.yaml": {
     "tracks": 1,
     "notes": 53,
     "lengthBeats": 136,
-    "sha256": "372e6b74d5891e76933515ba01b69c10eabe6615d19dace71d0891946ed67178"
+    "sha256": "d69f4e163f5adc3e27cca56d0c820d7d528c589e32d2c4e0edb0e267b07dd5c1"
   },
   "take-5.play.yaml": {
     "tracks": 4,
     "notes": 851,
     "lengthBeats": 140,
-    "sha256": "aa589e0b55b15d5fedccc71aa9041bc1895dae85eeb01e6185b776a30f221f88"
+    "sha256": "b5307bc00035836659d2f9ab107889c8d95bdbd1fda6904e9877f37228ac0a6b"
   },
   "twinkle.play.yaml": {
     "tracks": 1,
     "notes": 14,
     "lengthBeats": 16,
-    "sha256": "6e958d1300fbc0bccfcffc65c26cf623d7436f9baa1fe45bb8eabbe3b92428f6"
+    "sha256": "e8f45d2f8080f8ae60a4c27d674f01b23ae712abdee2048c5ab2c357bdf2206e"
   },
   "songs/ave-maria-bach-gounod/ave-maria-bach-gounod.play.yaml": {
     "tracks": 2,
-    "notes": 632,
-    "lengthBeats": 136,
-    "sha256": "eebfff93abb0dc1069539b1e42c78bf8a61661eed8b2ed20dfb9cbc9175d765b"
+    "notes": 716,
+    "lengthBeats": 156,
+    "sha256": "85e0bd129a762575d6f8ee8e5f577d45b3e57073a31a599fdcfc5a4cdb0ec335"
+  },
+  "songs/ave_maria_gounod_piano_cello/ave_maria_gounod_piano_cello.play.yaml": {
+    "tracks": 2,
+    "notes": 716,
+    "lengthBeats": 156,
+    "sha256": "26e54aaba0ab009f700fe62a354efafd1b700371e36c31242e0d538a11d834e0"
+  },
+  "songs/ave_maria_gounod_roli/ave_maria_gounod_roli.play.yaml": {
+    "tracks": 2,
+    "notes": 716,
+    "lengthBeats": 156,
+    "sha256": "eb4cc7f9f8d512655c11377555061e2f6c874556c6f02161dadb9b6c678e10b5"
   },
   "songs/bachianas-brasileiras-5/bachianas-brasileiras-5.play.yaml": {
     "tracks": 4,
     "notes": 947,
     "lengthBeats": 149,
-    "sha256": "9a6fea75d96592f0955f29f00764502e894dfb725cf4d13f0931201d80e59427"
+    "sha256": "85dbc804ff137dc1a7d945fed017ded67fecae1dab81432e099bf3217c366c08"
   },
   "songs/bibo-no-aozora/bibo-no-aozora.play.yaml": {
     "tracks": 4,
     "notes": 578,
     "lengthBeats": 184,
-    "sha256": "b500955f06ea05feb72cdc60dbee10b935c5cd7445ab3bcdb9b4088b20e72b74"
+    "sha256": "759e4c30130672324bcc1e2f1cc257b543b212b73d1147686876b5339177924f"
   },
   "songs/bwv-106-gottes-zeit/bwv-106-gottes-zeit.play.yaml": {
-    "tracks": 6,
-    "notes": 184,
-    "lengthBeats": 32,
-    "sha256": "07206f3fa321a27061883dbff4cc3c9ee20d36be999f92e95684009457669922"
+    "tracks": 9,
+    "notes": 1759,
+    "lengthBeats": 154,
+    "sha256": "16948dd2bc871661117f12cd9306ef3ccbe59ce31d4b95115deba4fb1c2577de"
   },
   "songs/bwv-106-in-deine-haende/bwv-106-in-deine-haende.play.yaml": {
-    "tracks": 3,
-    "notes": 169,
-    "lengthBeats": 32,
-    "sha256": "d8c9946aaeba49baa07035d48a758acf69b19101ddedf11dd1465c44f81af2db"
+    "tracks": 2,
+    "notes": 463,
+    "lengthBeats": 96,
+    "sha256": "b45c29e876bc83198181d2ec2b9041f88c6908ed41763835ccf53ec98926ae4c"
   },
   "songs/bwv-106-sonatina/bwv-106-sonatina.play.yaml": {
     "tracks": 5,
-    "notes": 209,
-    "lengthBeats": 36,
-    "sha256": "642989e602d063d010d839a0776b1a8b83f8c88ab434bc3951a4181d25f1349b"
+    "notes": 753,
+    "lengthBeats": 80,
+    "sha256": "68d77274a34ba6690781482a16478e27e2871f113f327356a5fb811504edf4a3"
   },
   "songs/bwv-528-andante/bwv-528-andante.play.yaml": {
     "tracks": 3,
-    "notes": 280,
-    "lengthBeats": 48,
-    "sha256": "940d06bd4e02d2bb39eb573f58a5db31736e697daf7853936129b49bf112a2c9"
+    "notes": 1356,
+    "lengthBeats": 180,
+    "sha256": "dac7a7ab6e6762d33fb0a6fca55f8751bdf76788e5162bdaaf7e1349e88dcf30"
   },
   "songs/bwv-784-invention-13/bwv-784-invention-13.play.yaml": {
     "tracks": 2,
-    "notes": 415,
-    "lengthBeats": 84,
-    "sha256": "4ddbe75dd90553cb541b12564e9732edeb296777b5792ed5be659215701c98b8"
+    "notes": 564,
+    "lengthBeats": 100,
+    "sha256": "6fe7e33031457136d1b04079cb382b52eee75349d3be84a665459feab4306725"
   },
   "songs/bwv-881-prelude-and-fugue-12/bwv-881-prelude-and-fugue-12.play.yaml": {
-    "tracks": 3,
-    "notes": 231,
-    "lengthBeats": 48,
-    "sha256": "50b214b52b0a7b96831604c3aad47c9c3534bb05bbcb2276b8773af90f0fe1dd"
+    "tracks": 5,
+    "notes": 2591,
+    "lengthBeats": 452,
+    "sha256": "8c4fea698fe6e114e79cc86de0336da90013dd4ff8d0d87b3a18facee89385e1"
   },
   "songs/ct-corridors-of-time/ct-corridors-of-time.play.yaml": {
     "tracks": 7,
     "notes": 1329,
     "lengthBeats": 160,
-    "sha256": "9561f1864103b23cd73badec87b8c1088af902fd21ae628dcd256cdedac323e3"
+    "sha256": "4505ad2f3d531035d4c3a8cde0aec75e566a737719c7ff6d16134cbbe68fc9f1"
   },
   "songs/ct-frogs-theme/ct-frogs-theme.play.yaml": {
     "tracks": 6,
     "notes": 709,
     "lengthBeats": 64,
-    "sha256": "eeec9711110edef8407cf95360e117783f75ffa1720cdda8377f7bf5b76f78d5"
+    "sha256": "9a53f6cde9573838adce394ad68f74c27847d4ca16e47b2cf25b540babcaac70"
   },
   "songs/ct-main-theme/ct-main-theme.play.yaml": {
     "tracks": 7,
     "notes": 821,
     "lengthBeats": 100,
-    "sha256": "9837c81726c22615b56919053ac80eac760e5d28c809a3f6afd1e632f9700faf"
+    "sha256": "aa9403191548a03a18a3b561fd226d6754fb423ecc5ca3e3e9a09d023550dabe"
   },
   "songs/ct-schalas-theme/ct-schalas-theme.play.yaml": {
     "tracks": 9,
     "notes": 1242,
     "lengthBeats": 120,
-    "sha256": "07bb45ab9a591779678496bf3afca0c9a2ec076cb9b0e84d5a4b7edbb282e157"
+    "sha256": "f65afe4860c95d0f037542951759e87867ef73c6bf90aedbc1ae8e73ec3923df"
   },
   "songs/ct-wind-scene/ct-wind-scene.play.yaml": {
     "tracks": 7,
     "notes": 569,
     "lengthBeats": 128,
-    "sha256": "14433f15f160e42a91cd17a42af4454b6404182ceb6e49a7595bd15e4ff1d40f"
+    "sha256": "8c49735d8a0ea47568e5dd8f6861e865a410188392293ba6c60a2e83bff2dffb"
   },
   "songs/debussy-clair-de-lune/debussy-clair-de-lune.play.yaml": {
-    "tracks": 3,
-    "notes": 156,
-    "lengthBeats": 63,
-    "sha256": "f2e78fd2daa59cf4ecef8f3f10e2a29d5cdf2327c818448122e401042f4bcdd5"
-  },
-  "songs/debussy-estampes-pagodes/debussy-estampes-pagodes.play.yaml": {
-    "tracks": 4,
-    "notes": 182,
-    "lengthBeats": 32,
-    "sha256": "92936cc5e63499620c8b7a9209b2800221e3f3c24c64d2c6b5437ae1c638afee"
+    "tracks": 6,
+    "notes": 1468,
+    "lengthBeats": 324,
+    "sha256": "c9a0fd5fc315bb09a1b3abdd35833719b3e99b42c0fae68c81f65b13391aeeba"
   },
   "songs/dkc-aquatic-ambiance/dkc-aquatic-ambiance.play.yaml": {
     "tracks": 7,
     "notes": 1568,
     "lengthBeats": 152,
-    "sha256": "c85c1757ada75874664a1a85c295b5c0220abf567325ae8b3dd2dc7915db4f24"
+    "sha256": "d001d45d64c9746be80fb56c722d649fdffa64136a7782ba53e82c2296095af5"
   },
   "songs/dkc-dk-island-swing/dkc-dk-island-swing.play.yaml": {
     "tracks": 10,
     "notes": 4325,
     "lengthBeats": 260,
-    "sha256": "4183576c2f540d860cb8d1ef4e94c9508a557d02a37c7969f928e80a4b3ff698"
+    "sha256": "a5fd25d101bbcbed38e0b198d5de45cb6888ccb8bdfa7e0498da3b57abb99054"
   },
   "songs/dkc-fear-factory/dkc-fear-factory.play.yaml": {
     "tracks": 6,
     "notes": 2728,
     "lengthBeats": 128,
-    "sha256": "ff4522afef9c6d5ced9408ca67f52f9042d3945582831035861259dcb61e9956"
+    "sha256": "e283d9635e8a138503e348311b17a1c54cb60f05966d59b1d12435e957eb3a00"
   },
   "songs/dkc-gang-plank-galleon/dkc-gang-plank-galleon.play.yaml": {
     "tracks": 12,
     "notes": 3368,
     "lengthBeats": 233,
-    "sha256": "f4ebe5460989609c58654138e832cbd2986b86a66687ead03a5543fba3e4988a"
+    "sha256": "49b8a55eda95ab4a66439f3b5b329f6489f3ccb838de0cb65e868029ab2cf65a"
   },
   "songs/dkc-mine-cart-madness/dkc-mine-cart-madness.play.yaml": {
     "tracks": 9,
     "notes": 2128,
     "lengthBeats": 129,
-    "sha256": "28b35bdb00bfeb7cfb6cd7aa5a433d662f3fa82062a1dd8581b39687eebcdd80"
-  },
-  "songs/mozart-requiem-lacrimosa/mozart-requiem-lacrimosa.play.yaml": {
-    "tracks": 7,
-    "notes": 135,
-    "lengthBeats": 30,
-    "sha256": "40f635885e8ec5e1ef6cbea4fc92ca4d83e1a61505f7df717a33286169526a08"
+    "sha256": "6cdf4a949ccffbae6937e9c40902d8de42f67143714345dec5dd8066fee069e6"
   },
   "songs/smw-athletic/smw-athletic.play.yaml": {
     "tracks": 5,
     "notes": 838,
     "lengthBeats": 100,
-    "sha256": "cab592438b2c926abd8f9776faf8e6f2c790e11cca2063a8fd97cbb3a583de13"
+    "sha256": "777c165da37555bb33e72b07a1490b40238120d2fc53a3724594a530bd8e0fde"
   },
   "songs/smw-fortress/smw-fortress.play.yaml": {
     "tracks": 6,
     "notes": 1741,
     "lengthBeats": 112,
-    "sha256": "f3d06c8418047d234a7e2ff57b9382d7c98aa3de10695ca72cc56fad2ca5e2a5"
+    "sha256": "1ecf1ccdf62f77fa1276bac8d8a85e463d1a87a23dcfecb238d206f35c53cde5"
   },
   "songs/smw-haunted-house/smw-haunted-house.play.yaml": {
     "tracks": 5,
     "notes": 1126,
     "lengthBeats": 64,
-    "sha256": "72117a63635ac1e6cb1a8443baa7f97f3ea94cc64f25add8e746ed7593fff36a"
+    "sha256": "ca636c134a539291afed437faafeb1b2f1e3295c742bce24adca08daebb145eb"
   },
   "songs/smw-overworld/smw-overworld.play.yaml": {
     "tracks": 4,
     "notes": 1035,
     "lengthBeats": 92,
-    "sha256": "c6d50e19c636f213ec7af4e47e5d781615a23b1f2c96760a69ca81340d5bf897"
+    "sha256": "fbf2612cc1fab248d47f95136ec42c3d746cb22bcb4cbb00ac2cc11f781cfecf"
   },
   "songs/smw-swimming/smw-swimming.play.yaml": {
     "tracks": 6,
     "notes": 786,
     "lengthBeats": 111,
-    "sha256": "2afe4ebecea4727d6faa0252390b1c13b8b92f7cb7e7a10abaf88f22d423ed46"
+    "sha256": "cf0caae4973a9184a6986bd97ae641ed570ae9899fbd0d0406ce9126eb4d1869"
   },
   "songs/tema-para-ana/tema-para-ana.play.yaml": {
     "tracks": 3,
     "notes": 516,
     "lengthBeats": 165,
-    "sha256": "10dc7de7d46546d0b9f81b6a1543367fd7b40a88c03d796729b0cc1d061c0c8c"
+    "sha256": "d3de786cac4e7ec5e7a90bb36efc0f109d8c850c27f29846befab5dbfa798c06"
   }
 }

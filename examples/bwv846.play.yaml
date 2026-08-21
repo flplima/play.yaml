@@ -1,5 +1,5 @@
 # J.S. Bach — Prelude No. 1 in C major, BWV 846
-# The Well-Tempered Clavier, Book I (1722). 4/4, 34 bars.
+# The Well-Tempered Clavier, Book I (1722). 4/4, 35 bars.
 # Single piano track representation with natural dynamic swells, pedalling written
 # as a pattern (`pedale sincopato`) rather than raw CC values,
 # and expressive rubato/tempo shaping across the harmonic arc.
@@ -73,11 +73,12 @@ sections:
         - "{ab2 f3 b3 c4} {d4 b3 c4 d4} {ab2 f3 b3 c4} {d4 b3 c4 d4}"
         - "{g2 f3 g3 b3} {d4 g3 b3 d4} {g2 f3 g3 b3} {d4 g3 b3 d4}"
 
-        # --- Dominant Pedal Climax (Bars 25-31): Forte & sostenuto ---
+        # --- Dominant Pedal Climax (Bars 25-32): Forte & sostenuto ---
         - "forte"
         - "sostenuto"
         - "pedale sincopato"
         - "{g2 e3 g3 c4} {e4 g3 c4 e4} {g2 e3 g3 c4} {e4 g3 c4 e4}"
+        - "{g2 d3 g3 c4} {f4 g3 c4 f4} {g2 d3 g3 c4} {f4 g3 c4 f4}"
         - "{g2 d3 g3 b3} {f4 g3 b3 f4} {g2 d3 g3 b3} {f4 g3 b3 f4}"
         - "{g2 eb3 a3 c4} {f#4 a3 c4 f#4} {g2 eb3 a3 c4} {f#4 a3 c4 f#4}"
         - "{g2 e3 g3 c4} {g4 g3 c4 g4} {g2 e3 g3 c4} {g4 g3 c4 g4}"
@@ -85,11 +86,15 @@ sections:
         - "{g2 d3 g3 b3} {f4 g3 b3 f4} {g2 d3 g3 b3} {f4 g3 b3 f4}"
         - "{c2 c3 g3 bb3} {e4 g3 bb3 e4} {c2 c3 g3 bb3} {e4 g3 bb3 e4}"
 
-        # --- Cadenza & Grand Resolution (Bars 32-34) ---
+        # --- Cadenza & Grand Resolution (Bars 33-35) ---
         - "fortissimo"
         - "ritardando over 2 to 54"
-        - "{c2 f3 a3 c4} {f4 c4 a3 c4} {a3 f3 a3 f3} {d3 f3 d3 f3}"
-        - "{c2 g4 b4 d5} {f5 d5 b4 d5} {b4 g4 b4 d4} {f4 e4 d4 f4}"
+        # The tenor doubles the C pedal an octave up on the second sixteenth
+        # of each of these two bars (c3 here, b2 in the next). Both were
+        # missing, which pushed every later note of the bar a sixteenth early
+        # and left a filler note at the end — 30 notes wrong across the two.
+        - "{c2 c3 f3 a3} {c4 f4 c4 a3} {c4 a3 f3 a3} {f3 d3 f3 d3}"
+        - "{c2 b2 g4 b4} {d5 f5 d5 b4} {d5 b4 g4 b4} {d4 f4 e4 d4}"
         - "piano"
         - "a tempo"
         # Stop re-taking and hold the last chord under the fermata.

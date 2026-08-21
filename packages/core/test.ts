@@ -10,10 +10,18 @@ import {
 } from './src/parser';
 import { encodeMidi } from './src/exporter';
 import { decodeMidi, compareMidi } from './src/fidelity';
+import { notateMeasures, separateVoices } from './src/notate';
 import { parseYaml } from './src/yaml';
 import { tempoSegments, beatsToSeconds, secondsToBeats, TempoSegment } from './src/time';
 import { panicMessages } from './src/midiPanic';
 import { controlValue } from './src/vocabulary';
+import {
+  CONTROL_VALUE_MAX, CONTROL_VECTORS, ControlOp,
+  controlApplies, decodeControlMessage, decodeControlString,
+  encodeControlMessage, encodeControlString, fromControlPosition,
+  messagesFor, optionsFor, toControlPosition,
+  type CatalogueInstrument, type SurfaceControl,
+} from './src/surface';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -534,6 +542,198 @@ check('a numeric control uses the conventional CC; unknown names still throw', (
   assert.throws(() => parseSet('wobble 30'), /Unknown set clause/);
 });
 
+console.log('\npreset / sound changes:');
+check('preset and sound name a patch, by name, on the timeline', () => {
+  const song = compileDoc({
+    channel: 8,
+    set: 'sound "Angelic Choir"',
+    play: ['c5 _ _ _', { set: 'sound "Deep and High Choir"' }, 'e5 _ _ _',
+           { set: 'preset "Classic Flute - Bass"' }, 'g5 _ _ _'],
+  });
+  assert.deepStrictEqual(song.tracks[0].patches, [
+    { time: 0, kind: 'sound', name: 'Angelic Choir' },
+    { time: 4, kind: 'sound', name: 'Deep and High Choir' },
+    { time: 8, kind: 'preset', name: 'Classic Flute - Bass' },
+  ]);
+});
+check('a name may contain commas — the clause split respects quotes', () => {
+  // Real racks ship "Strings - Loud Sustain, Big"; a plain comma split would
+  // look for a preset that does not exist.
+  const patch = parseSet('legato, preset "Strings - Loud Sustain, Big", forte');
+  assert.deepStrictEqual(patch.patches, [{ kind: 'preset', name: 'Strings - Loud Sustain, Big' }]);
+  assert.strictEqual(patch.velocity, 96); // the forte after it still parsed
+  assert.ok(patch.gate! > 1); // and the legato before it
+});
+check('single quotes work too, and the name keeps its case', () => {
+  assert.deepStrictEqual(parseSet("sound 'Olive Tree Lute'").patches,
+    [{ kind: 'sound', name: 'Olive Tree Lute' }]);
+});
+check('an unquoted name is a clear error, not "unknown clause"', () => {
+  assert.throws(() => parseSet('preset Classic Flute'), /must be quoted/);
+  assert.throws(() => parseSet('sound Angelic Choir'), /must be quoted/);
+  assert.throws(() => parseSet('preset ""'), /names no preset/);
+});
+check('patches do not disturb the control stream', () => {
+  const song = compileDoc({
+    controls: { expression: 11 }, dynamic: 'forte',
+    play: ['c4 ~ ~ ~', { set: 'sound "X"' }, 'd4 ~ ~ ~'],
+  });
+  assert.strictEqual(song.tracks[0].patches.length, 1);
+  assert.ok(song.tracks[0].controls.every((c) => c.cc === 11));
+});
+
+console.log('\ntranspose:');
+check('transpose shifts absolute pitches, which octave: cannot reach', () => {
+  const plain = compileDoc({ play: 'e4 f4 g4' });
+  const up = compileDoc({ transpose: 12, play: 'e4 f4 g4' });
+  assert.deepStrictEqual(midis(plain.tracks[0].timeline), [64, 65, 67]);
+  assert.deepStrictEqual(midis(up.tracks[0].timeline), [76, 77, 79]);
+  // The point of the prop: `octave:` is the default for *bare* names only.
+  const octave = compileDoc({ octave: 5, play: 'e4 f4 g4' });
+  assert.deepStrictEqual(midis(octave.tracks[0].timeline), [64, 65, 67]);
+});
+check('transpose reaches degrees, chords and octave-dropped tokens alike', () => {
+  const song = compileDoc({ scale: 'c major', transpose: -12, play: '1 [1 3 5] _2' });
+  const tl = song.tracks[0].timeline;
+  assert.strictEqual(tl[0].midi, 48); // degree 1 = c4, down an octave
+  assert.deepStrictEqual(midis(tl.slice(1, 4)), [48, 52, 55]);
+  assert.strictEqual(tl[4].midi, 38); // `_2` = d4 an octave down, then transposed
+});
+check('a kit track is left alone — its tokens name drums, not pitches', () => {
+  const song = compileDoc({ kit: 'acoustic', transpose: 12, play: 'bd sd bd sd' });
+  const plain = compileDoc({ kit: 'acoustic', play: 'bd sd bd sd' });
+  assert.deepStrictEqual(midis(song.tracks[0].timeline), midis(plain.tracks[0].timeline));
+});
+check('transpose inherits like any other prop', () => {
+  const song = compileDoc({
+    transpose: 12,
+    tracks: { lead: { play: 'c4' }, bass: { transpose: 0, play: 'c4' } },
+  });
+  assert.strictEqual(song.tracks[0].timeline[0].midi, 72);
+  assert.strictEqual(song.tracks[1].timeline[0].midi, 60); // own value wins
+});
+
+console.log('\nbow release:');
+const releaseDoc = (extra: Record<string, unknown> = {}) => compileDoc({
+  controls: { expression: 11 },
+  dynamic: 'mezzoforte',
+  release: 0.5,
+  // Two notes, a bar's rest, then two more: one pause in the middle, one end.
+  play: ['c4 d4 ~ ~', 'e4 f4 ~ ~'],
+  ...extra,
+});
+check('the bow eases off into a rest instead of stopping dead', () => {
+  const controls = releaseDoc().tracks[0].controls.filter((c) => c.cc === 11);
+  const held = controls[0].value;
+  // Somewhere before the rest the expression must fall well below the dynamic.
+  const duringRest = controls.filter((c) => c.time > 1 && c.time <= 2);
+  assert.ok(duringRest.length >= 2, `expected a taper, got ${duringRest.length} events`);
+  assert.ok(
+    duringRest[duringRest.length - 1].value < held / 2,
+    `taper ended at ${duringRest[duringRest.length - 1].value}, held was ${held}`,
+  );
+  assert.ok(
+    duringRest.every((c, i) => i === 0 || c.value <= duringRest[i - 1].value),
+    'the taper must fall monotonically',
+  );
+});
+check('the bow is put back for the next phrase', () => {
+  const controls = releaseDoc().tracks[0].controls.filter((c) => c.cc === 11);
+  const held = controls[0].value;
+  const atEntry = controls.filter((c) => Math.abs(c.time - 4) < 1e-9);
+  assert.ok(atEntry.length >= 1, 'nothing restores the expression at the next entry');
+  assert.strictEqual(atEntry[atEntry.length - 1].value, held);
+});
+check('slurred notes inside a phrase are not released', () => {
+  // c4 → d4 are consecutive; only the rest after them counts as a pause.
+  const controls = releaseDoc().tracks[0].controls.filter((c) => c.cc === 11);
+  const betweenNotes = controls.filter((c) => c.time > 0 && c.time < 0.9);
+  assert.strictEqual(betweenNotes.length, 0, 'a slur must not trigger a release');
+});
+check('release honours the control\'s own floor, not silence', () => {
+  const song = compileDoc({
+    controls: { expression: { cc: 11, range: [78, 127] } },
+    dynamic: 'mezzoforte', release: 0.5, play: ['c4 d4 ~ ~'],
+  });
+  const values = song.tracks[0].controls.filter((c) => c.cc === 11).map((c) => c.value);
+  assert.strictEqual(Math.min(...values), 78);
+});
+check('gap: decides what counts as a pause', () => {
+  const wide = releaseDoc({ release: { over: 0.5, gap: 4 } });
+  const mid = wide.tracks[0].controls.filter((c) => c.cc === 11 && c.time > 1 && c.time <= 2);
+  assert.strictEqual(mid.length, 0, 'a 2-beat rest must not trigger a 4-beat gap threshold');
+});
+check('release does nothing without an expression control', () => {
+  const song = compileDoc({ release: 0.5, play: ['c4 d4 ~ ~'] });
+  assert.deepStrictEqual(song.tracks[0].controls, []);
+});
+
+console.log('\nmix controls (volume, pan, reverb, chorus):');
+check('the four GM mix controls need no `controls:` declaration', () => {
+  assert.deepStrictEqual(parseSet('volume 100').ccs, [{ cc: 7, value: 100 }]);
+  assert.deepStrictEqual(parseSet('pan 20').ccs, [{ cc: 10, value: 20 }]);
+  assert.deepStrictEqual(parseSet('reverb 40').ccs, [{ cc: 91, value: 40 }]);
+  assert.deepStrictEqual(parseSet('chorus 64').ccs, [{ cc: 93, value: 64 }]);
+});
+check('room words scale the reverb send', () => {
+  assert.deepStrictEqual(parseSet('dry').ccs, [{ cc: 91, value: 0 }]);
+  assert.deepStrictEqual(parseSet('secco').ccs, [{ cc: 91, value: 0 }]);
+  assert.deepStrictEqual(parseSet('room').ccs, [{ cc: 91, value: 38 }]);
+  assert.deepStrictEqual(parseSet('cathedral').ccs, [{ cc: 91, value: 121 }]);
+  // A hall is wetter than a room, and a cathedral wetter still.
+  const at = (word: string) => parseSet(word).ccs![0].value;
+  assert.ok(at('room') < at('hall') && at('hall') < at('church') && at('church') < at('cathedral'));
+});
+check('celeste and ensemble are chorus words', () => {
+  assert.deepStrictEqual(parseSet('no chorus').ccs, [{ cc: 93, value: 0 }]);
+  assert.deepStrictEqual(parseSet('celeste').ccs, [{ cc: 93, value: 76 }]);
+  assert.deepStrictEqual(parseSet('voix celeste').ccs, [{ cc: 93, value: 76 }]);
+  assert.ok(parseSet('unda maris').ccs![0].value < parseSet('ensemble').ccs![0].value);
+});
+check('pan centre lands exactly on 64', () => {
+  assert.deepStrictEqual(parseSet('pan centre').ccs, [{ cc: 10, value: 64 }]);
+  assert.deepStrictEqual(parseSet('pan center').ccs, [{ cc: 10, value: 64 }]);
+  assert.deepStrictEqual(parseSet('hard left').ccs, [{ cc: 10, value: 0 }]);
+  assert.deepStrictEqual(parseSet('hard right').ccs, [{ cc: 10, value: 127 }]);
+});
+check('the fader is not a dynamic — "fade out" and "piano" are different things', () => {
+  assert.deepStrictEqual(parseSet('fade out').ccs, [{ cc: 7, value: 0 }]);
+  assert.strictEqual(parseSet('fade out').velocity, undefined);
+  assert.strictEqual(parseSet('piano').ccs, undefined);
+  const both = parseSet('piano, fade out');
+  assert.strictEqual(both.velocity, 48);
+  assert.deepStrictEqual(both.ccs, [{ cc: 7, value: 0 }]);
+});
+check('a mix word drifts with "over", like any other technique', () => {
+  const song = compileDoc({
+    play: ['c ~ ~ ~', { set: 'volume 127' }, 'c ~ ~ ~', { set: 'fade out over 1' }, 'c ~ ~ ~'],
+  });
+  const fader = song.tracks[0].controls.filter((c) => c.cc === 7);
+  assert.strictEqual(fader[0].value, 127);
+  assert.strictEqual(fader[fader.length - 1].value, 0);
+  assert.ok(fader.length > 2, 'the fade is stepped, not a jump');
+});
+check('a drift starts from the value the track opened on', () => {
+  // The opening `set:` is emitted at beat 0 but was not remembered, so the
+  // first drift on that control had nowhere to come from and collapsed into a
+  // jump: every step of the ramp landed on the target.
+  const song = compileDoc({
+    set: 'volume 127',
+    play: ['c ~ ~ ~', { set: 'fade out over 1' }, 'c ~ ~ ~'],
+  });
+  const fader = song.tracks[0].controls.filter((c) => c.cc === 7);
+  assert.strictEqual(fader[0].value, 127); // the opening
+  assert.ok(fader[1].value < 127 && fader[1].value > 0, `ramp jumped to ${fader[1].value}`);
+  assert.strictEqual(fader[fader.length - 1].value, 0);
+});
+check('a track can still remap a mix control to its own CC', () => {
+  const song = compileDoc({
+    controls: { reverb: { cc: 19, range: [0, 90] } },
+    play: ['c ~ ~ ~', { set: 'hall' }, 'c ~ ~ ~'],
+  });
+  assert.deepStrictEqual(song.tracks[0].controls, [{ time: 4, cc: 19, value: 56 }]);
+});
+
 console.log('\ntempo changes:');
 check('set: tempo N is an immediate change at that measure', () => {
   const song = compileDoc({ tempo: 100, play: ['c ~ ~ ~', { set: 'tempo 60' }, 'c ~ ~ ~'] });
@@ -594,6 +794,28 @@ check('louder / softer step relative to the current dynamic', () => {
 check('a bare "forte" sets forte velocity, f major sets scale', () => {
   assert.strictEqual(parseSet('forte').velocity, 96);
   assert.strictEqual(parseSet('f major').scale, 'f major');
+});
+check('velocityRange remaps the marks into a band, keeping their order', () => {
+  const play = ['c ~ ~ ~', { set: 'pianissimo' }, 'c ~ ~ ~', { set: 'fortissimo' }, 'c ~ ~ ~'];
+  const plain = parsePlay(play).map((n) => n.velocity);
+  assert.deepStrictEqual(plain, [90, 32, 112]);
+  // The whole 0..127 domain lands inside the band, so nothing escapes it and
+  // the written dynamics keep their relative spacing.
+  const band = parsePlay(play, { velocityRange: [56, 127] }).map((n) => n.velocity);
+  assert.deepStrictEqual(band, plain.map((v) => Math.round(56 + (v / 127) * 71)));
+  assert.ok(Math.min(...band) >= 56 && Math.max(...band) <= 127);
+  // A single number is a ceiling, and the curve form is honoured, both as
+  // they are for a control `range:`.
+  assert.deepStrictEqual(parsePlay(play, { velocityRange: 64 }).map((n) => n.velocity),
+    plain.map((v) => Math.round((v / 127) * 64)));
+  assert.strictEqual(parsePlay(['c'], { velocity: 127, velocityRange: [0, 10, 100] })[0].velocity, 100);
+});
+check('velocityRange survives the track/section merge', () => {
+  const song = compileDoc({
+    tracks: { lead: { velocityRange: [56, 127] } },
+    sections: { a: { lead: { play: ['c ~ ~ ~', { set: 'pianissimo' }, 'c ~ ~ ~'] } } },
+  });
+  assert.deepStrictEqual(song.tracks[0].timeline.map((n) => n.velocity), [106, 74]);
 });
 check('articulation words: staccato, tenuto, smooth', () => {
   const tl = parsePlay(['c', { set: 'staccato' }, 'c', { set: 'tenuto' }, 'c', { set: 'smooth' }, 'c']);
@@ -1727,6 +1949,318 @@ check('flags the bar we corrupt as a weakest window', () => {
   const r = compareMidi(encodeMidi(broken, { bpm: fidSong.bpm }), ref, { windowBeats: 4 });
   const worstWin = r.worst[0];
   assert.ok(worstWin.startBeat >= 8 && worstWin.startBeat < 12, `worst window is bar 3 (got beat ${worstWin.startBeat})`);
+});
+
+console.log('instrument surfaces:');
+
+check('the control protocol encodes to the bytes the rack expects', () => {
+  // CONTROL_VECTORS is mirrored byte for byte in jukebox's app/src/protocol.ts.
+  // Two independent codecs agreeing on a fixed table is the only guarantee
+  // available across a repo boundary — there is no shared package to import.
+  for (const vector of CONTROL_VECTORS) {
+    assert.deepStrictEqual(
+      encodeControlMessage(vector.message),
+      vector.bytes,
+      `${vector.name}: encoded differently`,
+    );
+    assert.deepStrictEqual(decodeControlMessage(vector.bytes), vector.message, vector.name);
+  }
+});
+
+check('a preset name survives characters a raw SysEx could not carry', () => {
+  // "Saint-Saëns" is a real SWAM Cello program, and ë is two bytes with the
+  // top bit set — illegal between F0 and F7 without the nibble encoding.
+  const text = 'Saint-Saëns — ♭7 “kit”';
+  const encoded = encodeControlString(text);
+  assert.ok(encoded.every((b) => b <= 0x7f), 'every byte must be 7-bit');
+  assert.strictEqual(decodeControlString(encoded, 0)[0], text);
+});
+
+check('another vendor’s SysEx is ignored rather than mis-parsed', () => {
+  assert.strictEqual(decodeControlMessage([0xf0, 0x41, 0x10, 0x42, 0x12, 0xf7]), null);
+  assert.strictEqual(decodeControlMessage([0xf0, 0x7e, 0x7f, 0x06, 0x01, 0xf7]), null);
+});
+
+check('positions clamp to the control’s range', () => {
+  assert.strictEqual(toControlPosition(-1, [0, 1]), 0);
+  assert.strictEqual(toControlPosition(2, [0, 1]), CONTROL_VALUE_MAX);
+  assert.strictEqual(fromControlPosition(CONTROL_VALUE_MAX, [0, 127]), 127);
+});
+
+/** An instrument as a running rack publishes it. */
+const swamCello: CatalogueInstrument = {
+  port: 0, channel: 2, portName: 'jukebox', through: 'Midi Through Port-0',
+  instrument: 'SWAM Cello 3', plugin: 'SWAM Cello 3', ready: true, error: '',
+  gain: 1, preset: '', mpe: null, surface: null, programs: ['Cello', 'Bach'], sounds: [],
+};
+const roliDrums: CatalogueInstrument = {
+  ...swamCello, port: 1, channel: 0, portName: 'jukebox-drums',
+  instrument: 'ROLI Studio Drums', plugin: 'ROLI Studio Drums',
+  mpe: {zone: 'lower', master: 1, members: 15, channels: [], pitchBendRange: 48},
+  programs: [], sounds: ['Lemon 1 Drum Kit 4x4'],
+};
+
+const control = (over: Partial<SurfaceControl>): SurfaceControl => ({
+  id: 'x', label: 'X', type: 'slider', range: [0, 1], send: {via: 'param', param: 'X'}, ...over,
+});
+
+check('a built-in control becomes a plain control change', () => {
+  // SWAM's one documented factory mapping. Nothing has to understand this.
+  const wires = messagesFor(
+    swamCello,
+    control({id: 'expression', range: [0, 127], send: {via: 'cc', cc: 11}}),
+    100,
+  );
+  assert.strictEqual(wires.length, 1);
+  assert.strictEqual(wires[0].kind, 'midi');
+  // Channel 2 in the rack is channel index 1 on the wire.
+  assert.deepStrictEqual(wires[0].bytes, [0xb1, 11, 100]);
+});
+
+check('a host-only control becomes a jukebox SysEx', () => {
+  const wires = messagesFor(
+    swamCello,
+    control({id: 'pipe-length', send: {via: 'param', param: 'Pipe Length'}}),
+    1,
+  );
+  assert.strictEqual(wires[0].kind, 'sysex');
+  const decoded = decodeControlMessage(wires[0].bytes)!;
+  assert.strictEqual(decoded.op, ControlOp.SetControl);
+  assert.deepStrictEqual(
+    {port: decoded.port, channel: decoded.channel},
+    {port: 0, channel: 2},
+  );
+  assert.strictEqual((decoded as any).id, 'pipe-length');
+  assert.strictEqual((decoded as any).value, CONTROL_VALUE_MAX);
+});
+
+check('an MPE instrument is addressed port-wide, and rides its master channel', () => {
+  // Channel 0 means "the instrument that owns this port" — a zone claims all
+  // sixteen, so naming one would be a lie.
+  const sysex = messagesFor(roliDrums, control({id: 'volume'}), 0.5)[0];
+  assert.strictEqual(decodeControlMessage(sysex.bytes)!.channel, 0);
+  // A zone-wide CC goes on the master channel, not on a member's.
+  const midi = messagesFor(roliDrums, control({range: [0, 127], send: {via: 'cc', cc: 7}}), 64)[0];
+  assert.strictEqual(midi.bytes[0] & 0x0f, 0);
+});
+
+check('a toggle sends the ends of its range, not true/false', () => {
+  const toggle = control({type: 'toggle', range: [0, 127], send: {via: 'cc', cc: 64}});
+  assert.strictEqual(messagesFor(swamCello, toggle, true)[0].bytes[2], 127);
+  assert.strictEqual(messagesFor(swamCello, toggle, false)[0].bytes[2], 0);
+});
+
+check('a preset control sends the name, not a position', () => {
+  // 32 programs cannot be a 14-bit position that survives a rename.
+  const wires = messagesFor(
+    swamCello,
+    control({id: 'program', type: 'select', options_from: 'programs', send: {via: 'preset'}}),
+    'Bach',
+  );
+  const decoded = decodeControlMessage(wires[0].bytes)!;
+  assert.strictEqual(decoded.op, ControlOp.SetPreset);
+  assert.strictEqual((decoded as any).name, 'Bach');
+});
+
+check('cc14 sends MSB before LSB', () => {
+  const wires = messagesFor(swamCello, control({send: {via: 'cc14', cc: 7}}), 1);
+  assert.deepStrictEqual(wires.map((w) => w.bytes[1]), [7, 39]);
+  assert.deepStrictEqual(wires.map((w) => w.bytes[2]), [127, 127]);
+});
+
+check('nrpn sends the parameter number then the data', () => {
+  const wires = messagesFor(swamCello, control({send: {via: 'nrpn', nrpn: [1, 2]}}), 1);
+  assert.deepStrictEqual(wires.map((w) => w.bytes[1]), [99, 98, 6, 38]);
+  assert.deepStrictEqual(wires.map((w) => w.bytes[2]), [1, 2, 127, 127]);
+});
+
+check('long option lists come from the instrument, not the surface', () => {
+  const programs = control({type: 'select', options_from: 'programs', send: {via: 'preset'}});
+  assert.deepStrictEqual(optionsFor(swamCello, programs).map((o) => o.label), ['Cello', 'Bach']);
+  const sounds = control({type: 'select', options_from: 'sounds', send: {via: 'sound'}});
+  assert.deepStrictEqual(optionsFor(roliDrums, sounds).map((o) => o.value), ['Lemon 1 Drum Kit 4x4']);
+});
+
+check('an MPE-only control is hidden on a channel-mapped instance', () => {
+  const zone = control({id: 'mpe-enabled', requires: 'mpe'});
+  assert.strictEqual(controlApplies(roliDrums, zone), true);
+  assert.strictEqual(controlApplies(swamCello, zone), false);
+});
+
+
+console.log('\nnotation (MIDI → play.yaml):');
+
+check('decodeMidi reads meter, key, track names and program changes', () => {
+  const doc = parseYaml(`
+tempo: 96
+measure: 3/4
+tracks:
+  rh: { sample: flute }
+  lh: { sample: bass }
+sections:
+  a:
+    loop: false
+    rh: { play: ["c4 d4 e4"] }
+    lh: { play: ["c2 ~ g2"] }
+`);
+  const parsed = decodeMidi(encodeMidi(compileDoc(doc)));
+  assert.deepStrictEqual(parsed.timeSignatures, [{ beat: 0, numerator: 3, denominator: 4 }]);
+  assert.deepStrictEqual(parsed.keySignatures, [{ beat: 0, sharps: 0, minor: false }]);
+  assert.deepStrictEqual(parsed.trackNames, ['Conductor', 'rh', 'lh']);
+  assert.deepStrictEqual([...new Set(parsed.notes.map((n) => n.track))].sort(), [1, 2]);
+  assert.deepStrictEqual(parsed.programs.map((p) => p.program), [73, 33]);
+});
+
+check('a compound meter survives the .mid round trip as itself', () => {
+  // 12/8 and 6/4 are both six quarter notes; only the notation tells them
+  // apart, so the compiler carries it and the exporter writes it.
+  for (const [measure, expect] of [['12/8', '12/8'], ['6/8', '6/8'], ['9/8', '9/8'], ['5/4', '5/4']] as const) {
+    const song = compileDoc({ measure, play: ['c'] });
+    const ts = decodeMidi(encodeMidi(song)).timeSignatures[0];
+    assert.strictEqual(`${ts.numerator}/${ts.denominator}`, expect, `${measure} round trip`);
+  }
+});
+
+check('notateMeasures writes a bar that compiles back to the same notes', () => {
+  const notes = [
+    { start: 0, duration: 1, midi: 60 },
+    { start: 1, duration: 0.5, midi: 62 },
+    { start: 1.5, duration: 0.5, midi: 64 },
+    { start: 2, duration: 2, midi: 65 },
+  ];
+  const res = notateMeasures(notes, { measureBeats: 4, slots: 4 });
+  // beat 2 is two eighths, so it becomes a group; the half note holds on.
+  assert.deepStrictEqual(res.lines, ['c4 {d4 e4} f4 _']);
+  const back = compileDoc({ play: res.lines });
+  assert.deepStrictEqual(
+    back.tracks[0].timeline.map((e) => [e.time, e.midi]),
+    notes.map((n) => [n.start, n.midi]),
+  );
+});
+
+check('co-onset notes become a chord, a held note becomes a hold', () => {
+  const res = notateMeasures([
+    { start: 0, duration: 4, midi: 60 },
+    { start: 0, duration: 4, midi: 64 },
+    { start: 0, duration: 4, midi: 67 },
+  ], { measureBeats: 4, slots: 4 });
+  assert.deepStrictEqual(res.lines, ['[c4 e4 g4] _ _ _']);
+});
+
+check('a rest is written where nothing sounds', () => {
+  const res = notateMeasures([{ start: 2, duration: 1, midi: 60 }], { measureBeats: 4, slots: 4 });
+  assert.deepStrictEqual(res.lines, ['~ ~ c4 ~']);
+});
+
+check('snapping reports the largest onset it moved', () => {
+  const res = notateMeasures([
+    { start: 0.02, duration: 1, midi: 60 },
+    { start: 1.1, duration: 1, midi: 62 },
+  ], { measureBeats: 4, slots: 4, snap: 4 });
+  assert.deepStrictEqual(res.placed.map((p) => p.start), [0, 1]);
+  assert.ok(Math.abs(res.maxShift - 0.1) < 1e-9, `maxShift ${res.maxShift}`);
+});
+
+check('a slot needing too many steps drops release positions, not onsets', () => {
+  // A quarter note released after 0.257 beats would otherwise force a
+  // ~1000-step grid on the beat that holds it.
+  const res = notateMeasures([
+    { start: 0, duration: 0.257, midi: 60 },
+    { start: 1, duration: 0.257, midi: 62 },
+    { start: 2, duration: 0.257, midi: 64 },
+    { start: 3, duration: 0.257, midi: 65 },
+  ], { measureBeats: 4, slots: 4 });
+  assert.deepStrictEqual(res.lines, ['c4 d4 e4 f4']);
+});
+
+check('the grid resolution can follow an imported file’s own ticks', () => {
+  // 2520 ticks/quarter cannot represent an odd 480-tick position (2520/480
+  // is 5.25); lcm(2520, 480) can.
+  const odd = 7 / 480;
+  const res = notateMeasures([{ start: odd, duration: 1, midi: 60 }],
+    { measureBeats: 4, slots: 4, ticks: 10080 });
+  assert.ok(Math.abs(res.placed[0].start - odd) < 1e-9, `placed at ${res.placed[0].start}`);
+});
+
+check('separateVoices splits a held bass out from a moving line', () => {
+  const voices = separateVoices([
+    { start: 0, duration: 4, midi: 48 },
+    { start: 0, duration: 1, midi: 72 },
+    { start: 1, duration: 1, midi: 74 },
+    { start: 2, duration: 1, midi: 76 },
+    { start: 3, duration: 1, midi: 77 },
+  ]);
+  assert.strictEqual(voices.length, 2);
+  assert.deepStrictEqual(voices[0].map((n) => n.midi), [72, 74, 76, 77]);
+  assert.deepStrictEqual(voices[1].map((n) => n.midi), [48]);
+  assert.strictEqual(voices[1][0].duration, 4, 'the bass keeps ringing');
+});
+
+check('separateVoices keeps a chord together instead of fanning it out', () => {
+  const voices = separateVoices([
+    { start: 0, duration: 1, midi: 60 },
+    { start: 0, duration: 1, midi: 64 },
+    { start: 0, duration: 1, midi: 67 },
+  ]);
+  assert.strictEqual(voices.length, 1);
+  assert.deepStrictEqual(voices[0].map((n) => n.midi), [60, 64, 67]);
+});
+
+check('separateVoices never loses a note, and every voice is monophonic', () => {
+  const song = compileDoc(parseYaml(fs.readFileSync(
+    path.join(__dirname, '../../examples/clair-de-lune.play.yaml'), 'utf8')));
+  for (const track of song.tracks) {
+    const notes = track.timeline.filter((e) => e.midi != null)
+      .map((e) => ({ start: e.time, duration: e.duration, midi: e.midi as number }));
+    if (!notes.length) continue;
+    const voices = separateVoices(notes);
+    assert.strictEqual(voices.flat().length, notes.length, `${track.name} keeps every note`);
+    for (const voice of voices) {
+      for (let i = 1; i < voice.length; i++) {
+        const prev = voice[i - 1];
+        const overlaps = voice[i].start > prev.start + 1e-9
+          && voice[i].start < prev.start + prev.duration - 1e-9;
+        assert.ok(!overlaps, `${track.name}: ${prev.midi} still ringing under ${voice[i].midi}`);
+      }
+    }
+  }
+});
+
+check('every example survives .mid export and re-import note for note', () => {
+  // The importer's whole claim in one test: onset beat and pitch are exactly
+  // what the file said, for real scores rather than fixtures.
+  const examplesDir = path.join(__dirname, '../../examples');
+  for (const file of ['twinkle', 'bwv846', 'fur-elise', 'take-5', 'nocturne-op9-no2']) {
+    const song = compileDoc(parseYaml(
+      fs.readFileSync(path.join(examplesDir, `${file}.play.yaml`), 'utf8')));
+    const parsed = decodeMidi(encodeMidi(song, { bpm: song.bpm, tpqn: 480 }));
+    const meter = parsed.timeSignatures[0];
+
+    const want: string[] = [];
+    const got: string[] = [];
+    const byGroup = new Map<string, { start: number; duration: number; midi: number }[]>();
+    for (const n of parsed.notes) {
+      want.push(`${n.startBeat.toFixed(4)}:${n.pitch}`);
+      const key = `${n.track}:${n.channel}`;
+      const bucket = byGroup.get(key) ?? [];
+      bucket.push({ start: n.startBeat, duration: n.durBeat, midi: n.pitch });
+      byGroup.set(key, bucket);
+    }
+    for (const notes of byGroup.values()) {
+      for (const voice of separateVoices(notes)) {
+        const lines = notateMeasures(voice, {
+          measureBeats: meter.numerator * (4 / meter.denominator),
+          slots: meter.numerator,
+          ticks: 10080,
+        }).lines;
+        for (const e of compileDoc({ measure: `${meter.numerator}/${meter.denominator}`, play: lines })
+          .tracks[0].timeline) {
+          if (e.midi != null) got.push(`${e.time.toFixed(4)}:${e.midi}`);
+        }
+      }
+    }
+    assert.deepStrictEqual(got.sort(), want.sort(), `${file} re-imports note for note`);
+  }
 });
 
 if (failed.length > 0) {

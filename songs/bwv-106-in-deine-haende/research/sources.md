@@ -1,1 +1,0 @@
-- IMSLP Bach-Gesellschaft Edition (Public Domain)

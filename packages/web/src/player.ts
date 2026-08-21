@@ -266,6 +266,7 @@ export async function playSong(
         const preset = track.kit ? null : detectPreset(track);
         const bus = createTrackBus(ctx, masterGain, {
           hasExpression: (track.controls ?? []).some((c) => c.cc === 11),
+          usesCC: new Set((track.controls ?? []).map((c) => c.cc)),
         });
         buses.push(bus);
         const sampled = track.kit

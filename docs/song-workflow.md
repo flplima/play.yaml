@@ -50,6 +50,11 @@ notation (C4 = middle C = MIDI 60):
   programmatically; cross-check against lead-sheet sites (jazzleadsheet,
   freejazzlessons, songsterr…). Simplified lead sheets lie: the record often
   varies repeated bars (Take Five's bars 6–7 swap two turns).
+  `play-yaml-import <file>.mid --verify` turns such a file straight into bar
+  lines and proves no note moved — a starting point to *edit* into a score,
+  not a substitute for deciding the form. See
+  [docs/audio-and-midi-import.md](audio-and-midi-import.md); the copyright
+  rule above still applies to the `.mid` itself.
 - **Harmony**: chords per bar with voicings/comping rhythm if findable.
 - **Bass line** figures; **drum groove** as a per-beat grid (which limb,
   which subdivision, swung or straight), from drum-lesson sites.

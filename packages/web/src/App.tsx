@@ -1,22 +1,50 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ReactElement, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { yaml } from '@codemirror/lang-yaml';
 import type { EditorView } from '@codemirror/view';
 import { parseYaml, compileDoc, CompiledSong } from '@play.yaml/core';
+import {
+  CircleCheck,
+  CircleX,
+  Download,
+  FolderOpen,
+  Link2,
+  PanelRight,
+  Play,
+  Save,
+  SlidersHorizontal,
+  Square,
+  TriangleAlert,
+} from 'lucide-react';
 import { EXAMPLES } from './examples';
+import SongPicker from './SongPicker';
+import PianoRoll from './PianoRoll';
+import * as Tone from 'tone';
+import {
+  fetchPreparedAudio,
+  playPreparedAudio,
+  type PreparedAudio,
+  type ServerAudioPlayback,
+} from './serverAudio';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { playSong, routeKey, PlaybackHandle, RouteMap, MidiRoute } from './player';
 import { encodeMp3, renderSong } from './render';
 import { buildNoteSpans, NoteSpan } from './noteSpans';
 import { playingNoteExtension, setPlayingNotes } from './highlight';
 import { useMidi } from './useMidi';
 import MidiPanel, { SampleEntry } from './MidiPanel';
+import InstrumentPanel from './InstrumentPanel';
 import { clearShareHash, decodeShareHash, encodeShareHash, isShareHash } from './share';
 import {
   useServerState,
   useServerPlayMutation,
+  useServerPrepareMutation,
   useServerStopMutation,
   useServerVolumeMutation,
   useServerTestNoteMutation,
+  IDLE_PREPARED,
   ServerPortInfo,
   WEBAUDIO_ID,
 } from './serverPlayback';
@@ -30,6 +58,7 @@ const ROUTES_STORAGE_KEY = 'play.yaml:midi-routes';
 const OUTPUT_STORAGE_KEY = 'play.yaml:output-mode';
 const EXAMPLE_STORAGE_KEY = 'play.yaml:example';
 const SERVER_MODE_STORAGE_KEY = 'play.yaml:server-mode';
+const SPEAKER_STORAGE_KEY = 'play-yaml-speaker';
 const SERVER_MIDI_DEVICE_STORAGE_KEY = 'play.yaml:server-midi-device';
 const MASTER_VOLUME_STORAGE_KEY = 'play.yaml:master-volume';
 
@@ -58,6 +87,20 @@ function compile(text: string): { song: CompiledSong | null; error: string | nul
 
 const canOpenFiles = 'showOpenFilePicker' in window;
 
+/**
+ * The toolbar is a row of small icon-ish controls, so every one of them needs
+ * its explanation somewhere. `title` used to carry it; a tooltip reads the same
+ * but is styled with the rest and shows up on keyboard focus too.
+ */
+function Hint({ label, children }: { label: string; children: ReactElement }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 export default function App() {
   // The last selected example survives reloads. (Opened files can't — the
   // File System Access handle doesn't fit in localStorage.)
@@ -72,6 +115,8 @@ export default function App() {
   const [loop, setLoop] = useState(true);
   const [metronome, setMetronome] = useState(false);
   const [showPanel, setShowPanel] = useState(true);
+  const [mainTab, setMainTab] = useState<'editor' | 'roll'>('editor');
+  const [showInstruments, setShowInstruments] = useState(false);
   const [currentBeat, setCurrentBeat] = useState(0);
   // The player polls this ref every beat, so toggling works mid-playback.
   const metronomeRef = useRef(false);
@@ -103,6 +148,23 @@ export default function App() {
     return localStorage.getItem(SERVER_MIDI_DEVICE_STORAGE_KEY) || WEBAUDIO_ID;
   });
 
+  /*
+   * Where server-rendered audio comes out. `server` is this machine's own
+   * speakers, which is what server mode has always meant and stays the
+   * default; `client` streams the same render back to this browser instead,
+   * for when the rack is in another room from the person listening.
+   *
+   * Only tracks the *server* renders are affected. A track routed out to a
+   * hardware MIDI port is sounding in a synth the server does not own, and no
+   * setting here can move that audio.
+   */
+  const [speaker, setSpeaker] = useState<'server' | 'client'>(() =>
+    localStorage.getItem(SPEAKER_STORAGE_KEY) === 'client' ? 'client' : 'server');
+  const handleSpeakerChange = (next: 'server' | 'client') => {
+    setSpeaker(next);
+    localStorage.setItem(SPEAKER_STORAGE_KEY, next);
+  };
+
   // One SSE stream is the whole server-side story: devices, transport, and
   // playhead. Because it is pushed, the studio never disagrees with the server
   // about whether something is sounding.
@@ -119,9 +181,14 @@ export default function App() {
   );
 
   const serverPlayMutation = useServerPlayMutation();
+  const serverPrepareMutation = useServerPrepareMutation();
   const serverStopMutation = useServerStopMutation();
   const serverVolumeMutation = useServerVolumeMutation();
   const serverTestNoteMutation = useServerTestNoteMutation();
+  const prepareServer = serverPrepareMutation.mutateAsync;
+
+  /** How far along the server's standing render is; pushed on the stream. */
+  const prepared = serverState?.prepared ?? IDLE_PREPARED;
 
   const serverDeviceLabel =
     serverPortsInfo.find((p) => p.id === serverMidiDevice)?.name ?? serverMidiDevice;
@@ -134,8 +201,10 @@ export default function App() {
     const clamped = Math.max(0, Math.min(100, vol));
     setMasterVolume(clamped);
     localStorage.setItem(MASTER_VOLUME_STORAGE_KEY, String(clamped));
-    // Both engines take the change live, mid-note.
+    // Every engine takes the change live, mid-note: the browser's transport,
+    // the server's own sink, and a server render playing here.
     playback.current?.setVolume(clamped / 100);
+    serverAudio.current?.setVolume(clamped / 100);
     if (serverSideMode) serverVolumeMutation.mutate(clamped / 100);
   };
 
@@ -177,6 +246,17 @@ export default function App() {
   }, [lastGoodSong]);
 
   const stopServer = serverStopMutation.mutate;
+  /*
+   * The browser's end of Speaker = Client. Held in refs rather than state
+   * because nothing renders from them — one is the server's render sitting
+   * decoded and waiting, the other the node currently playing it, and stop()
+   * has to be able to reach that from anywhere.
+   */
+  const clientAudio = useRef<PreparedAudio | null>(null);
+  const serverAudio = useRef<ServerAudioPlayback | null>(null);
+  /** Mirrors `clientAudio`'s key, purely so the panel can say "ready". */
+  const [clientAudioKey, setClientAudioKey] = useState('');
+
   const stop = useCallback(() => {
     // Stop means stop: both engines, whichever mode the header is in. A score
     // can be sounding here and on the server at once (mode toggles do not
@@ -184,6 +264,8 @@ export default function App() {
     // noise stops is not something anyone should have to do. Stopping an idle
     // engine is a no-op.
     stopServer();
+    serverAudio.current?.stop();
+    serverAudio.current = null;
     playback.current?.stop();
     playback.current = null;
     cancelAnimationFrame(highlightRaf.current);
@@ -196,6 +278,99 @@ export default function App() {
   // away. Server-side playback belongs to the server: reloading the studio
   // must not cut the speakers off mid-phrase.
   useEffect(() => () => playback.current?.stop(), []);
+
+  /*
+   * Server mode honours the same routing table the panel edits, so a track can
+   * land on a specific rack port — or on the server's synth. Memoised because
+   * this is part of what identifies a render: prepare and play must describe
+   * the routing identically or the server would take Play for a different
+   * score and render it again.
+   */
+  const serverRoutes = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(routes).filter(([, r]) => r).map(([k, r]) => [k, r as MidiRoute]),
+      ),
+    [routes],
+  );
+
+  /**
+   * Pull the server's standing render down, unless the copy already in hand is
+   * the same one. In Client speaker mode this is what "ready to play" means.
+   */
+  const ensureClientAudio = useCallback(async (key: string): Promise<PreparedAudio | null> => {
+    if (clientAudio.current?.key === key) return clientAudio.current;
+    // Tone's context, not a second one: the render then plays through the same
+    // master output and clock as everything else the studio sounds. It may
+    // still be suspended here — createBuffer does not care, and Play resumes it.
+    const ctx = Tone.getContext().rawContext as AudioContext;
+    const audio = await fetchPreparedAudio(ctx);
+    clientAudio.current = audio;
+    setClientAudioKey(audio?.key ?? '');
+    return audio;
+  }, []);
+
+  /*
+   * Keep a render standing for whatever is currently in the editor.
+   *
+   * This is the whole point of server mode's shape: the expensive work —
+   * decoding the sample libraries, rendering the score — happens while the
+   * score sits there being read, so Play has nothing left to do but start.
+   * Debounced, because every keystroke recompiles; skipped while the transport
+   * runs, so a mid-phrase edit does not put the CPU up against playback.
+   */
+  useEffect(() => {
+    if (!serverSideMode || !serverAvailable || !song || serverPlaying) return;
+    const timer = window.setTimeout(() => {
+      void prepareServer({
+        code: text,
+        device: serverMidiDevice,
+        routes: serverRoutes,
+        fromBeat: 0,
+      }).catch(() => {
+        // The failure comes back on the stream as prepared.error; the panel
+        // shows it there rather than shouting in the status bar on a keystroke.
+      });
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [
+    serverSideMode, serverAvailable, serverPlaying, song, text,
+    serverMidiDevice, serverRoutes, prepareServer,
+  ]);
+
+  /*
+   * …and, when this browser is the speaker, have the audio itself here before
+   * anyone asks for it. A render that is ready on the server is not ready to
+   * play in a browser 30 m away until the bytes have made the trip.
+   */
+  useEffect(() => {
+    if (!serverSideMode || speaker !== 'client') return;
+    if (prepared.status !== 'ready' || !prepared.hasAudio) return;
+    if (clientAudio.current?.key === prepared.key) return;
+    void ensureClientAudio(prepared.key).catch((err) => {
+      setStatus(`Server audio: ${err instanceof Error ? err.message : String(err)}`);
+    });
+  }, [
+    serverSideMode, speaker, prepared.status, prepared.hasAudio, prepared.key, ensureClientAudio,
+  ]);
+
+  /** Throw the standing render away and build it again, from the panel. */
+  const refreshPreparedAudio = () => {
+    if (!song) return;
+    clientAudio.current = null;
+    setClientAudioKey('');
+    setStatus('Re-rendering the score on the server…');
+    void prepareServer({
+      code: text,
+      device: serverMidiDevice,
+      routes: serverRoutes,
+      fromBeat: 0,
+      force: true,
+    })
+      .then((result) =>
+        setStatus(result.ok ? 'Server render ready' : `Render failed: ${result.error ?? 'unknown error'}`))
+      .catch((err) => setStatus(`Render failed: ${err instanceof Error ? err.message : String(err)}`));
+  };
 
   // In server mode the server owns the transport, so the button and the
   // playhead read straight off the stream. `isPending` only covers the blink
@@ -352,22 +527,65 @@ export default function App() {
       // Highlighting in server mode is driven by the playhead the stream
       // reports, so the spans have to exist before the first frame arrives.
       noteSpans.current = buildNoteSpans(text);
-      setStatus(`Server side playback starting on ${serverDeviceLabel}…`);
+      /*
+       * Wake the audio context here, before the network call — a browser only
+       * lets a context start off a user gesture, and the click that got us
+       * here is the one we have. Doing it after an await has no *stated*
+       * expiry, but it is the kind of thing that works until a policy change
+       * makes it not, and there is no reason to depend on it.
+       */
+      if (speaker === 'client') {
+        try {
+          await Tone.start();
+        } catch (err) {
+          console.warn('[server-audio] could not start the audio context:', err);
+        }
+      }
       try {
+        /*
+         * Both of these are normally no-ops — the effects above rendered this
+         * score and fetched it the moment it settled. They are awaited anyway
+         * so that pressing Play before that finished still works: it just
+         * costs the render instead of starting instantly.
+         */
+        const ready = prepared.status === 'ready' && prepared.key !== '';
+        if (!ready) setStatus('Rendering the score on the server…');
+        const result = await prepareServer({
+          code: text,
+          device: serverMidiDevice,
+          routes: serverRoutes,
+          fromBeat: 0,
+        });
+        if (!result.ok) throw new Error(result.error ?? 'the score could not be rendered');
+
+        let audio: PreparedAudio | null = null;
+        if (speaker === 'client' && result.hasAudio) {
+          if (clientAudio.current?.key !== result.key) setStatus('Fetching the render…');
+          audio = await ensureClientAudio(result.key);
+        }
+
+        // Nothing is compiled or rendered behind this call: the server opens
+        // its ports, starts its clock and hands the finished PCM to its sink.
         await serverPlayMutation.mutateAsync({
           code: text,
           device: serverMidiDevice,
-          // Server mode honours the same routing table the panel edits, so a
-          // track can land on a specific rack port — or on the server's synth.
           // Routes naming a port this machine doesn't have fall back to the
           // selected device, server-side.
-          routes: Object.fromEntries(
-            Object.entries(routes).filter(([, r]) => r).map(([k, r]) => [k, r as MidiRoute]),
-          ),
+          routes: serverRoutes,
           volume: masterVolume / 100,
+          speaker,
           loop,
         });
-        setStatus(`▶ Playing on server (${serverDeviceLabel})`);
+
+        if (audio) {
+          serverAudio.current?.stop();
+          const ctx = Tone.getContext().rawContext as AudioContext;
+          serverAudio.current = playPreparedAudio(ctx, ctx.destination, audio, {
+            loop,
+            volume: masterVolume / 100,
+          });
+        }
+        setStatus(`▶ Playing on server (${serverDeviceLabel}${speaker === 'client' ? ' → this browser' : ''})`);
       } catch (err) {
         setStatus(`Server error: ${err instanceof Error ? err.message : String(err)}`);
       }
@@ -453,223 +671,139 @@ export default function App() {
   const noteCount = song?.tracks.reduce((n, t) => n + t.timeline.length, 0) ?? 0;
 
   return (
-    <div className="flex h-full flex-col bg-zinc-950 text-zinc-100">
-      <header className="flex items-center gap-3 border-b border-zinc-800 bg-zinc-900 px-4 py-2.5">
+    <TooltipProvider delayDuration={400} skipDelayDuration={200}>
+    <div className="flex h-full flex-col bg-background text-foreground">
+      <header className="flex flex-wrap items-center gap-2 border-b border-border bg-card px-4 py-2.5">
         <h1 className="text-sm font-semibold tracking-tight">
-          play<span className="text-emerald-400">.yaml</span> studio
+          play<span className="text-primary">.yaml</span> studio
         </h1>
 
-        <div className="mx-2 h-5 w-px bg-zinc-800" />
+        <Separator orientation="vertical" className="mx-1" />
 
-        <label className="flex items-center gap-2 text-xs text-zinc-400">
-          Example
-          <select
-            className="rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-200"
-            value={source.kind === 'example' ? source.name : ''}
-            onChange={(e) => selectExample(e.target.value)}
-          >
-            {source.kind === 'file' && <option value="">— {source.name} —</option>}
-            {source.kind === 'shared' && <option value="">— shared link —</option>}
-            {EXAMPLES.map((e) => (
-              <option key={e.name} value={e.name}>
-                {e.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <SongPicker
+          value={source.kind === 'example' ? source.name : ''}
+          placeholder={source.kind === 'shared' ? '— shared link —' : undefined}
+          onSelect={selectExample}
+        />
 
-        <button
-          className="rounded border border-zinc-700 px-2.5 py-1 text-xs text-zinc-200 hover:bg-zinc-800 disabled:opacity-40"
-          onClick={openFile}
-          disabled={!canOpenFiles}
-          title={canOpenFiles ? 'Open a .play.yaml file from disk' : 'File System Access API not supported in this browser'}
-        >
-          Open file…
-        </button>
+        <Hint label={canOpenFiles ? 'Open a .play.yaml file from disk' : 'File System Access API not supported in this browser'}>
+          <Button onClick={openFile} disabled={!canOpenFiles}>
+            <FolderOpen />
+            Open…
+          </Button>
+        </Hint>
 
         {source.kind === 'file' && (
           <>
-            <span className="max-w-48 truncate text-xs text-zinc-400" title={source.name}>
+            <span className="max-w-48 truncate text-xs text-muted-foreground" title={source.name}>
               {source.name}
-              {dirty && <span className="ml-1 text-amber-400">●</span>}
+              {dirty && <span className="ml-1 text-warning">●</span>}
             </span>
-            <button
-              className="rounded border border-zinc-700 px-2.5 py-1 text-xs text-zinc-200 hover:bg-zinc-800 disabled:opacity-40"
-              onClick={() => void saveFile()}
-              disabled={!dirty}
-              title="Save to the opened file (Ctrl+S)"
-            >
-              Save
-            </button>
+            <Hint label="Save to the opened file (Ctrl+S)">
+              <Button onClick={() => void saveFile()} disabled={!dirty}>
+                <Save />
+                Save
+              </Button>
+            </Hint>
           </>
         )}
 
         <div className="flex-1" />
 
-        <div
-          className="flex overflow-hidden rounded border border-zinc-700 text-xs"
-          role="group"
-          aria-label="Playback output"
-          title="Where playback goes: bundled sampler, WebMIDI, or Server Side audio/MIDI"
-        >
-          <button
-            className={
-              !serverSideMode && outputMode === 'builtin'
-                ? 'bg-emerald-600/30 px-2.5 py-1 font-medium text-emerald-300'
-                : 'px-2.5 py-1 text-zinc-400 hover:bg-zinc-800'
-            }
-            aria-pressed={!serverSideMode && outputMode === 'builtin'}
-            onClick={() => {
-              handleServerSideModeChange(false);
-              selectOutputMode('builtin');
-            }}
-          >
-            ♪ Built-in
-          </button>
-          <button
-            className={
-              !serverSideMode && outputMode === 'midi'
-                ? 'bg-emerald-600/30 px-2.5 py-1 font-medium text-emerald-300'
-                : 'px-2.5 py-1 text-zinc-400 hover:bg-zinc-800'
-            }
-            aria-pressed={!serverSideMode && outputMode === 'midi'}
-            onClick={() => {
-              handleServerSideModeChange(false);
-              selectOutputMode('midi');
-            }}
-          >
-            ⌁ MIDI
-          </button>
-          <button
-            className={
-              serverSideMode
-                ? 'bg-purple-600/40 px-2.5 py-1 font-medium text-purple-300 border-l border-purple-800/60'
-                : 'px-2.5 py-1 text-zinc-400 hover:bg-zinc-800 border-l border-zinc-800'
-            }
-            aria-pressed={serverSideMode}
-            onClick={() => handleServerSideModeChange(!serverSideMode)}
-          >
-            🖥 Server
-          </button>
-        </div>
-
-        {serverSideMode && (
-          <select
-            className="rounded border border-purple-800/80 bg-purple-950/40 px-2 py-1 text-xs text-purple-200 font-mono focus:outline-none max-w-44 truncate"
-            value={serverMidiDevice}
-            onChange={(e) => handleServerMidiDeviceChange(e.target.value)}
-            title="Selected Server MIDI / Audio Device"
-          >
-            {serverPortsInfo.length > 0
-              ? serverPortsInfo.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} {p.mpe ? '[MPE]' : ''}
-                  </option>
-                ))
-              : serverMidiDevices.map((dev) => (
-                  <option key={dev} value={dev}>
-                    {dev}
-                  </option>
-                ))}
-          </select>
-        )}
-
-        <div className="flex items-center gap-1.5 text-xs text-zinc-400" title="Master volume control">
-          <span>🔊</span>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={masterVolume}
-            onChange={(e) => handleVolumeChange(Number(e.target.value))}
-            className="h-1.5 w-16 cursor-pointer accent-emerald-500 rounded bg-zinc-800"
-          />
-          <span className="w-7 font-mono text-[11px] text-zinc-300">{masterVolume}%</span>
-        </div>
-
-        <button
-          className={
-            metronome
-              ? 'rounded border border-emerald-500 px-2.5 py-1 text-xs font-medium text-emerald-400 hover:bg-zinc-800'
-              : 'rounded border border-zinc-700 px-2.5 py-1 text-xs text-zinc-400 hover:bg-zinc-800'
-          }
-          aria-pressed={metronome}
-          onClick={() =>
-            setMetronome((v) => {
-              metronomeRef.current = !v;
-              return !v;
-            })
-          }
-          title="Click on every beat at the song's root tempo"
-        >
-          ◇ Metronome
-        </button>
-
-        <label className="flex items-center gap-1.5 text-xs text-zinc-400" title="Loop the song until stopped">
-          <input
-            type="checkbox"
-            className="accent-emerald-500"
-            checked={loop}
-            onChange={(e) => setLoop(e.target.checked)}
-          />
-          Loop
-        </label>
-
-        <button
-          className={
-            isPlaying
-              ? 'rounded bg-red-500 px-4 py-1.5 text-xs font-semibold text-white hover:bg-red-400'
-              : 'rounded bg-emerald-500 px-4 py-1.5 text-xs font-semibold text-zinc-950 hover:bg-emerald-400 disabled:opacity-40'
-          }
+        <Button
+          variant={isPlaying ? 'destructive' : 'default'}
+          size="lg"
+          className="font-semibold"
           onClick={isPlaying ? stop : () => void play()}
           disabled={!isPlaying && !song}
         >
-          {isPlaying ? '■ Stop' : '▶ Play'}
-        </button>
+          {isPlaying ? <Square className="fill-current" /> : <Play className="fill-current" />}
+          {isPlaying ? 'Stop' : 'Play'}
+        </Button>
 
-        <button
-          className="rounded border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-200 hover:bg-zinc-800 disabled:opacity-40"
-          onClick={() => void downloadMp3()}
-          disabled={!song || rendering}
-          title="Render the song offline with the built-in sounds and download it as MP3"
-        >
-          {rendering ? '… Rendering' : '⬇ MP3'}
-        </button>
+        <Hint label="Render the song offline with the built-in sounds and download it as MP3">
+          <Button onClick={() => void downloadMp3()} disabled={!song || rendering}>
+            <Download />
+            {rendering ? 'Rendering…' : 'MP3'}
+          </Button>
+        </Hint>
 
-        <button
-          className="rounded border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-200 hover:bg-zinc-800 disabled:opacity-40"
-          onClick={() => void shareLink()}
-          disabled={!text}
-          title="Copy a link that carries this whole score in the URL — no server involved"
-        >
-          🔗 Share
-        </button>
+        <Hint label="Copy a link that carries this whole score in the URL — no server involved">
+          <Button onClick={() => void shareLink()} disabled={!text}>
+            <Link2 />
+            Share
+          </Button>
+        </Hint>
 
-        <button
-          className={
-            showPanel
-              ? 'rounded border border-zinc-600 bg-zinc-800 px-2 py-1 text-xs text-zinc-200'
-              : 'rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-400 hover:bg-zinc-800'
-          }
-          aria-pressed={showPanel}
-          onClick={() => setShowPanel((v) => !v)}
-          title={showPanel ? 'Hide the MIDI panel' : 'Show the MIDI panel'}
-        >
-          ▤
-        </button>
+        <Hint label={showPanel ? 'Hide the MIDI panel' : 'Show the MIDI panel'}>
+          <Button
+            size="icon"
+            variant={showPanel ? 'secondary' : 'ghost'}
+            aria-pressed={showPanel}
+            onClick={() => setShowPanel((v) => !v)}
+          >
+            <PanelRight />
+          </Button>
+        </Hint>
+
+        {/* The VST rack's own options — a separate panel because it describes
+            the instruments at the other end of the cable, not the routing. */}
+        <Hint label={showInstruments ? 'Hide the instrument panel' : 'Tweak the VST rack’s instruments'}>
+          <Button
+            size="icon"
+            variant={showInstruments ? 'secondary' : 'ghost'}
+            aria-pressed={showInstruments}
+            onClick={() => setShowInstruments((v) => !v)}
+          >
+            <SlidersHorizontal />
+          </Button>
+        </Hint>
       </header>
 
       <main className="flex min-h-0 flex-1">
-        <div className="min-w-0 flex-1 overflow-hidden">
-          <CodeMirror
-            value={text}
-            onChange={handleEdit}
-            onCreateEditor={(view) => (editorView.current = view)}
-            theme="dark"
-            height="100%"
-            style={{ height: '100%' }}
-            extensions={[yaml(), playingNoteExtension]}
-          />
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          {/*
+            Two views of the same score. The editor is what it says; the roll
+            is what it does. Both stay mounted — CodeMirror is expensive to
+            rebuild and would lose its scroll and selection, and the roll's
+            canvas is cheap to leave sitting there — so the hidden one is
+            hidden with CSS rather than unmounted.
+          */}
+          <div role="tablist" aria-label="Main view" className="flex shrink-0 border-b border-border bg-card">
+            {([['editor', 'Editor'], ['roll', 'Piano roll']] as const).map(([id, label]) => (
+              <button
+                key={id}
+                role="tab"
+                aria-selected={mainTab === id}
+                onClick={() => setMainTab(id)}
+                className={
+                  'px-4 py-1.5 text-xs font-medium transition-colors ' +
+                  (mainTab === id
+                    ? 'border-b-2 border-primary text-foreground'
+                    : 'border-b-2 border-transparent text-muted-foreground hover:text-foreground')
+                }
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className={`min-h-0 flex-1 overflow-hidden ${mainTab === 'editor' ? '' : 'hidden'}`}>
+            <CodeMirror
+              value={text}
+              onChange={handleEdit}
+              onCreateEditor={(view) => (editorView.current = view)}
+              theme="dark"
+              height="100%"
+              style={{ height: '100%' }}
+              extensions={[yaml(), playingNoteExtension]}
+            />
+          </div>
+          <div className={`min-h-0 flex-1 ${mainTab === 'roll' ? '' : 'hidden'}`}>
+            {/* `displayBeat`, not `currentBeat`: the server owns the transport in
+                server mode and its playhead arrives on the stream, so the local
+                one never moves there. */}
+            <PianoRoll song={song} currentBeat={displayBeat} playing={isPlaying} />
+          </div>
         </div>
         {showPanel && (
           <MidiPanel
@@ -684,7 +818,25 @@ export default function App() {
             masterVolume={masterVolume}
             onVolumeChange={handleVolumeChange}
             serverSideMode={serverSideMode}
-            onServerSideModeChange={handleServerSideModeChange}
+            outputMode={serverSideMode ? 'server' : outputMode}
+            onOutputModeChange={(mode) => {
+              handleServerSideModeChange(mode === 'server');
+              if (mode !== 'server') selectOutputMode(mode as OutputMode);
+            }}
+            speaker={speaker}
+            onSpeakerChange={handleSpeakerChange}
+            prepared={prepared}
+            clientAudioReady={
+              speaker !== 'client' || !prepared.hasAudio || clientAudioKey === prepared.key
+            }
+            onRefreshPrepared={refreshPreparedAudio}
+            loop={loop}
+            onLoopChange={(v) => setLoop(v)}
+            metronome={metronome}
+            onMetronomeChange={(v) => {
+              metronomeRef.current = v;
+              setMetronome(v);
+            }}
             serverMidiDevice={serverMidiDevice}
             onServerMidiDeviceChange={handleServerMidiDeviceChange}
             serverMidiDevices={serverMidiDevices}
@@ -695,30 +847,43 @@ export default function App() {
             onServerTestNote={handleServerTestNote}
           />
         )}
+        {showInstruments && (
+          <aside className="flex w-80 shrink-0 flex-col overflow-y-auto border-l border-border bg-card">
+            <InstrumentPanel midi={midi} />
+          </aside>
+        )}
       </main>
 
-      <footer className="flex items-center gap-3 border-t border-zinc-800 bg-zinc-900 px-4 py-1.5 text-xs">
+      <footer className="flex items-center gap-3 border-t border-border bg-card px-4 py-1.5 text-xs">
         {error ? (
-          <span className="text-red-400">✗ {error}</span>
+          <span className="flex items-center gap-1.5 text-destructive">
+            <CircleX className="size-3.5 shrink-0" />
+            {error}
+          </span>
         ) : (
-          <span className="text-zinc-400">
-            ✓ {song!.tracks.length} track(s) · {noteCount} notes · {song!.bpm} bpm
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <CircleCheck className="size-3.5 shrink-0 text-primary" />
+            {song!.tracks.length} track(s) · {noteCount} notes · {song!.bpm} bpm
           </span>
         )}
         {/* A score with unreadable tokens still plays — they just went silent.
             Say which bar, so a mistyped mark is visible instead of just heard. */}
         {!error && song?.warnings?.length ? (
           <span
-            className="truncate text-amber-400"
+            className="flex min-w-0 items-center gap-1.5 truncate text-warning"
             title={song.warnings.join('\n')}
           >
-            ⚠ {song.warnings[0]}
-            {song.warnings.length > 1 ? ` (+${song.warnings.length - 1} more)` : ''}
+            <TriangleAlert className="size-3.5 shrink-0" />
+            <span className="truncate">
+              {song.warnings[0]}
+              {song.warnings.length > 1 ? ` (+${song.warnings.length - 1} more)` : ''}
+            </span>
           </span>
         ) : null}
         <div className="flex-1" />
-        {status && <span className="text-zinc-500">{status}</span>}
+        {status && <span className="text-muted-foreground">{status}</span>}
       </footer>
     </div>
+    </TooltipProvider>
   );
 }
