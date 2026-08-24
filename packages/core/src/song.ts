@@ -53,6 +53,15 @@ export interface TrackProps {
   transpose?: number;
   channel?: number;
   program?: number;
+  /**
+   * The rack patch this track's channel should be switched to before it plays:
+   * an index into jukebox's Program Change catalogue (`patches:` in its
+   * jukebox.yaml — 5 is SWAM VariFlute, 6 the bassoon voicing of it), sent as
+   * a Program Change on the wire. Distinct from `program`, which is the
+   * General MIDI number a `.mid` export carries: the same message, but the
+   * two catalogues have nothing to do with each other.
+   */
+  patch?: number;
   velocity?: number;
   /**
    * Fraction of its slot a note sounds. Below 1 the note releases before the
@@ -308,6 +317,8 @@ export interface CompiledTrack {
   /** The drum kit this track plays, when it is a `kit:` track. */
   kit?: string;
   program?: number;
+  /** Rack patch to select on the channel before playing — see TrackProps. */
+  patch?: number;
   timeline: TimelineEvent[];
   /** CC changes declared mid-song, in beat order. */
   controls: ControlEvent[];
@@ -1380,7 +1391,7 @@ export function expandSections(doc: SongDoc): { doc: SongDoc; loopStartBar: numb
 // ---------------------------------------------------------------------------
 
 const INHERITED: (keyof TrackProps)[] = [
-  'tempo', 'measure', 'sample', 'scale', 'octave', 'transpose', 'channel', 'program', 'velocity',
+  'tempo', 'measure', 'sample', 'scale', 'octave', 'transpose', 'channel', 'program', 'patch', 'velocity',
   'gate', 'rubato', 'dynamic', 'articulation', 'release', 'controls', 'strum', 'voices', 'strumTail', 'kit',
   'pedal', 'seed', 'chance', 'humanize', 'velocityRange',
 ];
@@ -1472,6 +1483,7 @@ export function compileDoc(doc: SongDoc): CompiledSong {
         kit: props.kit != null ? String(props.kit) : undefined,
         program: props.kit != null ? undefined
           : props.program ?? SAMPLE_PROGRAMS[sample.toLowerCase()],
+        patch: props.patch,
         timeline,
         controls: [...opening, ...controls],
         patches: [...openingPatches, ...patches],

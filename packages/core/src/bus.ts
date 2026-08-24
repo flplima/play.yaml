@@ -47,6 +47,23 @@ export interface TrackBus {
    * createTrackBus for why that matters outside the browser.
    */
   setMasterTrim: (value: number, time?: number) => void;
+  /**
+   * The control stream as this bus has been told it: the value `cc` holds at
+   * `time`, or undefined if nothing has set it. A sampled instrument reads
+   * this at note-on — the mod wheel decides how long an attack is, the pedal
+   * whether a note-off releases — and schedules ahead with `ccChanges`.
+   */
+  ccAt: (cc: number, time: number) => number | undefined;
+  /** Changes to `cc` after `from` and no later than `to`, in time order. */
+  ccChanges: (cc: number, from: number, to: number) => Array<[time: number, value: number]>;
+  /**
+   * Hear control changes as they are applied. An offline render applies the
+   * whole stream before it schedules a note, so a voice finds everything it
+   * needs in `ccChanges`; live playback applies each change as the transport
+   * reaches it, and this is how a sounding voice learns about the ones after
+   * its note-on.
+   */
+  onCC: (listener: (cc: number, value: number, time: number) => void) => () => void;
   dispose: () => void;
 }
 
@@ -393,6 +410,32 @@ export function createTrackBus(
 
   const state: TrackBus['state'] = { playmode: 'default', tremolo: false };
 
+  // Every control change, per CC, in time order — what `ccAt`/`ccChanges`
+  // answer from. Live playback appends; an offline render's carried-over
+  // values land at the origin before the stream proper, so out-of-order
+  // arrivals are inserted rather than assumed away.
+  const history = new Map<number, Array<[number, number]>>();
+  const listeners = new Set<(cc: number, value: number, time: number) => void>();
+  const record = (cc: number, value: number, time: number) => {
+    let list = history.get(cc);
+    if (!list) history.set(cc, (list = []));
+    let at = list.length;
+    while (at > 0 && list[at - 1][0] > time) at--;
+    list.splice(at, 0, [time, value]);
+  };
+  const ccAt = (cc: number, time: number): number | undefined => {
+    const list = history.get(cc);
+    if (!list) return undefined;
+    let value: number | undefined;
+    for (const [at, v] of list) {
+      if (at > time) break;
+      value = v;
+    }
+    return value;
+  };
+  const ccChanges = (cc: number, from: number, to: number): Array<[number, number]> =>
+    (history.get(cc) ?? []).filter(([at]) => at > from && at <= to);
+
   /**
    * Schedule a smooth move — or write it outright, when the engine has no
    * automation to schedule onto, or when this is the state the bus starts in
@@ -404,6 +447,7 @@ export function createTrackBus(
   };
 
   const applyCC = (cc: number, value: number, time: number) => {
+    record(cc, value, time);
     const v = value / 127;
     switch (cc) {
       case 11: // expression — smooth so staircase ramps become curves
@@ -480,10 +524,12 @@ export function createTrackBus(
         break;
       }
       default:
-        // portamento/bowlift/harmonics/fingering have no browser equivalent
-        // yet — the model-specific CCs pass silently, as on any synth.
+        // portamento/bowlift/harmonics/fingering have no circuit here — the
+        // model-specific CCs pass silently, as on any synth. A sampled
+        // instrument still sees them through the history above.
         break;
     }
+    for (const listener of listeners) listener(cc, value, time);
   };
 
   return {
@@ -498,7 +544,14 @@ export function createTrackBus(
       masterTrim = Math.max(0, value);
       writeLevel(time, 0.02);
     },
+    ccAt,
+    ccChanges,
+    onCC: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
     dispose: () => {
+      listeners.clear();
       for (const osc of [lfo, ...chorusLfos]) {
         try {
           osc.stop();

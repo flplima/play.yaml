@@ -11,9 +11,6 @@ dist/
 .DS_Store
 Thumbs.db
 
-# Local machine config: this machine's MIDI ports, VSTs and preset names
-config.yaml
-
 # Local env overrides. The committed .env.example carries the shared defaults
 # (notably the dev server PORT), so a fresh clone works without one.
 .env

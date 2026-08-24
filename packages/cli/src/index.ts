@@ -1,4 +1,7 @@
-import { CompiledSong, beatsToSeconds, detectPreset, panicMessages, tempoSegments } from '@play.yaml/core';
+import {
+  CompiledSong, beatsToSeconds, decodeReadiness, detectPreset, panicMessages, patchMessage,
+  readinessRequest, tempoSegments,
+} from '@play.yaml/core';
 import { audioRenderingAvailable, createChunkedRender, playChunks } from '@play.yaml/node-audio';
 
 /**
@@ -47,6 +50,61 @@ interface MidiMessage {
   payload: Record<string, number>;
 }
 
+/** How long a bridged plugin may take to come up before we stop waiting. */
+const WARM_TIMEOUT_MS = 45_000;
+
+/**
+ * Get a jukebox rack ready for the score: switch each channel to its declared
+ * patch, ask the rack to load every channel the score plays (CC 119 = 100),
+ * and wait for the readiness reports (CC 119 = 127) on the rack's status
+ * port. A lazy rack swallows the notes played while an instrument loads, so
+ * this is what makes the first bar audible.
+ *
+ * Nothing to listen on — no `jukebox-status` port, so no rack — means there
+ * is nothing to wait for, and the score plays at once.
+ */
+async function warmRack(
+  easymidi: typeof import('easymidi'),
+  output: InstanceType<typeof easymidi.Output>,
+  channels: Map<number, number | null>,
+): Promise<void> {
+  const statusPort = easymidi.getInputs().find((name) => /jukebox-status/i.test(name));
+  for (const [channel, patch] of channels) {
+    if (patch !== null) {
+      const [status, program] = patchMessage(channel, patch);
+      output.send('program', { number: program, channel: status & 0x0f } as any);
+    }
+  }
+  if (!statusPort) return;
+
+  const input = new easymidi.Input(statusPort);
+  const pending = new Set(channels.keys());
+  const ready = new Map<number, boolean>();
+  input.on('cc', (msg: { controller: number; value: number; channel: number }) => {
+    const report = decodeReadiness([0xb0 | msg.channel, msg.controller, msg.value]);
+    if (report) ready.set(report.channel, report.ready);
+  });
+  for (const channel of pending) {
+    const [status, controller, value] = readinessRequest(channel, true);
+    output.send('cc', { controller, value, channel: status & 0x0f } as any);
+  }
+  console.log(`Warming rack channel${pending.size > 1 ? 's' : ''} ${[...pending].sort((a, b) => a - b).join(', ')}…`);
+  const started = Date.now();
+  while (pending.size && Date.now() - started < WARM_TIMEOUT_MS) {
+    for (const channel of pending) {
+      if (ready.get(channel)) {
+        pending.delete(channel);
+        console.log(`  ch ${channel} ready`);
+      }
+    }
+    if (pending.size) await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  input.close();
+  if (pending.size) {
+    console.warn(`  the rack did not report ch ${[...pending].join(', ')} ready in time — playing anyway`);
+  }
+}
+
 /**
  * Play a compiled song by streaming real-time MIDI to an output port. Every
  * compiled event goes out: notes, the score's control changes (expression
@@ -78,10 +136,13 @@ export async function playSongMidi(
   const skipMs = beatsToSeconds(segments, fromBeat) * 1000;
   const ms = (beat: number) => beatsToSeconds(segments, beat) * 1000 - skipMs;
   const events: MidiMessage[] = [];
+  /** Rack channels the pass plays, with the patch each should switch to. */
+  const rackChannels = new Map<number, number | null>();
 
   for (const track of song.tracks) {
     const channel = ((track.channel || 1) - 1) & 0x0f;
-    console.log(`  Track: "${track.name}" | Channel ${channel + 1} | ${track.timeline.length} notes, ${track.controls.length} CCs`);
+    console.log(`  Track: "${track.name}" | Channel ${channel + 1}${track.patch != null ? ` | patch ${track.patch}` : ''} | ${track.timeline.length} notes, ${track.controls.length} CCs`);
+    if (track.patch != null || !rackChannels.has(channel + 1)) rackChannels.set(channel + 1, track.patch ?? null);
 
     // Open the channel before anything sounds: volume, plus expression and
     // modulation defaults for physical models that stay silent without them.
@@ -112,6 +173,9 @@ export async function playSongMidi(
     }
   }
   events.sort((a, b) => a.ms - b.ms || a.order - b.order);
+
+  // Only on the first pass: a loop's later passes find the rack still warm.
+  if (fromBeat === 0) await warmRack(easymidi, output, rackChannels);
 
   const activeNotes = new Set<string>(); // "channel,note"
   let timer: NodeJS.Timeout | undefined;

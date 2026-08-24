@@ -38,15 +38,19 @@ import {
   panicMessages,
   encodeControlMessage,
   ControlOp,
+  rackChannelMap,
+  readinessRequest,
+  decodeReadiness,
+  patchMessage,
   // Straight from core's source, not its dist: vite bundles this config file
   // with esbuild, so a relative import is inlined and core edits take effect
   // without a `npm run build -w core` first (the same deal the app's alias
   // gives src/). Importing '@play.yaml/core' here would silently pin the
   // engine to a stale dist.
 } from '../core/src/index';
-import type { CompiledSong } from '../core/src/index';
+import type { CompiledSong, RackChannels } from '../core/src/index';
 import {
-  audioRenderingAvailable, createChunkedRender, playPcm, renderSongToPcm,
+  audioRenderingAvailable, createChunkedRender, playPcm, renderSongToPcm, resolveVpoFile, vpoRoot,
   type PcmPlayback,
 } from '@play.yaml/node-audio';
 import type { TempoSegment } from '../core/src/time';
@@ -55,6 +59,7 @@ import type { TempoSegment } from '../core/src/time';
 // `.default` at runtime even though the types describe the namespace.
 type EasyMidi = typeof import('easymidi');
 type MidiOutput = InstanceType<EasyMidi['Output']>;
+type MidiInput = InstanceType<EasyMidi['Input']>;
 
 let easymidi: EasyMidi | null = null;
 try {
@@ -81,18 +86,34 @@ const TAIL_SEC = 0.3;
 const MPE_MASTER_CH = 0;
 const MPE_MEMBER_CHANNELS = Array.from({ length: 15 }, (_, i) => i + 1);
 
-export interface ConfigPort {
-  name?: string;
-  mpe?: boolean;
-  channels?: Record<string | number, string>;
-}
-
 export interface ServerPortInfo {
   id: string;
   name: string;
   rawName: string;
   mpe: boolean;
+  /** Channel → instrument name, when this port is a jukebox rack's input. */
   channels: Record<number, string>;
+  /** True for the port the running rack listens on. */
+  rack: boolean;
+}
+
+/** One rack channel as the studio sees it: what is there, and whether it will sound. */
+export interface RackChannelInfo {
+  channel: number;
+  name: string;
+  format: string;
+  loaded: boolean;
+  /** Last CC 119 report; null until the rack has said anything about it. */
+  ready: boolean | null;
+}
+
+export interface RackSnapshot {
+  available: boolean;
+  /** The ALSA loopback the rack plays from — "Midi Through Port-0". */
+  through: string;
+  channels: RackChannelInfo[];
+  /** Channels a play is currently waiting on. */
+  warming: number[];
 }
 
 /** How far along the standing render is — see `prepareOnServer`. */
@@ -126,35 +147,113 @@ export interface ServerSnapshot {
   positionBeats: number;
   totalBeats: number;
   prepared: PreparedStatus;
+  rack: RackSnapshot;
   error: string | null;
 }
 
-// ─────────────────────────────── config.yaml ───────────────────────────────
+// ────────────────────────────── the rack's caches ──────────────────────────────
 
-function readConfigYaml(): Record<string, ConfigPort> {
-  const configPaths = [
-    path.resolve(process.cwd(), 'config.yaml'),
-    path.resolve(process.cwd(), '../config.yaml'),
-    path.resolve(process.cwd(), '../../config.yaml'),
-  ];
+/**
+ * jukebox writes what it is hosting to `~/.cache/jukebox/` — `channels.json`
+ * for the channel map, `surfaces.json` for the tweakable options — because a
+ * MIDI cable carries no way to ask. Both are re-read when their mtime moves;
+ * an absent file is the normal state and means no rack is running.
+ */
+function cacheFile(name: string): string {
+  const cache = process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache');
+  return path.join(cache, 'jukebox', name);
+}
 
-  for (const configPath of configPaths) {
-    if (fs.existsSync(configPath)) {
-      try {
-        const parsed = parseYaml(fs.readFileSync(configPath, 'utf8'));
-        if (parsed && typeof parsed === 'object' && parsed.ports && typeof parsed.ports === 'object') {
-          const cleanedPorts: Record<string, ConfigPort> = {};
-          for (const [key, conf] of Object.entries(parsed.ports as Record<string, ConfigPort>)) {
-            cleanedPorts[key.replace(/^["']|["']$/g, '').trim()] = conf;
-          }
-          return cleanedPorts;
-        }
-      } catch (err) {
-        console.warn(`[server-middleware] Error parsing ${configPath}:`, err);
-      }
-    }
+const cacheReads = new Map<string, { mtime: number; value: unknown }>();
+
+function readCache<T>(name: string): { value: T | null; error: string } {
+  const file = cacheFile(name);
+  try {
+    const mtime = fs.statSync(file).mtimeMs;
+    const held = cacheReads.get(file);
+    if (held && held.mtime === mtime) return { value: held.value as T, error: '' };
+    const value = JSON.parse(fs.readFileSync(file, 'utf8')) as T;
+    cacheReads.set(file, { mtime, value });
+    return { value, error: '' };
+  } catch (err: any) {
+    cacheReads.delete(file);
+    return {
+      value: null,
+      error: err?.code === 'ENOENT'
+        ? `no rack has published to ${file} — start jukebox to see its instruments`
+        : String(err?.message ?? err),
+    };
   }
-  return {};
+}
+
+export function readRackChannels(): { rack: RackChannels | null; error: string } {
+  const { value, error } = readCache<RackChannels>('channels.json');
+  return { rack: value, error };
+}
+
+export function readSurfaceCatalogue(): { catalogue: unknown; error: string } {
+  const { value, error } = readCache<unknown>('surfaces.json');
+  return { catalogue: value, error };
+}
+
+/**
+ * Readiness reports, live. The rack answers CC 119 on `jukebox-status` for
+ * anything subscribed there; this keeps one subscription open for the life of
+ * the server so the studio always knows which channels will sound, not only
+ * during a play. The port comes and goes with the rack, hence the retry from
+ * the device rescan.
+ */
+const rackReady = new Map<number, boolean>();
+let statusInput: MidiInput | null = null;
+let statusPortName = '';
+
+function ensureStatusListener(): void {
+  if (!easymidi) return;
+  const inputs = easymidi.getInputs();
+  const wanted = inputs.find((name: string) => /jukebox-status/i.test(name)) ?? '';
+  if (statusInput && wanted === statusPortName) return;
+  if (statusInput) {
+    try { statusInput.close(); } catch {}
+    statusInput = null;
+    statusPortName = '';
+    // A rack that went away took its readiness with it.
+    rackReady.clear();
+  }
+  if (!wanted) return;
+  try {
+    statusInput = new easymidi.Input(wanted);
+    statusPortName = wanted;
+    statusInput.on('cc', (msg: { controller: number; value: number; channel: number }) => {
+      const report = decodeReadiness([0xb0 | msg.channel, msg.controller, msg.value]);
+      if (!report) return;
+      const before = rackReady.get(report.channel);
+      rackReady.set(report.channel, report.ready);
+      if (before !== report.ready) broadcast();
+    });
+  } catch (err) {
+    console.warn('[server-middleware] could not open the rack status port:', err);
+    statusInput = null;
+  }
+}
+
+/** Channels a play is waiting on; empty outside the warm-up. */
+let warming: number[] = [];
+
+export function rackSnapshot(): RackSnapshot {
+  const { rack } = readRackChannels();
+  const port = rack?.ports?.[0];
+  const map = rackChannelMap(rack);
+  const channels: RackChannelInfo[] = [];
+  for (const [channel, instrument] of [...map.entries()].sort((a, b) => a[0] - b[0])) {
+    channels.push({
+      channel,
+      name: instrument.name,
+      format: instrument.format,
+      loaded: Boolean(instrument.loaded),
+      ready: rackReady.get(channel) ?? null,
+    });
+  }
+  return { available: Boolean(port), through: port?.through ?? '', channels, warming };
 }
 
 // Scanning ALSA on every stream tick would be wasteful; the device list only
@@ -165,37 +264,29 @@ const PORTS_TTL_MS = 2000;
 export function getServerPortsInfo(force = false): ServerPortInfo[] {
   if (!force && portsCache && Date.now() - portsCache.at < PORTS_TTL_MS) return portsCache.ports;
 
-  const configPorts = readConfigYaml();
+  const { rack } = readRackChannels();
+  const through = rack?.ports?.[0]?.through ?? '';
+  const channelNames: Record<number, string> = {};
+  for (const [channel, instrument] of rackChannelMap(rack)) channelNames[channel] = instrument.name;
+
   const result: ServerPortInfo[] = [
-    { id: WEBAUDIO_ID, name: WEBAUDIO_ID, rawName: WEBAUDIO_ID, mpe: false, channels: {} },
+    { id: WEBAUDIO_ID, name: WEBAUDIO_ID, rawName: WEBAUDIO_ID, mpe: false, channels: {}, rack: false },
   ];
 
   try {
+    ensureStatusListener();
     const outputs = easymidi?.getOutputs?.() ?? [];
     for (const rawOutput of outputs) {
-      // config.yaml keys the friendly names off the stable part of the ALSA
-      // string ("Midi Through Port-0"), not the whole "client:port 14:0" form.
-      let matchedConfig: ConfigPort | undefined;
-      let matchedKey = rawOutput;
-      for (const [key, conf] of Object.entries(configPorts)) {
-        if (rawOutput.includes(key) || key.includes(rawOutput)) {
-          matchedConfig = conf;
-          matchedKey = key;
-          break;
-        }
-      }
-
-      const channelsMap: Record<number, string> = {};
-      for (const [ch, name] of Object.entries(matchedConfig?.channels ?? {})) {
-        channelsMap[Number(ch)] = String(name);
-      }
-
+      // ALSA decorates the name ("Midi Through:Midi Through Port-0 14:0");
+      // the rack names the stable part of it.
+      const isRack = Boolean(through) && rawOutput.includes(through);
       result.push({
         id: rawOutput,
-        name: matchedConfig?.name || rawOutput,
-        rawName: matchedKey,
-        mpe: Boolean(matchedConfig?.mpe),
-        channels: channelsMap,
+        name: isRack ? `${rack!.ports[0].port} (${through})` : rawOutput,
+        rawName: rawOutput,
+        mpe: false,
+        channels: isRack ? channelNames : {},
+        rack: isRack,
       });
     }
   } catch (err) {
@@ -204,6 +295,11 @@ export function getServerPortsInfo(force = false): ServerPortInfo[] {
 
   portsCache = { at: Date.now(), ports: result };
   return result;
+}
+
+/** The server's output whose name carries the rack's loopback, if any. */
+function rackPortId(): string | null {
+  return getServerPortsInfo().find((p) => p.rack)?.id ?? null;
 }
 
 // ──────────────────────────── transport state ────────────────────────────
@@ -249,6 +345,7 @@ export function snapshot(): ServerSnapshot {
     positionBeats: positionBeats(),
     totalBeats: active?.totalBeats ?? 0,
     prepared: preparedStatus(),
+    rack: rackSnapshot(),
     error: state.error,
   };
 }
@@ -306,6 +403,8 @@ interface Target {
   portId: string;
   channel: number; // 0-15
   mpe: boolean;
+  /** The port is a jukebox rack: patches and readiness apply. */
+  rack: boolean;
 }
 
 export interface ServerRoute {
@@ -375,6 +474,7 @@ function resolveTargets(
       portId,
       channel: (((route?.channel ?? track.channel ?? 1) - 1) & 0x0f),
       mpe: Boolean((port ?? portById.get(portId))?.mpe),
+      rack: Boolean((port ?? portById.get(portId))?.rack),
     };
   });
 }
@@ -409,6 +509,12 @@ interface Plan {
   /** (port → channels) that carry CC7, so a volume move can reach them. */
   volumeChannels: Map<string, Set<number>>;
   audioTrackNames: string[];
+  /**
+   * What the rack has to have in place before the clock starts: the patch
+   * each channel should be switched to (or null to leave it), for every rack
+   * channel the pass plays. Warmed and waited on by playOnServer.
+   */
+  rackChannels: Map<number, number | null>;
 }
 
 interface PreparedAudio {
@@ -543,6 +649,7 @@ function buildPlan(opts: {
   const zoneInitPorts = new Set<string>();
   // Which (port, channel) pairs are live, so a volume move can reach them.
   const volumeChannels = new Map<string, Set<number>>();
+  const rackChannels = new Map<number, number | null>();
 
   const markVolumeChannel = (portId: string, channel: number) => {
     let set = volumeChannels.get(portId);
@@ -559,6 +666,13 @@ function buildPlan(opts: {
     const controlCh = target.mpe ? MPE_MASTER_CH : target.channel;
     if (target.mpe) zoneInitPorts.add(target.portId);
     markVolumeChannel(target.portId, controlCh);
+    if (target.rack && !target.mpe) {
+      // A declared patch wins over another track's silence on the same channel.
+      const declared = track.patch ?? null;
+      if (declared !== null || !rackChannels.has(target.channel + 1)) {
+        rackChannels.set(target.channel + 1, declared);
+      }
+    }
 
     // CC7 carries the master volume. Everything else — expression, pedal,
     // playmode, bow pressure — is the composer's data and is sent verbatim.
@@ -658,6 +772,7 @@ function buildPlan(opts: {
     midiPortIds,
     volumeChannels,
     audioTrackNames,
+    rackChannels,
   };
 }
 
@@ -760,6 +875,55 @@ export function prepareOnServer(
   return entry.ready;
 }
 
+/** How long a bridged plugin may take to come up before we stop waiting. */
+const WARM_TIMEOUT_MS = 45_000;
+
+/**
+ * Switch patches, ask the rack to load what the pass needs, and wait for the
+ * readiness reports. Resolves with the channels that never answered.
+ *
+ * Reports arrive on the status listener the server keeps open; a channel the
+ * rack already reported ready is not waited on unless it is being repatched,
+ * since a Program Change takes it through `0` on the way to its new `127`.
+ */
+async function warmRack(output: MidiOutput, channels: Map<number, number | null>): Promise<number[]> {
+  const pending = new Set<number>();
+  for (const [channel, patch] of channels) {
+    if (patch !== null) {
+      const [status, program] = patchMessage(channel, patch);
+      output.send('program', { number: program, channel: status & 0x0f } as any);
+      rackReady.set(channel, false);
+    }
+    if (rackReady.get(channel) !== true) pending.add(channel);
+  }
+  for (const channel of pending) {
+    const [status, controller, value] = readinessRequest(channel, true);
+    output.send('cc', { controller, value, channel: status & 0x0f } as any);
+  }
+  if (!pending.size) return [];
+
+  warming = [...pending].sort((a, b) => a - b);
+  broadcast();
+  const started = Date.now();
+  try {
+    while (pending.size && Date.now() - started < WARM_TIMEOUT_MS) {
+      for (const channel of pending) if (rackReady.get(channel)) pending.delete(channel);
+      if (pending.size) {
+        const next = [...pending].sort((a, b) => a - b);
+        if (next.join() !== warming.join()) {
+          warming = next;
+          broadcast();
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    }
+  } finally {
+    warming = [];
+    broadcast();
+  }
+  return [...pending].sort((a, b) => a - b);
+}
+
 /**
  * Start a prepared pass: open the ports, start the clock, hand the finished
  * PCM to the sink. Nothing is compiled or rendered here — the await below is a
@@ -806,6 +970,22 @@ export async function playOnServer(opts: {
   }
 
   const volumeChannels = plan.volumeChannels;
+
+  // ── get the rack ready ──
+  // A lazy rack swallows the notes played while an instrument loads, so the
+  // clock does not start until every channel the score uses has answered
+  // CC 119 = 127 — or the wait has run out, in which case it starts anyway
+  // and says so. Patches go first: a Program Change re-points the channel,
+  // and it is the new instrument's readiness that matters.
+  const rackId = rackPortId();
+  const rackOutput = rackId ? outputs.get(rackId) : undefined;
+  if (rackOutput && plan.rackChannels.size) {
+    const late = await warmRack(rackOutput, plan.rackChannels);
+    if (late.length) {
+      state.error = `the rack did not report channel${late.length > 1 ? 's' : ''} ${late.join(', ')} ready in time — playing anyway`;
+      broadcast();
+    }
+  }
 
   // ── run it ──
   let stopped = false;
@@ -997,33 +1177,46 @@ function readBody(req: IncomingMessage): Promise<any> {
   });
 }
 
+const VPO_MIME: Record<string, string> = {
+  '.sfz': 'text/plain; charset=utf-8',
+  '.wav': 'audio/wav',
+  '.flac': 'audio/flac',
+  '.ogg': 'audio/ogg',
+};
+
 /**
- * What the VST rack on this machine says it is hosting.
+ * The VPO library, served to the browser one file at a time.
  *
- * The studio cannot discover this for itself: which plugin ended up on which
- * channel of which port is known only to the rack that loaded them, and a
- * MIDI cable carries no way to ask. So the rack writes it down — jukebox
- * publishes `~/.cache/jukebox/surfaces.json` on every change, next to the
- * `channels.json` it already wrote for the same reason — and this hands it to
- * the browser.
- *
- * Absent file is the normal state, not an error: it means no rack is running,
- * and the panel says so rather than showing an empty form.
+ * The studio's sampler reads the same `.sfz` programs the rack does and
+ * fetches each `.wav` the score turns out to need — nothing is bundled, and
+ * a score that plays one flute note downloads one flute note. The files
+ * never change, so the browser is told to keep them.
  */
-function readSurfaceCatalogue(): {available: boolean; error: string; catalogue: unknown} {
-  const cache = process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache');
-  const file = path.join(cache, 'jukebox', 'surfaces.json');
-  try {
-    return {available: true, error: '', catalogue: JSON.parse(fs.readFileSync(file, 'utf8'))};
-  } catch (err: any) {
-    return {
-      available: false,
-      error: err?.code === 'ENOENT'
-        ? `no rack has published to ${file} — start jukebox to see its instruments`
-        : String(err?.message ?? err),
-      catalogue: null,
-    };
+function serveVpo(url: string, req: IncomingMessage, res: ServerResponse): void {
+  const root = vpoRoot();
+  const relative = decodeURIComponent(url.slice('/vpo/'.length));
+  const ext = path.extname(relative).toLowerCase();
+  if (!VPO_MIME[ext]) {
+    res.statusCode = 403;
+    return void res.end('forbidden');
   }
+  const file = resolveVpoFile(root, relative);
+  let stat: fs.Stats | null = null;
+  try {
+    stat = file ? fs.statSync(file) : null;
+  } catch {
+    stat = null;
+  }
+  if (!file || !stat?.isFile()) {
+    res.statusCode = 404;
+    return void res.end(`not in the VPO library at ${root}`);
+  }
+  res.statusCode = 200;
+  res.setHeader('Content-Type', VPO_MIME[ext]);
+  res.setHeader('Content-Length', String(stat.size));
+  res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  if (req.method === 'HEAD') return void res.end();
+  fs.createReadStream(file).pipe(res);
 }
 
 /**
@@ -1039,6 +1232,7 @@ export async function playYamlApiMiddleware(
   next: () => void,
 ): Promise<void> {
   const url = (req.url || '').split('?')[0];
+  if (url.startsWith('/vpo/')) return serveVpo(url, req, res);
   if (!url.startsWith('/api/server-')) return next();
 
   // The unified stream: one snapshot per event, pushed on every change.
@@ -1116,8 +1310,21 @@ export async function playYamlApiMiddleware(
     return json(res, snapshot());
   }
 
-  if (url === '/api/server-surfaces' && req.method === 'GET') {
-    return json(res, readSurfaceCatalogue());
+  /*
+   * Everything the studio needs to know about the rack in one answer: the
+   * channel map, the surfaces, and whether the VPO library is here for the
+   * server's own renders. Live readiness is on the stream, not here.
+   */
+  if (url === '/api/server-rack' && req.method === 'GET') {
+    const channels = readRackChannels();
+    const surfaces = readSurfaceCatalogue();
+    return json(res, {
+      available: Boolean(channels.rack),
+      error: channels.error || surfaces.error,
+      rack: channels.rack,
+      catalogue: surfaces.catalogue,
+      vpo: { available: fs.existsSync(vpoRoot()), root: vpoRoot() },
+    });
   }
 
   if (url === '/api/server-stop' && req.method === 'POST') {
@@ -1201,6 +1408,10 @@ export async function playYamlApiMiddleware(
 /** Tear down playback and drop every SSE client. */
 export function shutdownServerPlayback(): void {
   stopServerPlayback();
+  if (statusInput) {
+    try { statusInput.close(); } catch {}
+    statusInput = null;
+  }
   for (const res of clients) try { res.end(); } catch {}
   clients.clear();
   stopTickerIfIdle();

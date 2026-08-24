@@ -10,7 +10,7 @@ export default defineConfig({
       fileName: (format, entryName) => (format === 'es' ? `${entryName}.js` : `${entryName}.cjs`),
     },
     rollupOptions: {
-      external: ['fs', 'path', 'child_process', 'node-web-audio-api', '@play.yaml/core'],
+      external: ['fs', 'os', 'path', 'child_process', 'node-web-audio-api', '@play.yaml/core'],
     },
     target: 'node18',
     minify: false,

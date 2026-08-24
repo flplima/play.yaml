@@ -44,11 +44,9 @@
  *   • Seeking is limited to what the caller asks for at render time.
  *   • Output goes to whatever `aplay` picks; there is no per-track routing to
  *     separate audio devices the way MIDI has per-track ports.
- *   • Sample files must have their MP4 `moov` atom before `mdat`. Browsers
- *     buffer the whole file so they do not care, but Node's decoder streams
- *     and fails outright otherwise — this silently emptied the violin library
- *     until `scripts/faststart-samples.mjs` remuxed it. Run that script after
- *     adding samples.
+ *   • The orchestra is read off disk from the VPO library (`vpoRoot()`), the
+ *     same files jukebox plays; a machine without it renders every track on
+ *     the synth presets.
  *
  * Verified parity against the browser's own render, measured over an identical
  * 4 s window: cello centroid 1313 Hz both sides, piano 674 vs 673 Hz, RMS
@@ -56,12 +54,12 @@
  */
 import { spawn, spawnSync, type ChildProcess } from 'child_process';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import {
-  scheduleSong, songEndBeat, tempoSegments, beatsToSeconds, secondsToBeats,
-  loadSampleLibrary, librariesForTracks, libraryForTrack,
+  scheduleSong, songEndBeat, tempoSegments, beatsToSeconds, secondsToBeats, prepareVpo,
 } from '@play.yaml/core';
-import type { CompiledSong, CompiledTrack, ScheduleInstrument } from '@play.yaml/core';
+import type { CompiledSong, CompiledTrack, SfzAssets } from '@play.yaml/core';
 
 let offlineCtor: any = null;
 let enginePromise: Promise<any> | null = null;
@@ -94,31 +92,63 @@ export async function audioRenderingAvailable(): Promise<boolean> {
 
 // ───────────────────────────────── render ─────────────────────────────────
 
-/** Where the studio's sample libraries live on this machine. */
-function samplesRoot(): string {
-  // The libraries ship with the studio's public assets; the CLI and the dev
-  // server run from different working directories, hence the search.
-  const candidates = [
-    process.env.PLAY_YAML_SAMPLES,
-    path.resolve(process.cwd(), 'public/samples'),
-    path.resolve(process.cwd(), 'packages/web/public/samples'),
-    path.resolve(process.cwd(), '../web/public/samples'),
-    path.resolve(process.cwd(), '../../packages/web/public/samples'),
-  ].filter(Boolean) as string[];
-  return candidates.find((dir) => fs.existsSync(dir)) ?? candidates[candidates.length - 1];
+/**
+ * Where the Virtual Playing Orchestra lives on this machine.
+ *
+ * The same directory jukebox's `jukebox.yaml` points its VPO channels at, so
+ * the server's own renders and the rack play identical recordings. Override
+ * with PLAY_YAML_VPO for a library kept elsewhere.
+ */
+export function vpoRoot(): string {
+  return path.resolve(
+    process.env.PLAY_YAML_VPO ?? path.join(os.homedir(), 'samples/VPO/Virtual-Playing-Orchestra3'),
+  );
 }
 
 /**
- * Read a sample library off disk instead of over HTTP, so the server plays the
- * same recordings the browser fetches rather than falling back to the
- * oscillator presets.
+ * A library path → the file on disk, or null if there is none.
+ *
+ * Case-insensitive on purpose: two dozen of VPO's programs spell a directory
+ * `samples/` that the library ships as `Samples/`, which a Windows sampler
+ * never notices and a Linux one turns into silence. Each segment is matched
+ * exactly first and by case-folded name second, so the exact library never
+ * pays for the fix. Anything that escapes the root resolves to null.
  */
-function diskAssets(root: string) {
+export function resolveVpoFile(root: string, relative: string): string | null {
+  const parts = relative.replace(/\\/g, '/').split('/').filter((p) => p && p !== '.');
+  if (parts.some((p) => p === '..')) return null;
+  let current = root;
+  for (const part of parts) {
+    const exact = path.join(current, part);
+    if (fs.existsSync(exact)) {
+      current = exact;
+      continue;
+    }
+    let entries: string[];
+    try {
+      entries = fs.readdirSync(current);
+    } catch {
+      return null;
+    }
+    const folded = part.toLowerCase();
+    const match = entries.find((e) => e.toLowerCase() === folded);
+    if (!match) return null;
+    current = path.join(current, match);
+  }
+  return current;
+}
+
+/** The library as the sampler reads it: text and bytes by library path. */
+function diskAssets(root: string): SfzAssets {
+  const file = (relative: string) => {
+    const resolved = resolveVpoFile(root, relative);
+    if (!resolved) throw new Error(`${relative} is not in the VPO library at ${root}`);
+    return resolved;
+  };
   return {
-    manifest: async (name: string) =>
-      JSON.parse(await fs.promises.readFile(path.join(root, name, 'manifest.json'), 'utf8')),
-    audio: async (name: string, file: string) => {
-      const buf = await fs.promises.readFile(path.join(root, name, file));
+    text: (relative) => fs.promises.readFile(file(relative), 'utf8'),
+    audio: async (relative) => {
+      const buf = await fs.promises.readFile(file(relative));
       return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
     },
   };
@@ -162,9 +192,9 @@ function longestNoteSec(song: CompiledSong, segments: ReturnType<typeof tempoSeg
 /**
  * Prepare a score for streamed rendering.
  *
- * Sample libraries are decoded once, against a scratch context, and the
- * resulting AudioBuffers are reused by every chunk — they are not bound to the
- * context that decoded them, and re-decoding per chunk would cost more than
+ * The orchestra is loaded once, against a scratch context, and its decoded
+ * samples are reused by every chunk — an AudioBuffer is not bound to the
+ * context that decoded it, and re-decoding per chunk would cost more than
  * the render.
  */
 export async function createChunkedRender(
@@ -179,22 +209,13 @@ export async function createChunkedRender(
   const durationSec =
     Math.max(0, beatsToSeconds(segments, songEndBeat(song)) - startSec) + TAIL_SEC;
 
-  const tracks = song.tracks.filter((t) => !opts.onlyTracks || opts.onlyTracks.includes(t.name));
-  const assets = diskAssets(samplesRoot());
   const scratch = new offlineCtor(1, SAMPLE_RATE, SAMPLE_RATE);
-  const samplers = new Map<string, ScheduleInstrument | null>();
-  await Promise.all(
-    [...librariesForTracks(tracks)].map(async (name) => {
-      try {
-        samplers.set(name, await loadSampleLibrary(scratch, name, assets));
-      } catch (err) {
-        // A missing library is not fatal: that track falls back to its synth
-        // preset, exactly as the browser does when a fetch fails.
-        console.warn(`[server-audio] sample library "${name}" unavailable:`, err);
-        samplers.set(name, null);
-      }
-    }),
-  );
+  // A machine without the library renders on the synth presets, as the
+  // browser does when a fetch fails; a track the orchestra cannot load says
+  // so in the log rather than failing the render.
+  const orchestra = fs.existsSync(vpoRoot())
+    ? await prepareVpo(scratch, diskAssets(vpoRoot()), song, { onlyTracks: opts.onlyTracks })
+    : new Map();
 
   const preRollSec = Math.min(PRE_ROLL_MAX, longestNoteSec(song, segments) + TAIL_SEC);
   const chunkCount = Math.max(1, Math.ceil(durationSec / CHUNK_SEC));
@@ -223,7 +244,7 @@ export async function createChunkedRender(
       fromBeat: windowFromBeat,
       maxBeats: windowToBeat,
       onlyTracks: opts.onlyTracks,
-      instrumentFor: (track: CompiledTrack) => samplers.get(libraryForTrack(track) ?? '') ?? null,
+      instrumentFor: (track: CompiledTrack) => orchestra.get(track.name) ?? null,
     });
 
     const buffer = await ctx.startRendering();

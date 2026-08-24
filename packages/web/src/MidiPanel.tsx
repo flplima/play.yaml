@@ -14,12 +14,17 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
-import { IDLE_PREPARED, type PreparedStatus, type ServerPortInfo } from './serverPlayback';
+import {
+  IDLE_PREPARED, NO_RACK, type PreparedStatus, type RackSnapshot, type ServerPortInfo,
+} from './serverPlayback';
 
 /** A distinct `sample:` from the current score, with the channel it declares. */
 export interface SampleEntry {
   name: string;
+  /** The score's own channel for it. */
   defaultChannel: number;
+  /** Where the rack's map says it belongs, when the rack hosts something like it. */
+  rackChannel?: number;
 }
 
 interface MidiPanelProps {
@@ -67,6 +72,15 @@ interface MidiPanelProps {
   serverAvailable?: boolean;
   serverError?: string | null;
   onServerTestNote?: (device: string, channel: number) => void;
+
+  /**
+   * The jukebox rack, whichever side is playing: its channel map and what it
+   * has reported ready. Channel pickers on the rack's port are labelled from
+   * it, and a routed instrument lands on the channel the map suggests.
+   */
+  rack?: RackSnapshot;
+  /** True when `outputId` is the rack's port. */
+  isRackPort?: (outputId: string) => boolean;
 }
 
 const CHANNELS = Array.from({ length: 16 }, (_, i) => i + 1);
@@ -148,7 +162,10 @@ export default function MidiPanel({
   serverAvailable = false,
   serverError = null,
   onServerTestNote,
+  rack = NO_RACK,
+  isRackPort = () => false,
 }: MidiPanelProps) {
+  const rackByChannel = new Map(rack.channels.map((c) => [c.channel, c]));
   const outputById = new Map(midi.outputs.map((o) => [o.id, o]));
   const portsInfoById = new Map(serverPortsInfo.map((p) => [p.id, p]));
   const preparedState = preparedLabelFor(prepared, clientAudioReady, speaker);
@@ -179,7 +196,7 @@ export default function MidiPanel({
       return Array.from(map.values());
     }
 
-    // WebMIDI outputs, wearing their config.yaml names where one matches.
+    // WebMIDI outputs, wearing the server's names for them where one matches.
     for (const o of midi.outputs) {
       const match = findPortInfo(o.id) || findPortInfo(o.name || undefined);
       map.set(o.id, {
@@ -430,9 +447,19 @@ export default function MidiPanel({
       <div className="border-b border-border px-4 py-3">
         <h2 className="text-sm font-semibold">MIDI routing</h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          Send each instrument to a MIDI in. Unrouted ones play on the built-in synth.
+          Send each instrument to a MIDI in. Unrouted ones play on the built-in orchestra.
         </p>
         {status && <p className="mt-2 text-xs text-warning">{status}</p>}
+        {rack.available && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Rack on <span className="font-mono">{rack.through}</span>
+            {rack.warming.length > 0 && (
+              <span className="ml-1 text-warning">
+                · warming ch {rack.warming.join(', ')}…
+              </span>
+            )}
+          </p>
+        )}
         {disabled && (
           <p className="mt-2 rounded-md border border-primary/40 bg-primary/10 px-2 py-1.5 text-xs text-primary">
             Output is set to Built-in — everything plays on the bundled sampler
@@ -451,16 +478,24 @@ export default function MidiPanel({
           <p className="text-xs text-muted-foreground">No instruments in the current score.</p>
         ) : (
           <ul className="space-y-3">
-            {samples.map(({ name, defaultChannel }) => {
+            {samples.map(({ name, defaultChannel, rackChannel }) => {
               const route = routes[name];
               const selectedPortInfo = route ? findPortInfo(route.outputId) : undefined;
               const isMpe = selectedPortInfo?.mpe === true;
-              const channelEntries = selectedPortInfo?.channels && Object.keys(selectedPortInfo.channels).length > 0
-                ? Object.entries(selectedPortInfo.channels).map(([chStr, instName]) => ({
-                    ch: Number(chStr),
-                    label: `ch ${chStr}: ${instName}`,
-                  }))
+              const onRack = Boolean(route && isRackPort(route.outputId));
+              // On the rack's port every channel is named by what is on it,
+              // and marked with what the rack last said about it: ● will
+              // sound, ○ not loaded yet (a lazy rack loads it on the first
+              // note — or on Play, which warms it first).
+              const channelEntries = onRack && rack.channels.length > 0
+                ? CHANNELS.map((ch) => {
+                    const entry = rackByChannel.get(ch);
+                    if (!entry) return { ch, label: `ch ${ch}: —` };
+                    const mark = entry.ready === true ? '●' : entry.ready === false ? '○' : '◐';
+                    return { ch, label: `ch ${ch}: ${entry.name} ${mark}` };
+                  })
                 : CHANNELS.map((ch) => ({ ch, label: `ch ${ch}` }));
+              const suggested = rackChannel ?? defaultChannel;
 
               return (
                 <li key={name}>
@@ -475,12 +510,12 @@ export default function MidiPanel({
                       value={route?.outputId ?? BUILTIN}
                       onValueChange={(value) => {
                         const outputId = value === BUILTIN ? '' : value;
-                        onRouteChange(
-                          name,
-                          outputId
-                            ? { outputId, channel: route?.channel ?? defaultChannel }
-                            : undefined,
-                        );
+                        // A route onto the rack lands where the rack's map
+                        // says this instrument lives; anywhere else keeps
+                        // the score's own channel.
+                        const channel = route?.channel
+                          ?? (outputId && isRackPort(outputId) ? suggested : defaultChannel);
+                        onRouteChange(name, outputId ? { outputId, channel } : undefined);
                       }}
                     >
                       <SelectTrigger
@@ -501,7 +536,7 @@ export default function MidiPanel({
                     </Select>
                     <Select
                       disabled={!route || isMpe}
-                      value={String(isMpe ? 1 : (route?.channel ?? defaultChannel))}
+                      value={String(isMpe ? 1 : (route?.channel ?? suggested))}
                       onValueChange={(value) =>
                         route && onRouteChange(name, { ...route, channel: Number(value) })
                       }

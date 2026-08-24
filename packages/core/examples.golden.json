@@ -9,7 +9,7 @@
     "tracks": 1,
     "notes": 549,
     "lengthBeats": 140,
-    "sha256": "fb9b0ed634c66f0e232dd111bee5526b08a4f9b267bd3a8d0ba17d4d73ff8064"
+    "sha256": "74e8a7b252c0f39c381b058529d437d5f6ee4fb3886e85d45f6af13334fd77dd"
   },
   "bwv881.play.yaml": {
     "tracks": 2,
@@ -39,7 +39,7 @@
     "tracks": 2,
     "notes": 47,
     "lengthBeats": 32,
-    "sha256": "02a7048e462309937911930742dd080f5eef4e54559c2b8a9eb82f3527d2a5df"
+    "sha256": "5a9b85386e5d939eb1db221068bb172fc68c8f2dc35c405a3dbbf8771ec692b3"
   },
   "fur-elise.play.yaml": {
     "tracks": 2,
@@ -57,7 +57,7 @@
     "tracks": 4,
     "notes": 227,
     "lengthBeats": 72,
-    "sha256": "692e9eecf714e91d640dc9f54249f4248086977123061b888adf7f020b793a76"
+    "sha256": "6693f1641816a139d08e7df2b4fbf655f03d524308b6e52ff19c0c1976d110b5"
   },
   "lost-woods.play.yaml": {
     "tracks": 3,
@@ -81,7 +81,7 @@
     "tracks": 2,
     "notes": 294,
     "lengthBeats": 52,
-    "sha256": "a8b3ef73bf3d66c5624ffafd35a597ceaca58dec059739ca3125393c5eb3027d"
+    "sha256": "777b25a44a1abd847b15039ad531d36857564a875f7202d52f4f4029e5081e59"
   },
   "preciso-me-encontrar.play.yaml": {
     "tracks": 2,
@@ -105,7 +105,7 @@
     "tracks": 1,
     "notes": 1435,
     "lengthBeats": 410,
-    "sha256": "0fdac693c06c06c6220310e677cfc4feaae09cacda325271eddb92fe68032065"
+    "sha256": "b3b7c12738ee0b80f463a6b89dab458d6b3e20c815b743972718c0d895274d59"
   },
   "sur-le-fil.play.yaml": {
     "tracks": 1,
@@ -117,7 +117,7 @@
     "tracks": 1,
     "notes": 53,
     "lengthBeats": 136,
-    "sha256": "d69f4e163f5adc3e27cca56d0c820d7d528c589e32d2c4e0edb0e267b07dd5c1"
+    "sha256": "625abb49eeda434092ecf63c970fcfa3b7eb703d4063f67121a585c5abacbcb3"
   },
   "take-5.play.yaml": {
     "tracks": 4,
@@ -135,19 +135,19 @@
     "tracks": 2,
     "notes": 716,
     "lengthBeats": 156,
-    "sha256": "85e0bd129a762575d6f8ee8e5f577d45b3e57073a31a599fdcfc5a4cdb0ec335"
+    "sha256": "959b3d2c5a4d9e74fa6fd04d229eb564ae20ace7b2e26d979a394bf067b09de4"
   },
   "songs/ave_maria_gounod_piano_cello/ave_maria_gounod_piano_cello.play.yaml": {
     "tracks": 2,
     "notes": 716,
     "lengthBeats": 156,
-    "sha256": "26e54aaba0ab009f700fe62a354efafd1b700371e36c31242e0d538a11d834e0"
+    "sha256": "fddc413e4f5430e57fc57d330430dc9a7cb686a05388c918dab90f06270a2143"
   },
   "songs/ave_maria_gounod_roli/ave_maria_gounod_roli.play.yaml": {
     "tracks": 2,
     "notes": 716,
     "lengthBeats": 156,
-    "sha256": "eb4cc7f9f8d512655c11377555061e2f6c874556c6f02161dadb9b6c678e10b5"
+    "sha256": "1c4575d1674c964d570e2f2a6d7cfda86c74f0b0e1b4116127d55cb55bc69c53"
   },
   "songs/bachianas-brasileiras-5/bachianas-brasileiras-5.play.yaml": {
     "tracks": 4,

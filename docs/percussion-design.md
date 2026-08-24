@@ -100,19 +100,15 @@ in core exposes the mapping to any backend.
   noise hats with open/closed envelope lengths, two-detuned-squares cowbell,
   tuned sine toms/congas, noise-burst clap…). Runs anywhere Web Audio does,
   including the CLI through webaudio-node.
-- **Web sampled library** — `packages/web/public/samples/drums/`, built by
-  `scripts/fetch-drums.mjs` from VSCO 2 CE + VCSL (CC0): 114 hits covering 32
-  GM keys, velocity-layered with round-robins (manifest format below). Keys
-  without recordings fall through to `playDrum` *per note*, so one score can
-  mix sampled congas with a synthesized cuica.
+- **The orchestra's percussion** — `core/vpo.ts` maps GM keys onto VPO's
+  `Percussion/bassdrum-snare-cymbals.sfz` and `Percussion/misc.sfz` (bass
+  drums, snares with round-robin hands, cymbals, tambourine, cowbell,
+  congas, claves, woodblocks, triangle, sleigh bells, bell tree…) and plays
+  them through the SFZ sampler, samples fetched on demand. Keys the orchestra
+  has no recording for (hi-hats, toms, timbales, cuica…) fall through to
+  `playDrum` *per note*, so one score can mix a real snare with a synthesized
+  hi-hat.
 
-Drum manifest format:
-
-```json
-{ "kit": true,
-  "notes": { "36": [ { "vel": 45, "url": "bd_pp_rr1.m4a" },
-                     { "vel": 127, "url": "bd_ff_rr1.m4a" } ] } }
-```
 
 `vel` is the top of the velocity layer; equal `vel` entries are round-robins
 picked at random. Playback shades gain inside the chosen layer so repeated

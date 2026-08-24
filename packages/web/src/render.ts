@@ -1,6 +1,6 @@
 /**
  * render.ts — offline render of a compiled song with the built-in sounds
- * (samplers + synth presets), and an MP3 encoder for the Download button.
+ * (the orchestra + synth presets), and an MP3 encoder for the Download button.
  *
  * Unlike live playback (Tone.js transport), this schedules directly in
  * seconds on an OfflineAudioContext, using core's tempo mapping — so tempo
@@ -8,20 +8,12 @@
  */
 
 import { Mp3Encoder } from '@breezystack/lamejs';
-import {
-  CompiledSong, CompiledTrack, beatsToSeconds, librariesForTracks, libraryForTrack,
-  scheduleSong, tempoSegments,
-} from '@play.yaml/core';
-import { loadInstrument, Sampler } from './sampler';
+import { CompiledSong, beatsToSeconds, scheduleSong, tempoSegments } from '@play.yaml/core';
+import { loadOrchestra } from './vpo';
 
 const SAMPLE_RATE = 44100;
 /** Ring-out after the last note, in seconds. */
 const TAIL = 1.5;
-
-/** The sampled libraries a track set needs (kits share the drum library). */
-export function librariesFor(tracks: CompiledTrack[]): Set<string> {
-  return librariesForTracks(tracks);
-}
 
 /** Render the whole song (or its first `maxBeats`) to an AudioBuffer. */
 export async function renderSong(
@@ -44,16 +36,13 @@ export async function renderSong(
   }
   const ctx = new OfflineAudioContext(2, Math.ceil((endSec + TAIL) * SAMPLE_RATE), SAMPLE_RATE);
 
-  const samplers = new Map<string, Sampler | null>();
-  await Promise.all([...librariesFor(tracks)].map(async (name) => {
-    samplers.set(name, await loadInstrument(ctx, name));
-  }));
+  const orchestra = await loadOrchestra(ctx, song, { onlyTracks: opts.onlyTracks });
 
   scheduleSong(ctx, ctx.destination, song, {
     originTime: 0,
     maxBeats: opts.maxBeats,
     onlyTracks: opts.onlyTracks,
-    instrumentFor: (track) => samplers.get(libraryForTrack(track) ?? '') ?? null,
+    instrumentFor: (track) => orchestra.get(track.name) ?? null,
   });
 
   return ctx.startRendering();

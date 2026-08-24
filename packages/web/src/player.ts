@@ -1,9 +1,11 @@
 import * as Tone from 'tone';
 import type { CompiledSong } from '@play.yaml/core';
-import { detectPreset, metronomeClick, panicMessages, playDrum, playNote } from '@play.yaml/core';
 import {
-  createTrackBus, DRUM_LIBRARY, loadInstrument, Sampler, SAMPLE_LIBRARIES, TrackBus,
-} from './sampler';
+  createTrackBus, detectPreset, metronomeClick, panicMessages, playDrum, playNote,
+  type ScheduleInstrument, type TrackBus,
+} from '@play.yaml/core';
+import { loadOrchestra } from './vpo';
+import { findRackInput, isRackOutput, warmRack, type WarmProgress } from './rack';
 
 /** Where a sample (the DSL's instrument name) should be routed. */
 export interface MidiRoute {
@@ -17,6 +19,17 @@ export type RouteMap = Record<string, MidiRoute | undefined>;
 /** The routing key for a compiled track: its kit, else its sample. */
 export function routeKey(track: { sample?: string; kit?: string }): string {
   return track.kit ?? track.sample ?? 'piano';
+}
+
+/** What the player needs to know about a jukebox rack among the outputs. */
+export interface RackOptions {
+  /** The rack's loopback — outputs whose name carries it are the rack. */
+  through: string;
+  /** This browser's MIDI inputs, to listen for readiness reports on. */
+  inputs: MIDIInput[];
+  /** What the rack has already reported; updated as more arrives. */
+  ready: Map<number, boolean>;
+  onWarming?: (progress: WarmProgress) => void;
 }
 
 export interface PlaybackHandle {
@@ -104,9 +117,34 @@ export async function playSong(
     volume?: number;
     /** Live switch, checked on every beat, so it can be toggled mid-playback. */
     metronome?: () => boolean;
+    rack?: RackOptions;
   } = {},
 ): Promise<PlaybackHandle> {
   await Tone.start(); // Resume the audio context (requires a user gesture).
+
+  /*
+   * A jukebox rack loads lazily and swallows the notes played while an
+   * instrument comes up, so before the transport starts every rack channel
+   * the score plays is switched to its patch, asked to load, and waited for.
+   * Done here, before the transport is touched, because the wait can be half
+   * a minute for a bridged plugin and nothing should be ticking meanwhile.
+   */
+  if (opts.rack) {
+    const rackChannels = new Map<number, number | null>();
+    let rackOutput: MIDIOutput | null = null;
+    for (const track of song.tracks) {
+      const route = routes[routeKey(track)];
+      const output = route && midiOutputs.get(route.outputId);
+      if (!output || !isRackOutput(output, opts.rack.through)) continue;
+      rackOutput = output;
+      const declared = track.patch ?? null;
+      if (declared !== null || !rackChannels.has(route.channel)) rackChannels.set(route.channel, declared);
+    }
+    if (rackOutput && rackChannels.size) {
+      const input = findRackInput(opts.rack.inputs, opts.rack.through);
+      await warmRack(rackOutput, input, rackChannels, opts.rack.ready, { onProgress: opts.rack.onWarming });
+    }
+  }
 
   const transport = Tone.getTransport();
   transport.stop();
@@ -130,7 +168,8 @@ export async function playSong(
   const noteTimers = new Set<number>();
   const activeNotes = new Set<string>(); // "outputId,channel,note"
   const expressionByChannel = new Map<string, number>(); // "outputId,channel" → last CC value
-  const samplers = new Map<string, Sampler | null>();
+  /** The orchestra for the song being played, by track name. */
+  let orchestra = new Map<string, ScheduleInstrument>();
 
   // Generation bookkeeping for hot-swap.
   let generation = 0;
@@ -169,25 +208,18 @@ export async function playSong(
     noteTimers.add(timer);
   };
 
-  // Sampled instruments load once (a few MB each, then browser-cached) before
-  // their notes are scheduled, so first notes aren't fallback oscillators.
-  // Every sampled kit shares the drum library; the 808 kit is always
-  // synthesized.
-  const loadSamplersFor = async (s: CompiledSong) => {
-    const wanted = new Set<string>();
-    for (const track of s.tracks) {
-      const route = routes[routeKey(track)];
-      if (route && midiOutputs.get(route.outputId)) continue;
-      if (track.kit) {
-        if (track.kit !== '808') wanted.add(DRUM_LIBRARY);
-      } else {
-        const library = SAMPLE_LIBRARIES[track.sample?.toLowerCase() ?? ''];
-        if (library) wanted.add(library);
-      }
-    }
-    await Promise.all([...wanted].filter((n) => !samplers.has(n)).map(async (name) => {
-      samplers.set(name, await loadInstrument(ctx, name));
-    }));
+  // The orchestra loads before any note is scheduled — only the programs
+  // and samples this score's built-in tracks reach, fetched on demand and
+  // cached after — so first notes are never fallback oscillators. Tracks
+  // routed out to MIDI need nothing.
+  const loadOrchestraFor = async (s: CompiledSong) => {
+    const builtIn = s.tracks
+      .filter((track) => {
+        const route = routes[routeKey(track)];
+        return !(route && midiOutputs.get(route.outputId));
+      })
+      .map((track) => track.name);
+    orchestra = await loadOrchestra(ctx, s, { onlyTracks: builtIn });
   };
 
   /**
@@ -269,9 +301,7 @@ export async function playSong(
           usesCC: new Set((track.controls ?? []).map((c) => c.cc)),
         });
         buses.push(bus);
-        const sampled = track.kit
-          ? (track.kit !== '808' ? samplers.get(DRUM_LIBRARY) : null)
-          : samplers.get(SAMPLE_LIBRARIES[track.sample?.toLowerCase() ?? '']) || null;
+        const sampled = orchestra.get(track.name) ?? null;
 
         schedulers.push((from, to) => {
           for (const control of track.controls ?? []) {
@@ -389,7 +419,7 @@ export async function playSong(
   let finished!: () => void;
   const done = new Promise<void>((resolve) => (finished = resolve));
 
-  await loadSamplersFor(song);
+  await loadOrchestraFor(song);
   const first = buildGeneration(song, 0, true);
   first.scheduleWindow(0, Infinity);
 
@@ -413,7 +443,7 @@ export async function playSong(
     pendingSplice = null;
     const gen = ++generation;
 
-    await loadSamplersFor(next);
+    await loadOrchestraFor(next);
     if (stopped || gen !== generation) return null;
 
     // Near the end of a non-looping song, the old cleanup could stop the

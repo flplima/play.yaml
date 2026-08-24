@@ -6,16 +6,54 @@ A project dedicated to the `play.yaml` format — a human-readable, developer-fr
 
 This is a monorepo managed with npm workspaces:
 
-- `packages/core/`: The `play.yaml` engine — dependency-free and environment-free (no Node or DOM APIs), so it runs identically in Node and browsers. Layered as: `theory` (pitch/scale/meter math) → `vocabulary` (dynamics, articulations, tempo marks, techniques, named controls) → `set` (the `set:` shorthand) → `tokens` (measure tokenizing) → `song` (the compiler), plus the zero-dep YAML subset (`yaml`), the `.mid` encoder (`exporter`), the `.mid` decoder + musical fidelity comparator (`fidelity`), beat→seconds tempo mapping (`time`), the shared Web Audio instrument presets (`synth`) and the VST-rack control surfaces (`surface` — see below). Everything re-exports from the package root.
+- `packages/core/`: The `play.yaml` engine — dependency-free and environment-free (no Node or DOM APIs), so it runs identically in Node and browsers. Layered as: `theory` (pitch/scale/meter math) → `vocabulary` (dynamics, articulations, tempo marks, techniques, named controls) → `set` (the `set:` shorthand) → `tokens` (measure tokenizing) → `song` (the compiler), plus the zero-dep YAML subset (`yaml`), the `.mid` encoder (`exporter`), the `.mid` decoder + musical fidelity comparator (`fidelity`), beat→seconds tempo mapping (`time`), the Web Audio synth presets (`synth`), the SFZ parser and sampler that play the orchestra (`sfz`, `sfzSampler`, `vpo` — see below), the jukebox rack protocol (`rack`) and the VST control surfaces (`surface`). Everything re-exports from the package root.
 - `packages/cli/`: Command-line tools built on core: `play-yaml` exports scores to `.mid`; `play-yaml-play` plays them through the speakers (via `webaudio-node`) or streams live MIDI — notes, the score's CC automation and the tempo map — to a virtual MIDI port; `play-yaml-fidelity` scores a `.play.yaml` against a reference `.mid` and flags where they diverge.
-- `packages/web/`: The browser studio (Vite/React): CodeMirror editor with played-note highlighting, Tone.js transport playback with the built-in sampler & synth, per-instrument WebMIDI routing, and the instrument panel (🎛) for tweaking the VSTs a score is playing on. Consumes core by source, so core edits hot-reload without a rebuild. The interface is [shadcn/ui](https://ui.shadcn.com) (Radix primitives, vendored into `src/components/ui/`) on Tailwind v4; every colour comes from the tokens in `src/index.css`, which hold a dark palette in `:root` — the studio is a dark-only tool — and a `.light` block beside it.
+- `packages/web/`: The browser studio (Vite/React): CodeMirror editor with played-note highlighting, Tone.js transport playback on the built-in orchestra & synth, per-instrument WebMIDI routing, and the instrument panel (🎛) for the rack's channels and the VSTs on them. Consumes core by source, so core edits hot-reload without a rebuild. The interface is [shadcn/ui](https://ui.shadcn.com) (Radix primitives, vendored into `src/components/ui/`) on Tailwind v4; every colour comes from the tokens in `src/index.css`, which hold a dark palette in `:root` — the studio is a dark-only tool — and a `.light` block beside it.
+
+### The built-in orchestra
+
+The studio's own sound is the [Virtual Playing Orchestra](http://virtualplaying.com)
+(free, SFZ) — the same library jukebox hosts on its channels 4–6, so a score
+previewed in the browser and the same score on the rack differ in the engine,
+not in the recordings. Nothing is bundled: the dev server serves the library
+off this machine's disk at `/vpo/` (`~/samples/VPO/Virtual-Playing-Orchestra3`,
+or `PLAY_YAML_VPO`), the sampler parses the `.sfz` program a track needs and
+downloads only the samples that track's notes reach. `sample: cello` is a solo
+cello with its pizzicato, tremolo and staccato programs switched in by the
+score's `pizzicato`/`tremolo` words and by note length; `violins`, `horns`
+and the other plurals are the sections; `strings`, `woodwinds`, `brass` are
+the whole families; kit tracks land on the orchestral percussion key by key
+and fall through to the synthesized kit for what an orchestra does not own.
+The sampler honours the library's controller opcodes, so the score's CC
+stream — expression, the mod wheel's attack length and layer crossfades, the
+sustain pedal — shapes the recordings the way it would in a DAW. VPO has no
+piano: `piano`, `keys` and the synth names stay on the oscillator presets.
+`core/src/vpo.ts` is the catalogue, `core/src/sfzSampler.ts` the engine.
+
+### Playing on the rack
+
+A score says what to play; [jukebox](file:///home/felipe/workbench/jukebox)
+says what to play it *on*: one MIDI port, sixteen channels, three instances
+of each plugin — Pianoteq on 1–3, VPO on 4–6, Surge on 7–9, SWAM Cello on
+10–12, ROLI Studio Player on 13–15 — and ROLI Studio Drums on 16. The rack
+publishes that map to `~/.cache/jukebox/channels.json`, and the studio reads
+it: the routing panel names every channel by what is on it and, when a track
+is routed to the rack, lands it where the map says its instrument lives.
+
+The rack is lazy — an instrument loads on its first note and swallows the
+notes played while it loads — so before the transport starts, every channel
+the score plays is asked to load (CC 119 = 100) and its answer (CC 119 = 127)
+waited for; the panel shows which channels are ready and which are still
+warming. A track can also switch its channel to an entry of the rack's patch
+catalogue first, with `patch: 6` (a Program Change; the catalogue is the
+`patches:` list in `jukebox.yaml`). The same handshake runs from the server
+side and from `play-yaml-play --midi`. `core/src/rack.ts` is the protocol.
 
 ### Tweaking the instruments a score plays on
 
-A score says what to play; the instrument panel says what to play it *on*. When
-a rack of real VSTs is listening — [jukebox](file:///home/felipe/workbench/jukebox)
-hosting Pianoteq, SWAM, Surge and ROLI Studio — the panel shows each plugin's
-options as sliders and dropdowns and sends the changes over MIDI.
+The instrument panel (🎛) lists the rack's channels with their readiness and,
+for the selected one, shows the plugin's options as sliders and dropdowns,
+sent over MIDI.
 
 Roughly half of those options are not a control change and cannot be. SWAM
 Cello 3 exposes 2,220 parameters and documents one factory CC mapping; ROLI
@@ -136,25 +174,12 @@ npm run logs:follow  # stream logs live
 npm run dev:stop     # stop the dev server
 ```
 
-It offers a YAML editor with syntax highlighting, the bundled example scores (editable in-session, never persisted), opening/saving local `.play.yaml` files via the File System Access API, playback through a built-in Web Audio engine, and per-instrument routing to your MIDI devices via WebMIDI (with a per-mapping test note). A header toggle picks the output: **Built-in** renders everything in the browser, **MIDI** uses the panel's routes, and **Server** hands the score to the machine running the dev server, so it plays on that machine's speakers or its hardware MIDI ports — which is how a phone or tablet on the LAN drives the rack. The **⬇ MP3** button renders the score offline with the built-in sounds (tempo map included) and downloads it as an MP3.
+It offers a YAML editor with syntax highlighting, the bundled example scores (editable in-session, never persisted), opening/saving local `.play.yaml` files via the File System Access API, playback on the built-in orchestra, and per-instrument routing to your MIDI devices via WebMIDI (with a per-mapping test note). The panel picks the output: **Built-in** renders everything in the browser, **MIDI** uses the panel's routes, and **Server** hands the score to the machine running the dev server, so it plays on that machine's speakers or its hardware MIDI ports — which is how a phone or tablet on the LAN drives the rack. The **⬇ MP3** button renders the score offline with the built-in sounds (tempo map included) and downloads it as an MP3.
 
-To play the studio through real VST instruments (Pianoteq, SWAM, …),
-`scripts/vst-rack.py` runs a tiny headless [Carla](https://kx.studio/Applications:Carla)
-host that scans the machine for instrument plugins (VST2/VST3, AU dirs on
-macOS), loads each behind a MIDI channel filter, and exposes **one MIDI
-input port — one instrument per channel** (`ch 1 → instrument 1`, up to 16):
-
-```bash
-sudo apt install carla pipewire-jack   # Linux; on macOS: Carla.app in /Applications
-python3 scripts/vst-rack.py            # discover, wire, print the channel map, run
-python3 scripts/vst-rack.py --list     # just show what was found
-```
-
-On Linux it auto-wires itself through PipeWire (the browser reaches it via
-the kernel's "Midi Through Port-0" — pick that device in the MIDI panel);
-on macOS Carla's CoreMIDI port shows up directly. Then: **⌁ MIDI** toggle,
-route each track's instrument to the port on its channel, play. The channel
-map is also saved to `~/.cache/play.yaml/vst-rack-channels.json`.
+To play through real VST instruments, boot [jukebox](file:///home/felipe/workbench/jukebox)
+(`./jukebox`), pick its **Midi Through Port-0** in the MIDI panel, and route
+each track's instrument to it — the channel picker is labelled from the
+rack's own map, and each instrument lands on its channel by default.
 
 Server-side playback has an end-to-end test, because every part of it can
 report success while nothing is audible — the transport runs, the HTTP call
@@ -177,11 +202,9 @@ The built-in engine is expressive: every track gets a control bus that performs
 the score's CC stream — expression (CC11) swells through held notes, vibrato
 depth/rate drive a real LFO, bow position (CC74) morphs the tone from
 fingerboard-dark to bridge-nasal, and `pizzicato` / `tremolo` switch playing
-styles. Tracks with `sample: violin` play on a bundled sampled violin (solo
-violin from the CC0 [VSCO 2 Community Edition](https://versilian-studios.com/vsco-community/),
-≈5 MB lazy-loaded: sustain p/f layers, pizzicato, spiccato and tremolo
-recordings, chosen per note from the score's articulation and dynamics). Other
-instruments keep the oscillator presets, shaped by the same bus.
+styles. Orchestral tracks play on the Virtual Playing Orchestra (see above),
+whose programs choose their recordings per note from the same stream; the
+synth names keep the oscillator presets, shaped by the same bus.
 
 ## The DSL Notation
 
@@ -195,7 +218,7 @@ play:
   - "d d c ~"
 ```
 
-That's Twinkle, Twinkle Little Star — 80 bpm, 4/4, piano by default (a built-in synth stands in when the piano sample isn't available).
+That's Twinkle, Twinkle Little Star — 80 bpm, 4/4, piano by default (the built-in synth piano).
 
 ### Measures & equal division
 
@@ -295,7 +318,7 @@ sections:
 See `examples/take-5.play.yaml`: intro with staggered `wait` entries, then
 theme + chorus looping forever.
 
-Built-in samples: `piano`, `keys`, `bass`, `strings`, `violin`, `cello`, `pad`, `flute`, `ocarina`, `lead` — each maps to a General MIDI program for `.mid` export. In the web studio, `piano`, `violin`, `cello`, `flute`/`ocarina` and `bass` play on **real recorded samples** (VSCO 2 CE / VCSL, all CC0, lazily loaded); everything else — and every instrument when samples can't load — renders on the built-in synth presets (`keys` is an FM electric piano, `lead` a sawtooth, …).
+Built-in sounds, each mapped to a General MIDI program for `.mid` export. The orchestra (Virtual Playing Orchestra, fetched on demand): solo `violin`, `viola`, `cello`, `contrabass`, `bass` (plucked until the score says `arco`), `harp`; `flute`, `piccolo`, `alto-flute`, `oboe`, `english-horn`, `clarinet`, `bass-clarinet`, `bassoon`, `contrabassoon`; `trumpet`, `horn`, `trombone`, `bass-trombone`, `tuba`; `celesta`, `glockenspiel`, `xylophone`, `vibraphone`, `tubular-bells`, `timpani`; `choir`, `choir-female`, `choir-male`; the sections `violins`, `violas`, `cellos`, `basses`, `flutes`, `oboes`, `clarinets`, `bassoons`, `trumpets`, `horns`, `trombones`; and the families `strings`, `woodwinds`, `brass`. `ocarina` rides the flute. The synth presets: `piano`, `epiano`/`keys` (an FM electric piano), `pad`, `lead` (a sawtooth), and any name the orchestra does not know.
 
 ### Drums & percussion (`kit:` tracks)
 

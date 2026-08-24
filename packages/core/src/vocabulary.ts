@@ -515,16 +515,59 @@ export function resolveDrum(token: string): DrumSpec | undefined {
   return DRUMS[token.toLowerCase()];
 }
 
-/** Built-in sample names → General MIDI program, for .mid export. */
+/**
+ * Built-in sample names → General MIDI program, for .mid export. The
+ * orchestral names are the ones the VPO sampler plays (core/src/vpo.ts);
+ * sections share their solo instrument's program, as GM has no other.
+ */
 export const SAMPLE_PROGRAMS: Record<string, number> = {
   piano: 0,
+  epiano: 4,
   keys: 4,
+  celesta: 8,
+  glockenspiel: 9,
+  vibraphone: 11,
+  xylophone: 13,
+  'tubular-bells': 14,
   bass: 33,
-  strings: 48,
   violin: 40,
+  violins: 40,
+  viola: 41,
+  violas: 41,
   cello: 42,
-  pad: 89,
+  cellos: 42,
+  contrabass: 43,
+  basses: 43,
+  harp: 46,
+  timpani: 47,
+  strings: 48,
+  choir: 52,
+  'choir-female': 52,
+  'choir-male': 52,
+  trumpet: 56,
+  trumpets: 56,
+  trombone: 57,
+  trombones: 57,
+  'bass-trombone': 57,
+  tuba: 58,
+  horn: 60,
+  horns: 60,
+  brass: 61,
+  oboe: 68,
+  oboes: 68,
+  'english-horn': 69,
+  bassoon: 70,
+  bassoons: 70,
+  contrabassoon: 70,
+  clarinet: 71,
+  clarinets: 71,
+  'bass-clarinet': 71,
+  woodwinds: 71,
+  piccolo: 72,
   flute: 73,
+  flutes: 73,
+  'alto-flute': 73,
   ocarina: 79,
   lead: 81,
+  pad: 89,
 };

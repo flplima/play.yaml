@@ -21,7 +21,28 @@ export interface ServerPortInfo {
   name: string;
   rawName: string;
   mpe: boolean;
+  /** Channel → instrument name, when this port is the rack's input. */
   channels: Record<number, string>;
+  /** True for the port the running jukebox rack listens on. */
+  rack: boolean;
+}
+
+/** One rack channel: what is on it and whether the rack says it will sound. */
+export interface RackChannelInfo {
+  channel: number;
+  name: string;
+  format: string;
+  loaded: boolean;
+  /** Last CC 119 report; null until the rack has said anything about it. */
+  ready: boolean | null;
+}
+
+export interface RackSnapshot {
+  available: boolean;
+  through: string;
+  channels: RackChannelInfo[];
+  /** Channels the server is waiting on before it starts the clock. */
+  warming: number[];
 }
 
 /**
@@ -50,6 +71,7 @@ export interface ServerSnapshot {
   positionBeats: number;
   totalBeats: number;
   prepared: PreparedStatus;
+  rack: RackSnapshot;
   error: string | null;
 }
 
@@ -57,6 +79,8 @@ export interface ServerRoute {
   outputId: string;
   channel: number;
 }
+
+export const NO_RACK: RackSnapshot = { available: false, through: '', channels: [], warming: [] };
 
 export const IDLE_PREPARED: PreparedStatus = {
   status: 'idle',
@@ -78,6 +102,7 @@ const OFFLINE: ServerSnapshot = {
   positionBeats: 0,
   totalBeats: 0,
   prepared: IDLE_PREPARED,
+  rack: NO_RACK,
   error: null,
 };
 

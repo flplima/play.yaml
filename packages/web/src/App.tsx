@@ -34,6 +34,9 @@ import { encodeMp3, renderSong } from './render';
 import { buildNoteSpans, NoteSpan } from './noteSpans';
 import { playingNoteExtension, setPlayingNotes } from './highlight';
 import { useMidi } from './useMidi';
+import { useRack, useRackReadiness } from './useRack';
+import { isRackOutput } from './rack';
+import { suggestRackChannel } from '@play.yaml/core';
 import MidiPanel, { SampleEntry } from './MidiPanel';
 import InstrumentPanel from './InstrumentPanel';
 import { clearShareHash, decodeShareHash, encodeShareHash, isShareHash } from './share';
@@ -45,6 +48,8 @@ import {
   useServerVolumeMutation,
   useServerTestNoteMutation,
   IDLE_PREPARED,
+  NO_RACK,
+  RackSnapshot,
   ServerPortInfo,
   WEBAUDIO_ID,
 } from './serverPlayback';
@@ -118,6 +123,8 @@ export default function App() {
   const [mainTab, setMainTab] = useState<'editor' | 'roll'>('editor');
   const [showInstruments, setShowInstruments] = useState(false);
   const [currentBeat, setCurrentBeat] = useState(0);
+  /** Rack channels Play is waiting on before the transport starts. */
+  const [warmingChannels, setWarmingChannels] = useState<number[]>([]);
   // The player polls this ref every beat, so toggling works mid-playback.
   const metronomeRef = useRef(false);
 
@@ -130,6 +137,11 @@ export default function App() {
   const highlightRaf = useRef(0);
 
   const midi = useMidi();
+  // The rack as this browser sees it: the published channel map, and the
+  // readiness reports arriving on this browser's own MIDI input. In server
+  // mode the server listens instead and pushes the same on its stream.
+  const rack = useRack();
+  const readiness = useRackReadiness(midi, rack.through);
   const [routes, setRoutes] = useState<RouteMap>(loadRoutes);
   const [outputMode, setOutputMode] = useState<OutputMode>(loadOutputMode);
 
@@ -240,10 +252,51 @@ export default function App() {
     const byName = new Map<string, SampleEntry>();
     for (const track of lastGoodSong?.tracks ?? []) {
       const name = routeKey(track);
-      if (!byName.has(name)) byName.set(name, { name, defaultChannel: track.channel || 1 });
+      if (!byName.has(name)) {
+        byName.set(name, {
+          name,
+          defaultChannel: track.channel || 1,
+          rackChannel: suggestRackChannel(track, rack.channels),
+        });
+      }
     }
     return [...byName.values()];
-  }, [lastGoodSong]);
+  }, [lastGoodSong, rack.channels]);
+
+  /*
+   * One view of the rack for the panel, whichever side is going to play. The
+   * server's snapshot carries its own readiness; in WebMIDI mode the map is
+   * the published one and readiness is what this browser has heard.
+   */
+  const rackView = useMemo<RackSnapshot>(() => {
+    if (serverSideMode) return serverState?.rack ?? NO_RACK;
+    return {
+      available: Boolean(rack.rack),
+      through: rack.through,
+      warming: warmingChannels,
+      channels: [...rack.channels.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .map(([channel, instrument]) => ({
+          channel,
+          name: instrument.name,
+          format: instrument.format,
+          loaded: instrument.loaded,
+          ready: readiness.ready.get(channel) ?? (instrument.loaded ? null : false),
+        })),
+    };
+    // `readiness.version` is the map's change counter — the map itself is
+    // mutated in place, so it is the version that has to be a dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverSideMode, serverState?.rack, rack.rack, rack.through, rack.channels, readiness.version, warmingChannels]);
+
+  const isRackPort = useCallback(
+    (outputId: string) => {
+      if (serverSideMode) return Boolean(serverPortsInfo.find((p) => p.id === outputId)?.rack);
+      const output = midi.outputs.find((o) => o.id === outputId);
+      return Boolean(output && isRackOutput(output, rack.through));
+    },
+    [serverSideMode, serverPortsInfo, midi.outputs, rack.through],
+  );
 
   const stopServer = serverStopMutation.mutate;
   /*
@@ -594,10 +647,26 @@ export default function App() {
 
     const outputById = new Map(midi.outputs.map((o) => [o.id, o]));
     // Built-in mode parks the MIDI routes: everything renders in the browser.
-    const handle = await playSong(song, outputMode === 'midi' ? routes : {}, outputById, {
-      loop,
-      metronome: () => metronomeRef.current,
-    });
+    let handle: PlaybackHandle;
+    try {
+      handle = await playSong(song, outputMode === 'midi' ? routes : {}, outputById, {
+        loop,
+        metronome: () => metronomeRef.current,
+        rack: outputMode === 'midi' && rack.through
+          ? {
+              through: rack.through,
+              inputs: midi.inputs,
+              ready: readiness.ready,
+              onWarming: ({ pending }) => {
+                setWarmingChannels(pending);
+                setStatus(pending.length ? `Warming rack channel${pending.length > 1 ? 's' : ''} ${pending.join(', ')}…` : null);
+              },
+            }
+          : undefined,
+      });
+    } finally {
+      setWarmingChannels([]);
+    }
     playback.current = handle;
     setPlaying(true);
 
@@ -845,6 +914,8 @@ export default function App() {
             serverAvailable={serverAvailable}
             serverError={serverState?.error ?? null}
             onServerTestNote={handleServerTestNote}
+            rack={rackView}
+            isRackPort={isRackPort}
           />
         )}
         {showInstruments && (
