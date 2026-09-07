@@ -19,13 +19,6 @@ import {
 import { EXAMPLES } from './examples';
 import SongPicker from './SongPicker';
 import PianoRoll from './PianoRoll';
-import * as Tone from 'tone';
-import {
-  fetchPreparedAudio,
-  playPreparedAudio,
-  type PreparedAudio,
-  type ServerAudioPlayback,
-} from './serverAudio';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -34,25 +27,12 @@ import { encodeMp3, renderSong } from './render';
 import { buildNoteSpans, NoteSpan } from './noteSpans';
 import { playingNoteExtension, setPlayingNotes } from './highlight';
 import { useMidi } from './useMidi';
-import { useRack, useRackReadiness } from './useRack';
+import { useRack, useRackReadiness, type RackSnapshot } from './useRack';
 import { isRackOutput } from './rack';
 import { suggestRackChannel } from '@play.yaml/core';
 import MidiPanel, { SampleEntry } from './MidiPanel';
 import InstrumentPanel from './InstrumentPanel';
 import { clearShareHash, decodeShareHash, encodeShareHash, isShareHash } from './share';
-import {
-  useServerState,
-  useServerPlayMutation,
-  useServerPrepareMutation,
-  useServerStopMutation,
-  useServerVolumeMutation,
-  useServerTestNoteMutation,
-  IDLE_PREPARED,
-  NO_RACK,
-  RackSnapshot,
-  ServerPortInfo,
-  WEBAUDIO_ID,
-} from './serverPlayback';
 
 type Source =
   | { kind: 'example'; name: string }
@@ -62,9 +42,6 @@ type Source =
 const ROUTES_STORAGE_KEY = 'play.yaml:midi-routes';
 const OUTPUT_STORAGE_KEY = 'play.yaml:output-mode';
 const EXAMPLE_STORAGE_KEY = 'play.yaml:example';
-const SERVER_MODE_STORAGE_KEY = 'play.yaml:server-mode';
-const SPEAKER_STORAGE_KEY = 'play-yaml-speaker';
-const SERVER_MIDI_DEVICE_STORAGE_KEY = 'play.yaml:server-midi-device';
 const MASTER_VOLUME_STORAGE_KEY = 'play.yaml:master-volume';
 
 /** Where playback goes: the bundled sampler/synth, or the WebMIDI routes. */
@@ -138,8 +115,7 @@ export default function App() {
 
   const midi = useMidi();
   // The rack as this browser sees it: the published channel map, and the
-  // readiness reports arriving on this browser's own MIDI input. In server
-  // mode the server listens instead and pushes the same on its stream.
+  // readiness reports arriving on this browser's own MIDI input.
   const rack = useRack();
   const readiness = useRackReadiness(midi, rack.through);
   const [routes, setRoutes] = useState<RouteMap>(loadRoutes);
@@ -151,88 +127,11 @@ export default function App() {
     return saved != null ? Number(saved) : 80;
   });
 
-  // Server-side mode state
-  const [serverSideMode, setServerSideMode] = useState<boolean>(() => {
-    return localStorage.getItem(SERVER_MODE_STORAGE_KEY) === 'true';
-  });
-
-  const [serverMidiDevice, setServerMidiDevice] = useState<string>(() => {
-    return localStorage.getItem(SERVER_MIDI_DEVICE_STORAGE_KEY) || WEBAUDIO_ID;
-  });
-
-  /*
-   * Where server-rendered audio comes out. `server` is this machine's own
-   * speakers, which is what server mode has always meant and stays the
-   * default; `client` streams the same render back to this browser instead,
-   * for when the rack is in another room from the person listening.
-   *
-   * Only tracks the *server* renders are affected. A track routed out to a
-   * hardware MIDI port is sounding in a synth the server does not own, and no
-   * setting here can move that audio.
-   */
-  const [speaker, setSpeaker] = useState<'server' | 'client'>(() =>
-    localStorage.getItem(SPEAKER_STORAGE_KEY) === 'client' ? 'client' : 'server');
-  const handleSpeakerChange = (next: 'server' | 'client') => {
-    setSpeaker(next);
-    localStorage.setItem(SPEAKER_STORAGE_KEY, next);
-  };
-
-  // One SSE stream is the whole server-side story: devices, transport, and
-  // playhead. Because it is pushed, the studio never disagrees with the server
-  // about whether something is sounding.
-  const serverQuery = useServerState();
-  const serverState = serverQuery.data;
-  const serverAvailable = Boolean(serverState?.available);
-  const serverPlaying = Boolean(serverState?.playing);
-  const serverPositionBeats = serverState?.positionBeats ?? 0;
-
-  const serverPortsInfo = useMemo<ServerPortInfo[]>(() => serverState?.ports ?? [], [serverState?.ports]);
-  const serverMidiDevices = useMemo(
-    () => serverState?.midiDevices ?? [WEBAUDIO_ID],
-    [serverState?.midiDevices],
-  );
-
-  const serverPlayMutation = useServerPlayMutation();
-  const serverPrepareMutation = useServerPrepareMutation();
-  const serverStopMutation = useServerStopMutation();
-  const serverVolumeMutation = useServerVolumeMutation();
-  const serverTestNoteMutation = useServerTestNoteMutation();
-  const prepareServer = serverPrepareMutation.mutateAsync;
-
-  /** How far along the server's standing render is; pushed on the stream. */
-  const prepared = serverState?.prepared ?? IDLE_PREPARED;
-
-  const serverDeviceLabel =
-    serverPortsInfo.find((p) => p.id === serverMidiDevice)?.name ?? serverMidiDevice;
-
-  const handleServerTestNote = (device: string, channel: number) => {
-    serverTestNoteMutation.mutate({ device, channel });
-  };
-
   const handleVolumeChange = (vol: number) => {
     const clamped = Math.max(0, Math.min(100, vol));
     setMasterVolume(clamped);
     localStorage.setItem(MASTER_VOLUME_STORAGE_KEY, String(clamped));
-    // Every engine takes the change live, mid-note: the browser's transport,
-    // the server's own sink, and a server render playing here.
     playback.current?.setVolume(clamped / 100);
-    serverAudio.current?.setVolume(clamped / 100);
-    if (serverSideMode) serverVolumeMutation.mutate(clamped / 100);
-  };
-
-  const refreshServerInfo = () => {
-    void serverQuery.refetch();
-  };
-
-  const handleServerSideModeChange = (active: boolean) => {
-    stop();
-    setServerSideMode(active);
-    localStorage.setItem(SERVER_MODE_STORAGE_KEY, String(active));
-  };
-
-  const handleServerMidiDeviceChange = (device: string) => {
-    setServerMidiDevice(device);
-    localStorage.setItem(SERVER_MIDI_DEVICE_STORAGE_KEY, device);
   };
 
   const selectOutputMode = (mode: OutputMode) => {
@@ -263,13 +162,7 @@ export default function App() {
     return [...byName.values()];
   }, [lastGoodSong, rack.channels]);
 
-  /*
-   * One view of the rack for the panel, whichever side is going to play. The
-   * server's snapshot carries its own readiness; in WebMIDI mode the map is
-   * the published one and readiness is what this browser has heard.
-   */
   const rackView = useMemo<RackSnapshot>(() => {
-    if (serverSideMode) return serverState?.rack ?? NO_RACK;
     return {
       available: Boolean(rack.rack),
       through: rack.through,
@@ -284,172 +177,26 @@ export default function App() {
           ready: readiness.ready.get(channel) ?? (instrument.loaded ? null : false),
         })),
     };
-    // `readiness.version` is the map's change counter — the map itself is
-    // mutated in place, so it is the version that has to be a dependency.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverSideMode, serverState?.rack, rack.rack, rack.through, rack.channels, readiness.version, warmingChannels]);
+  }, [rack.rack, rack.through, rack.channels, readiness.ready, readiness.version, warmingChannels]);
 
   const isRackPort = useCallback(
     (outputId: string) => {
-      if (serverSideMode) return Boolean(serverPortsInfo.find((p) => p.id === outputId)?.rack);
       const output = midi.outputs.find((o) => o.id === outputId);
       return Boolean(output && isRackOutput(output, rack.through));
     },
-    [serverSideMode, serverPortsInfo, midi.outputs, rack.through],
+    [midi.outputs, rack.through],
   );
 
-  const stopServer = serverStopMutation.mutate;
-  /*
-   * The browser's end of Speaker = Client. Held in refs rather than state
-   * because nothing renders from them — one is the server's render sitting
-   * decoded and waiting, the other the node currently playing it, and stop()
-   * has to be able to reach that from anywhere.
-   */
-  const clientAudio = useRef<PreparedAudio | null>(null);
-  const serverAudio = useRef<ServerAudioPlayback | null>(null);
-  /** Mirrors `clientAudio`'s key, purely so the panel can say "ready". */
-  const [clientAudioKey, setClientAudioKey] = useState('');
-
   const stop = useCallback(() => {
-    // Stop means stop: both engines, whichever mode the header is in. A score
-    // can be sounding here and on the server at once (mode toggles do not
-    // silence the side you left), and hunting for the right toggle before the
-    // noise stops is not something anyone should have to do. Stopping an idle
-    // engine is a no-op.
-    stopServer();
-    serverAudio.current?.stop();
-    serverAudio.current = null;
     playback.current?.stop();
     playback.current = null;
     cancelAnimationFrame(highlightRaf.current);
     editorView.current?.dispatch({ effects: setPlayingNotes.of([]) });
     setPlaying(false);
     setCurrentBeat(0);
-  }, [stopServer]);
-
-  // Only the browser's own transport is torn down when this component goes
-  // away. Server-side playback belongs to the server: reloading the studio
-  // must not cut the speakers off mid-phrase.
-  useEffect(() => () => playback.current?.stop(), []);
-
-  /*
-   * Server mode honours the same routing table the panel edits, so a track can
-   * land on a specific rack port — or on the server's synth. Memoised because
-   * this is part of what identifies a render: prepare and play must describe
-   * the routing identically or the server would take Play for a different
-   * score and render it again.
-   */
-  const serverRoutes = useMemo(
-    () =>
-      Object.fromEntries(
-        Object.entries(routes).filter(([, r]) => r).map(([k, r]) => [k, r as MidiRoute]),
-      ),
-    [routes],
-  );
-
-  /**
-   * Pull the server's standing render down, unless the copy already in hand is
-   * the same one. In Client speaker mode this is what "ready to play" means.
-   */
-  const ensureClientAudio = useCallback(async (key: string): Promise<PreparedAudio | null> => {
-    if (clientAudio.current?.key === key) return clientAudio.current;
-    // Tone's context, not a second one: the render then plays through the same
-    // master output and clock as everything else the studio sounds. It may
-    // still be suspended here — createBuffer does not care, and Play resumes it.
-    const ctx = Tone.getContext().rawContext as AudioContext;
-    const audio = await fetchPreparedAudio(ctx);
-    clientAudio.current = audio;
-    setClientAudioKey(audio?.key ?? '');
-    return audio;
   }, []);
 
-  /*
-   * Keep a render standing for whatever is currently in the editor.
-   *
-   * This is the whole point of server mode's shape: the expensive work —
-   * decoding the sample libraries, rendering the score — happens while the
-   * score sits there being read, so Play has nothing left to do but start.
-   * Debounced, because every keystroke recompiles; skipped while the transport
-   * runs, so a mid-phrase edit does not put the CPU up against playback.
-   */
-  useEffect(() => {
-    if (!serverSideMode || !serverAvailable || !song || serverPlaying) return;
-    const timer = window.setTimeout(() => {
-      void prepareServer({
-        code: text,
-        device: serverMidiDevice,
-        routes: serverRoutes,
-        fromBeat: 0,
-      }).catch(() => {
-        // The failure comes back on the stream as prepared.error; the panel
-        // shows it there rather than shouting in the status bar on a keystroke.
-      });
-    }, 500);
-    return () => window.clearTimeout(timer);
-  }, [
-    serverSideMode, serverAvailable, serverPlaying, song, text,
-    serverMidiDevice, serverRoutes, prepareServer,
-  ]);
-
-  /*
-   * …and, when this browser is the speaker, have the audio itself here before
-   * anyone asks for it. A render that is ready on the server is not ready to
-   * play in a browser 30 m away until the bytes have made the trip.
-   */
-  useEffect(() => {
-    if (!serverSideMode || speaker !== 'client') return;
-    if (prepared.status !== 'ready' || !prepared.hasAudio) return;
-    if (clientAudio.current?.key === prepared.key) return;
-    void ensureClientAudio(prepared.key).catch((err) => {
-      setStatus(`Server audio: ${err instanceof Error ? err.message : String(err)}`);
-    });
-  }, [
-    serverSideMode, speaker, prepared.status, prepared.hasAudio, prepared.key, ensureClientAudio,
-  ]);
-
-  /** Throw the standing render away and build it again, from the panel. */
-  const refreshPreparedAudio = () => {
-    if (!song) return;
-    clientAudio.current = null;
-    setClientAudioKey('');
-    setStatus('Re-rendering the score on the server…');
-    void prepareServer({
-      code: text,
-      device: serverMidiDevice,
-      routes: serverRoutes,
-      fromBeat: 0,
-      force: true,
-    })
-      .then((result) =>
-        setStatus(result.ok ? 'Server render ready' : `Render failed: ${result.error ?? 'unknown error'}`))
-      .catch((err) => setStatus(`Render failed: ${err instanceof Error ? err.message : String(err)}`));
-  };
-
-  // In server mode the server owns the transport, so the button and the
-  // playhead read straight off the stream. `isPending` only covers the blink
-  // between clicking Play and the first pushed snapshot.
-  const isPlaying = serverSideMode ? serverPlaying || serverPlayMutation.isPending : playing;
-  const displayBeat = serverSideMode ? serverPositionBeats : currentBeat;
-
-  // Light up the score from the server's playhead, the same way the rAF loop
-  // does for local playback.
-  useEffect(() => {
-    if (!serverSideMode || !editorView.current) return;
-    if (!serverPlaying) {
-      editorView.current.dispatch({ effects: setPlayingNotes.of([]) });
-      return;
-    }
-    if (!noteSpans.current.length) noteSpans.current = buildNoteSpans(text);
-    const active = noteSpans.current.filter(
-      (s) => serverPositionBeats >= s.startBeat && serverPositionBeats < s.endBeat,
-    );
-    editorView.current.dispatch({
-      effects: setPlayingNotes.of(active.map(({ from, to, kind }) => ({ from, to, kind }))),
-    });
-    // `text` is deliberately not a dep: re-anchoring mid-playback is handled
-    // by handleEdit, and re-running on every keystroke would fight it.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverSideMode, serverPlaying, serverPositionBeats]);
+  useEffect(() => () => playback.current?.stop(), []);
 
   const handleEdit = (value: string) => {
     setText(value);
@@ -575,75 +322,6 @@ export default function App() {
   const play = async () => {
     if (!song) return;
     stop();
-
-    if (serverSideMode) {
-      // Highlighting in server mode is driven by the playhead the stream
-      // reports, so the spans have to exist before the first frame arrives.
-      noteSpans.current = buildNoteSpans(text);
-      /*
-       * Wake the audio context here, before the network call — a browser only
-       * lets a context start off a user gesture, and the click that got us
-       * here is the one we have. Doing it after an await has no *stated*
-       * expiry, but it is the kind of thing that works until a policy change
-       * makes it not, and there is no reason to depend on it.
-       */
-      if (speaker === 'client') {
-        try {
-          await Tone.start();
-        } catch (err) {
-          console.warn('[server-audio] could not start the audio context:', err);
-        }
-      }
-      try {
-        /*
-         * Both of these are normally no-ops — the effects above rendered this
-         * score and fetched it the moment it settled. They are awaited anyway
-         * so that pressing Play before that finished still works: it just
-         * costs the render instead of starting instantly.
-         */
-        const ready = prepared.status === 'ready' && prepared.key !== '';
-        if (!ready) setStatus('Rendering the score on the server…');
-        const result = await prepareServer({
-          code: text,
-          device: serverMidiDevice,
-          routes: serverRoutes,
-          fromBeat: 0,
-        });
-        if (!result.ok) throw new Error(result.error ?? 'the score could not be rendered');
-
-        let audio: PreparedAudio | null = null;
-        if (speaker === 'client' && result.hasAudio) {
-          if (clientAudio.current?.key !== result.key) setStatus('Fetching the render…');
-          audio = await ensureClientAudio(result.key);
-        }
-
-        // Nothing is compiled or rendered behind this call: the server opens
-        // its ports, starts its clock and hands the finished PCM to its sink.
-        await serverPlayMutation.mutateAsync({
-          code: text,
-          device: serverMidiDevice,
-          // Routes naming a port this machine doesn't have fall back to the
-          // selected device, server-side.
-          routes: serverRoutes,
-          volume: masterVolume / 100,
-          speaker,
-          loop,
-        });
-
-        if (audio) {
-          serverAudio.current?.stop();
-          const ctx = Tone.getContext().rawContext as AudioContext;
-          serverAudio.current = playPreparedAudio(ctx, ctx.destination, audio, {
-            loop,
-            volume: masterVolume / 100,
-          });
-        }
-        setStatus(`▶ Playing on server (${serverDeviceLabel}${speaker === 'client' ? ' → this browser' : ''})`);
-      } catch (err) {
-        setStatus(`Server error: ${err instanceof Error ? err.message : String(err)}`);
-      }
-      return;
-    }
 
     const outputById = new Map(midi.outputs.map((o) => [o.id, o]));
     // Built-in mode parks the MIDI routes: everything renders in the browser.
@@ -780,14 +458,14 @@ export default function App() {
         <div className="flex-1" />
 
         <Button
-          variant={isPlaying ? 'destructive' : 'default'}
+          variant={playing ? 'destructive' : 'default'}
           size="lg"
           className="font-semibold"
-          onClick={isPlaying ? stop : () => void play()}
-          disabled={!isPlaying && !song}
+          onClick={playing ? stop : () => void play()}
+          disabled={!playing && !song}
         >
-          {isPlaying ? <Square className="fill-current" /> : <Play className="fill-current" />}
-          {isPlaying ? 'Stop' : 'Play'}
+          {playing ? <Square className="fill-current" /> : <Play className="fill-current" />}
+          {playing ? 'Stop' : 'Play'}
         </Button>
 
         <Hint label="Render the song offline with the built-in sounds and download it as MP3">
@@ -868,10 +546,7 @@ export default function App() {
             />
           </div>
           <div className={`min-h-0 flex-1 ${mainTab === 'roll' ? '' : 'hidden'}`}>
-            {/* `displayBeat`, not `currentBeat`: the server owns the transport in
-                server mode and its playhead arrives on the stream, so the local
-                one never moves there. */}
-            <PianoRoll song={song} currentBeat={displayBeat} playing={isPlaying} />
+            <PianoRoll song={song} currentBeat={currentBeat} playing={playing} />
           </div>
         </div>
         {showPanel && (
@@ -880,25 +555,14 @@ export default function App() {
             midi={midi}
             routes={routes}
             onRouteChange={handleRouteChange}
-            disabled={outputMode === 'builtin' && !serverSideMode}
+            disabled={outputMode === 'builtin'}
             song={lastGoodSong}
-            currentBeat={displayBeat}
-            playing={isPlaying}
+            currentBeat={currentBeat}
+            playing={playing}
             masterVolume={masterVolume}
             onVolumeChange={handleVolumeChange}
-            serverSideMode={serverSideMode}
-            outputMode={serverSideMode ? 'server' : outputMode}
-            onOutputModeChange={(mode) => {
-              handleServerSideModeChange(mode === 'server');
-              if (mode !== 'server') selectOutputMode(mode as OutputMode);
-            }}
-            speaker={speaker}
-            onSpeakerChange={handleSpeakerChange}
-            prepared={prepared}
-            clientAudioReady={
-              speaker !== 'client' || !prepared.hasAudio || clientAudioKey === prepared.key
-            }
-            onRefreshPrepared={refreshPreparedAudio}
+            outputMode={outputMode}
+            onOutputModeChange={selectOutputMode}
             loop={loop}
             onLoopChange={(v) => setLoop(v)}
             metronome={metronome}
@@ -906,14 +570,6 @@ export default function App() {
               metronomeRef.current = v;
               setMetronome(v);
             }}
-            serverMidiDevice={serverMidiDevice}
-            onServerMidiDeviceChange={handleServerMidiDeviceChange}
-            serverMidiDevices={serverMidiDevices}
-            serverPortsInfo={serverPortsInfo}
-            onRefreshServerDevices={refreshServerInfo}
-            serverAvailable={serverAvailable}
-            serverError={serverState?.error ?? null}
-            onServerTestNote={handleServerTestNote}
             rack={rackView}
             isRackPort={isRackPort}
           />

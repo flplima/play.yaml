@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { MonitorSpeaker, Music2, RefreshCw, TriangleAlert, Volume2, Zap } from 'lucide-react';
+import { Music2, Volume2, Zap } from 'lucide-react';
 import type { CompiledSong } from '@play.yaml/core';
 import type { MidiState } from './useMidi';
 import type { MidiRoute, RouteMap } from './player';
@@ -13,10 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-
-import {
-  IDLE_PREPARED, NO_RACK, type PreparedStatus, type RackSnapshot, type ServerPortInfo,
-} from './serverPlayback';
+import { NO_RACK, type RackSnapshot } from './useRack';
 
 /** A distinct `sample:` from the current score, with the channel it declares. */
 export interface SampleEntry {
@@ -42,41 +39,15 @@ interface MidiPanelProps {
   masterVolume?: number;
   onVolumeChange?: (volume: number) => void;
 
-  /*
-   * Output configuration. This all used to live in the navbar; it is
-   * configuration rather than transport, so it sits with the routing it
-   * governs instead of beside the play button.
-   */
-  outputMode?: 'builtin' | 'midi' | 'server';
-  onOutputModeChange?: (mode: 'builtin' | 'midi' | 'server') => void;
-  /** Where a server-rendered track is heard. Only meaningful on Server MIDI. */
-  speaker?: 'server' | 'client';
-  onSpeakerChange?: (speaker: 'server' | 'client') => void;
-  /** The server's standing render — the thing Play will start. */
-  prepared?: PreparedStatus;
-  /** False while this browser is still pulling that render down. */
-  clientAudioReady?: boolean;
-  onRefreshPrepared?: () => void;
+  outputMode?: 'builtin' | 'midi';
+  onOutputModeChange?: (mode: 'builtin' | 'midi') => void;
   loop?: boolean;
   onLoopChange?: (loop: boolean) => void;
   metronome?: boolean;
   onMetronomeChange?: (on: boolean) => void;
 
-  // Server-side mode props
-  serverSideMode?: boolean;
-  serverMidiDevice?: string;
-  onServerMidiDeviceChange?: (device: string) => void;
-  serverMidiDevices?: string[];
-  serverPortsInfo?: ServerPortInfo[];
-  onRefreshServerDevices?: () => void;
-  serverAvailable?: boolean;
-  serverError?: string | null;
-  onServerTestNote?: (device: string, channel: number) => void;
-
   /**
-   * The jukebox rack, whichever side is playing: its channel map and what it
-   * has reported ready. Channel pickers on the rack's port are labelled from
-   * it, and a routed instrument lands on the channel the map suggests.
+   * The jukebox rack: its channel map and what it has reported ready.
    */
   rack?: RackSnapshot;
   /** True when `outputId` is the rack's port. */
@@ -87,49 +58,6 @@ const CHANNELS = Array.from({ length: 16 }, (_, i) => i + 1);
 
 /** The "Built-in synth" option needs a non-empty value: Radix reserves ''. */
 const BUILTIN = '__builtin__';
-
-function clock(sec: number): string {
-  const total = Math.max(0, Math.round(sec));
-  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
-}
-
-/** One line describing the standing render, for the Speaker section. */
-function preparedLabelFor(
-  prepared: PreparedStatus,
-  clientAudioReady: boolean,
-  speaker: 'server' | 'client',
-): { label: string; tone: 'idle' | 'busy' | 'ready' | 'warn' | 'error' } {
-  switch (prepared.status) {
-    case 'rendering':
-      return { label: `Rendering… ${Math.round(prepared.progress * 100)}%`, tone: 'busy' };
-    case 'error':
-      return { label: `Render failed — ${prepared.error ?? 'unknown error'}`, tone: 'error' };
-    case 'ready':
-      /*
-       * A score whose every track is routed out to a MIDI port renders no
-       * audio here at all — the rack at the other end of the cable is what
-       * sounds. Ordinary on Server speaker, but on Client it is the whole
-       * answer to "why is it still coming out of the server?", so it is said
-       * plainly rather than left as a grey aside: no setting in this panel can
-       * move audio a downstream synth is producing.
-       */
-      if (!prepared.hasAudio) {
-        return speaker === 'client'
-          ? {
-            label: 'Nothing to send — every track goes out as MIDI, so the rack sounds on the server',
-            tone: 'warn',
-          }
-          : { label: 'No audio to render — every track goes out as MIDI', tone: 'idle' };
-      }
-      if (!clientAudioReady) return { label: 'Sending the render to this browser…', tone: 'busy' };
-      return {
-        label: `Ready · ${clock(prepared.durationSec)}${speaker === 'client' ? ' · here' : ''}`,
-        tone: 'ready',
-      };
-    default:
-      return { label: 'Nothing rendered yet', tone: 'idle' };
-  }
-}
 
 export default function MidiPanel({
   samples,
@@ -144,103 +72,48 @@ export default function MidiPanel({
   onVolumeChange,
   outputMode = 'builtin',
   onOutputModeChange,
-  speaker = 'server',
-  onSpeakerChange,
-  prepared = IDLE_PREPARED,
-  clientAudioReady = true,
-  onRefreshPrepared,
   loop = true,
   onLoopChange,
   metronome = false,
   onMetronomeChange,
-  serverSideMode = false,
-  serverMidiDevice = 'Server Audio Output (Web Audio)',
-  onServerMidiDeviceChange,
-  serverMidiDevices = ['Server Audio Output (Web Audio)'],
-  serverPortsInfo = [],
-  onRefreshServerDevices,
-  serverAvailable = false,
-  serverError = null,
-  onServerTestNote,
   rack = NO_RACK,
   isRackPort = () => false,
 }: MidiPanelProps) {
   const rackByChannel = new Map(rack.channels.map((c) => [c.channel, c]));
   const outputById = new Map(midi.outputs.map((o) => [o.id, o]));
-  const portsInfoById = new Map(serverPortsInfo.map((p) => [p.id, p]));
-  const preparedState = preparedLabelFor(prepared, clientAudioReady, speaker);
 
-  const findPortInfo = (outputId?: string): ServerPortInfo | undefined => {
-    if (!outputId) return undefined;
-    let match = portsInfoById.get(outputId);
-    if (match) return match;
-    match = serverPortsInfo.find((p) => p.rawName === outputId || p.id === outputId);
-    if (match) return match;
-    return serverPortsInfo.find(
-      (p) =>
-        (p.id && (p.id.includes(outputId) || outputId.includes(p.id))) ||
-        (p.rawName && (p.rawName.includes(outputId) || outputId.includes(p.rawName))),
-    );
-  };
-
-  // The routable ports depend on which machine is going to play: the server's
-  // own ports in server mode, this browser's WebMIDI outputs otherwise. Mixing
-  // them would offer routes the playing side cannot honour.
   const allAvailablePorts = useMemo(() => {
-    const map = new Map<string, { id: string; name: string; mpe: boolean }>();
-
-    if (serverSideMode) {
-      for (const p of serverPortsInfo) {
-        map.set(p.id, { id: p.id, name: `${p.name}${p.mpe ? ' [MPE]' : ''}`, mpe: p.mpe });
-      }
-      return Array.from(map.values());
-    }
-
-    // WebMIDI outputs, wearing the server's names for them where one matches.
-    for (const o of midi.outputs) {
-      const match = findPortInfo(o.id) || findPortInfo(o.name || undefined);
-      map.set(o.id, {
-        id: o.id,
-        name: match ? `${match.name}${match.mpe ? ' [MPE]' : ''}` : o.name || o.id,
-        mpe: Boolean(match?.mpe),
-      });
-    }
-
-    return Array.from(map.values());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverSideMode, serverPortsInfo, midi.outputs]);
+    return midi.outputs.map((o) => ({
+      id: o.id,
+      name: o.name || o.id,
+      mpe: false,
+    }));
+  }, [midi.outputs]);
 
   const status = !midi.supported
     ? 'WebMIDI is not supported in this browser.'
     : midi.error
       ? midi.error
       : midi.outputs.length === 0
-        ? 'No MIDI ins detected.'
+        ? 'No MIDI devices detected.'
         : null;
 
   const realTempo = calculateRealTempo(song, currentBeat);
   const liveTracks = getLiveTrackStates(song, currentBeat);
 
-  const selectedServerPort = findPortInfo(serverMidiDevice);
-
   return (
     <aside className="flex w-80 shrink-0 flex-col overflow-y-auto border-l border-border bg-card">
-      {/* ── SECTION 0: OUTPUT ── the configuration the navbar used to hold ── */}
-      <div className="border-b border-border bg-server/5 px-4 py-3">
+      {/* ── SECTION 0: OUTPUT ── */}
+      <div className="border-b border-border bg-card px-4 py-3">
         <div className="mb-1.5 flex items-center justify-between">
           <span className="text-sm font-semibold">Output mode</span>
-          {serverSideMode && (
-            <Badge variant="server" className={playing ? 'animate-pulse' : undefined}>
-              Server
-            </Badge>
-          )}
         </div>
 
         <ToggleGroup
           type="single"
           className="w-full"
           value={outputMode}
-          onValueChange={(v) => v && onOutputModeChange?.(v as 'builtin' | 'midi' | 'server')}
+          onValueChange={(v) => v && onOutputModeChange?.(v as 'builtin' | 'midi')}
           aria-label="Output mode"
         >
           <ToggleGroupItem value="builtin" className="flex-1 text-xs">
@@ -251,105 +124,16 @@ export default function MidiPanel({
             <Zap />
             Web MIDI
           </ToggleGroupItem>
-          <ToggleGroupItem
-            value="server"
-            className="flex-1 border-l border-border text-xs data-[state=on]:bg-server/20 data-[state=on]:text-server"
-          >
-            <MonitorSpeaker />
-            Server MIDI
-          </ToggleGroupItem>
         </ToggleGroup>
 
         <p className="mt-1.5 text-xs text-muted-foreground">
           {outputMode === 'builtin'
             ? 'The bundled sampler and synth, in this browser.'
-            : outputMode === 'midi'
-              ? 'The WebMIDI routes below, straight from this browser.'
-              : "The server's own MIDI ports — the VST rack."}
+            : 'The WebMIDI routes below, straight from this browser.'}
         </p>
 
-        {serverSideMode && (
-          <div className="mt-2.5 border-t border-server/25 pt-2">
-            <div className="mb-1.5 text-xs font-medium text-server">Speaker</div>
-            <ToggleGroup
-              type="single"
-              className="w-full"
-              value={speaker}
-              onValueChange={(v) => v && onSpeakerChange?.(v as 'server' | 'client')}
-              aria-label="Speaker"
-            >
-              <ToggleGroupItem value="server" className="flex-1 text-xs">
-                <MonitorSpeaker />
-                Server
-              </ToggleGroupItem>
-              <ToggleGroupItem value="client" className="flex-1 border-l border-border text-xs">
-                <Volume2 />
-                Client
-              </ToggleGroupItem>
-            </ToggleGroup>
-            <p className="mt-1.5 text-xs text-muted-foreground">
-              {speaker === 'server'
-                ? "Rendered audio plays on the server's own speakers."
-                : 'Rendered on the server and streamed here, to this browser.'}
-            </p>
-
-            {/*
-              The render is made when the score settles, not when Play is
-              pressed, so its state has to be visible: this is what says
-              whether Play will start instantly or have to wait. The refresh
-              button throws it away and builds it again — for when the sound
-              changed underneath the score (a sample library, a rack preset)
-              and the server cannot know the render is stale.
-            */}
-            <div
-              className={cn(
-                'mt-2 flex items-start gap-2 rounded-md px-2 py-1.5',
-                preparedState.tone === 'warn' ? 'bg-warning/15' : 'bg-muted/40',
-              )}
-            >
-              <span
-                className={cn(
-                  'mt-1 size-1.5 shrink-0 rounded-full',
-                  preparedState.tone === 'ready'
-                    ? 'bg-primary'
-                    : preparedState.tone === 'busy'
-                      ? 'bg-warning animate-pulse'
-                      : preparedState.tone === 'warn'
-                        ? 'bg-warning'
-                        : preparedState.tone === 'error'
-                          ? 'bg-destructive'
-                          : 'bg-muted-foreground',
-                )}
-              />
-              <span
-                className={cn(
-                  'min-w-0 flex-1 text-xs',
-                  // The one state that is a dead end gets to wrap and be read;
-                  // the rest are short and stay on their line.
-                  preparedState.tone === 'warn'
-                    ? 'text-warning'
-                    : 'truncate text-muted-foreground',
-                )}
-                title={prepared.error ?? undefined}
-              >
-                {preparedState.label}
-              </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-6 shrink-0 text-server hover:text-server"
-                onClick={onRefreshPrepared}
-                aria-label="Re-render the audio output"
-                title="Re-render the audio output"
-              >
-                <RefreshCw className={cn('size-3', prepared.status === 'rendering' && 'animate-spin')} />
-              </Button>
-            </div>
-          </div>
-        )}
-
         {/* Master volume */}
-        <div className="mt-2.5 border-t border-server/25 pt-2">
+        <div className="mt-2.5 border-t border-border pt-2">
           <div className="mb-1.5 flex items-center justify-between text-xs font-medium">
             <span className="flex items-center gap-1.5">
               <Volume2 className="size-3.5" /> Master volume
@@ -380,67 +164,6 @@ export default function MidiPanel({
             Metronome
           </label>
         </div>
-
-        {serverSideMode && (
-          <Card className="mt-3 space-y-2 border-server/40">
-            <div className="flex items-center justify-between text-xs font-medium text-server">
-              <span>Server MIDI / Audio Output:</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-[10px] text-server hover:text-server"
-                onClick={onRefreshServerDevices}
-                title="Refresh server MIDI devices"
-              >
-                <RefreshCw />
-                Refresh
-              </Button>
-            </div>
-
-            <Select value={serverMidiDevice} onValueChange={(v) => onServerMidiDeviceChange?.(v)}>
-              <SelectTrigger className="w-full border-server/40 font-mono" aria-label="Server MIDI / audio output">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {serverPortsInfo.length > 0
-                  ? serverPortsInfo.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name} {p.mpe ? '[MPE]' : ''}
-                      </SelectItem>
-                    ))
-                  : serverMidiDevices.map((dev) => (
-                      <SelectItem key={dev} value={dev}>
-                        {dev}
-                      </SelectItem>
-                    ))}
-              </SelectContent>
-            </Select>
-
-            {selectedServerPort && (
-              <div className="flex items-center justify-between gap-2 text-[11px]">
-                <span className="truncate text-muted-foreground">{selectedServerPort.name}</span>
-                {selectedServerPort.mpe && <Badge>MPE enabled</Badge>}
-              </div>
-            )}
-
-            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-              <span
-                className={cn(
-                  'size-1.5 rounded-full',
-                  serverAvailable ? 'bg-primary' : 'bg-warning',
-                )}
-              />
-              <span>{serverAvailable ? 'Live stream connected' : 'Reconnecting to server…'}</span>
-            </div>
-
-            {serverError && (
-              <div className="flex items-center gap-1.5 text-[10px] text-warning">
-                <TriangleAlert className="size-3 shrink-0" />
-                {serverError}
-              </div>
-            )}
-          </Card>
-        )}
       </div>
 
       {/* ── SECTION 1: MIDI ROUTING ── */}
@@ -463,7 +186,7 @@ export default function MidiPanel({
         {disabled && (
           <p className="mt-2 rounded-md border border-primary/40 bg-primary/10 px-2 py-1.5 text-xs text-primary">
             Output is set to Built-in — everything plays on the bundled sampler
-            &amp; synth. Switch the header toggle to MIDI to use these routes.
+            &amp; synth. Switch the toggle above to Web MIDI to use these routes.
           </p>
         )}
       </div>
@@ -480,13 +203,7 @@ export default function MidiPanel({
           <ul className="space-y-3">
             {samples.map(({ name, defaultChannel, rackChannel }) => {
               const route = routes[name];
-              const selectedPortInfo = route ? findPortInfo(route.outputId) : undefined;
-              const isMpe = selectedPortInfo?.mpe === true;
               const onRack = Boolean(route && isRackPort(route.outputId));
-              // On the rack's port every channel is named by what is on it,
-              // and marked with what the rack last said about it: ● will
-              // sound, ○ not loaded yet (a lazy rack loads it on the first
-              // note — or on Play, which warms it first).
               const channelEntries = onRack && rack.channels.length > 0
                 ? CHANNELS.map((ch) => {
                     const entry = rackByChannel.get(ch);
@@ -503,16 +220,12 @@ export default function MidiPanel({
                     <div className="truncate text-sm font-medium" title={name}>
                       {name}
                     </div>
-                    {isMpe && <Badge>MPE</Badge>}
                   </div>
                   <div className="mt-1.5 flex items-center gap-1.5">
                     <Select
                       value={route?.outputId ?? BUILTIN}
                       onValueChange={(value) => {
                         const outputId = value === BUILTIN ? '' : value;
-                        // A route onto the rack lands where the rack's map
-                        // says this instrument lives; anywhere else keeps
-                        // the score's own channel.
                         const channel = route?.channel
                           ?? (outputId && isRackPort(outputId) ? suggested : defaultChannel);
                         onRouteChange(name, outputId ? { outputId, channel } : undefined);
@@ -535,46 +248,31 @@ export default function MidiPanel({
                       </SelectContent>
                     </Select>
                     <Select
-                      disabled={!route || isMpe}
-                      value={String(isMpe ? 1 : (route?.channel ?? suggested))}
+                      disabled={!route}
+                      value={String(route?.channel ?? suggested)}
                       onValueChange={(value) =>
                         route && onRouteChange(name, { ...route, channel: Number(value) })
                       }
                     >
                       <SelectTrigger
                         className="max-w-[140px]"
-                        title={isMpe ? 'Channel selection disabled for MPE ports' : 'MIDI channel'}
+                        title="MIDI channel"
                         aria-label={`MIDI channel for ${name}`}
                       >
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {isMpe ? (
-                          <SelectItem value="1">MPE (Zone 1-16)</SelectItem>
-                        ) : (
-                          channelEntries.map(({ ch, label }) => (
-                            <SelectItem key={ch} value={String(ch)}>
-                              {label}
-                            </SelectItem>
-                          ))
-                        )}
+                        {channelEntries.map(({ ch, label }) => (
+                          <SelectItem key={ch} value={String(ch)}>
+                            {label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <Button
-                      disabled={
-                        !route ||
-                        (serverSideMode
-                          ? !portsInfoById.has(route.outputId)
-                          : !outputById.has(route.outputId))
-                      }
+                      disabled={!route || !outputById.has(route.outputId)}
                       onClick={() => {
                         if (!route) return;
-                        // In server mode the note has to be struck by the
-                        // machine that owns the port, not by this browser.
-                        if (serverSideMode) {
-                          onServerTestNote?.(route.outputId, isMpe ? 1 : route.channel);
-                          return;
-                        }
                         const output = outputById.get(route.outputId);
                         if (output) sendTestNote(output, route.channel);
                       }}

@@ -41,7 +41,6 @@
   --ring: oklch(0.75 0.17 158 / 55%);
 
   /* Studio-specific accents, so panels stop inventing their own zinc scale. */
-  --server: oklch(0.72 0.16 305);           /* the purple "server side" mode */
   --warning: oklch(0.80 0.15 85);           /* compile warnings, unsaved dot */
   --info: oklch(0.75 0.13 235);             /* rack-translated instrument controls */
 }
@@ -64,7 +63,6 @@
   --border: oklch(0.90 0.004 285);
   --input: oklch(0.88 0.004 285);
   --ring: oklch(0.60 0.15 158 / 45%);
-  --server: oklch(0.52 0.19 305);
   --warning: oklch(0.60 0.14 70);
   --info: oklch(0.55 0.15 235);
 }
@@ -89,7 +87,6 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-server: var(--server);
   --color-warning: var(--warning);
   --color-info: var(--info);
 

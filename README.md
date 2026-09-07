@@ -46,8 +46,8 @@ the score plays is asked to load (CC 119 = 100) and its answer (CC 119 = 127)
 waited for; the panel shows which channels are ready and which are still
 warming. A track can also switch its channel to an entry of the rack's patch
 catalogue first, with `patch: 6` (a Program Change; the catalogue is the
-`patches:` list in `jukebox.yaml`). The same handshake runs from the server
-side and from `play-yaml-play --midi`. `core/src/rack.ts` is the protocol.
+`patches:` list in `jukebox.yaml`). The same handshake runs from the browser
+and from `play-yaml-play --midi`. `core/src/rack.ts` is the protocol.
 
 ### Tweaking the instruments a score plays on
 
@@ -173,25 +173,12 @@ npm run logs         # print the last 100 log lines
 npm run logs:follow  # stream logs live
 npm run dev:stop     # stop the dev server
 ```
-
-It offers a YAML editor with syntax highlighting, the bundled example scores (editable in-session, never persisted), opening/saving local `.play.yaml` files via the File System Access API, playback on the built-in orchestra, and per-instrument routing to your MIDI devices via WebMIDI (with a per-mapping test note). The panel picks the output: **Built-in** renders everything in the browser, **MIDI** uses the panel's routes, and **Server** hands the score to the machine running the dev server, so it plays on that machine's speakers or its hardware MIDI ports — which is how a phone or tablet on the LAN drives the rack. The **⬇ MP3** button renders the score offline with the built-in sounds (tempo map included) and downloads it as an MP3.
+It offers a YAML editor with syntax highlighting, the bundled example scores (editable in-session, never persisted), opening/saving local `.play.yaml` files via the File System Access API, playback on the built-in orchestra, and per-instrument routing to your MIDI devices via WebMIDI (with a per-mapping test note). The panel picks the output: **Built-in** renders everything in the browser using the Web Audio API and the VPO sample library, while **MIDI** routes notes and CC events to your hardware or virtual MIDI devices (e.g. Jukebox VST rack). The **⬇ MP3** button renders the score offline with the built-in sounds (tempo map included) and downloads it as an MP3.
 
 To play through real VST instruments, boot [jukebox](file:///home/felipe/workbench/jukebox)
 (`./jukebox`), pick its **Midi Through Port-0** in the MIDI panel, and route
 each track's instrument to it — the channel picker is labelled from the
 rack's own map, and each instrument lands on its channel by default.
-
-Server-side playback has an end-to-end test, because every part of it can
-report success while nothing is audible — the transport runs, the HTTP call
-returns `ok`, and the sink is muted or routed somewhere else. So the test does
-not trust the answer: it posts a one-note score over the network, records the
-sink's own monitor, and measures the level and the pitch that actually came out
-of the speakers.
-
-```bash
-scripts/test-server-audio.sh                       # https://play-yaml.dev.local, a4
-scripts/test-server-audio.sh https://host:5173 c5  # another studio, another note
-```
 
 Two studio behaviors worth knowing:
 
@@ -573,7 +560,7 @@ The room is *one* room shared by every track — `reverb` is a send into it, the
 way a desk works, not a reverb of its own per track. So the words say how far
 back in the hall a player stands, and tracks sharing a space is what makes
 them sound like they are in one. It renders identically in the browser, the
-offline MP3 export, the CLI and server playback, and any track routed out to
+offline MP3 export, the CLI, and any track routed out to
 MIDI sends the same CCs to the hardware or plugin instead.
 
 ### Physical models (SWAM and friends)

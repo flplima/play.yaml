@@ -19,7 +19,7 @@ import { createServer } from 'node:http';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { playYamlApiMiddleware, shutdownServerPlayback } from './serverMiddleware';
+import { playYamlApiMiddleware } from './serverMiddleware';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DIST = process.env.PLAY_YAML_DIST ?? path.join(HERE, 'dist');
@@ -93,9 +93,7 @@ const server = createServer((req, res) => {
 
 for (const sig of ['SIGINT', 'SIGTERM'] as const) {
   process.on(sig, () => {
-    shutdownServerPlayback();
     server.close(() => process.exit(0));
-    // Don't let an open SSE stream hold the process open forever.
     setTimeout(() => process.exit(0), 2000).unref();
   });
 }
