@@ -32,7 +32,7 @@ piano: `piano`, `keys` and the synth names stay on the oscillator presets.
 
 ### Playing on the rack
 
-A score says what to play; [jukebox](file:///home/felipe/workbench/jukebox)
+A score says what to play; `jukebox` (the companion headless VST rack)
 says what to play it *on*: one MIDI port, sixteen channels, three instances
 of each plugin — Pianoteq on 1–3, VPO on 4–6, Surge on 7–9, SWAM Cello on
 10–12, ROLI Studio Player on 13–15 — and ROLI Studio Drums on 16. The rack
@@ -173,9 +173,9 @@ npm run logs         # print the last 100 log lines
 npm run logs:follow  # stream logs live
 npm run dev:stop     # stop the dev server
 ```
-It offers a YAML editor with syntax highlighting, the bundled example scores (editable in-session, never persisted), opening/saving local `.play.yaml` files via the File System Access API, playback on the built-in orchestra, and per-instrument routing to your MIDI devices via WebMIDI (with a per-mapping test note). The panel picks the output: **Built-in** renders everything in the browser using the Web Audio API and the VPO sample library, while **MIDI** routes notes and CC events to your hardware or virtual MIDI devices (e.g. Jukebox VST rack). The **⬇ MP3** button renders the score offline with the built-in sounds (tempo map included) and downloads it as an MP3.
+It offers a YAML editor with syntax highlighting, the bundled example scores (editable in-session, never persisted), opening/saving local `.play.yaml` files via the File System Access API, playback on the built-in orchestra, and per-instrument routing to your MIDI devices via WebMIDI (with a per-mapping test note). The panel picks the output: **Built-in** renders everything in the browser using the Web Audio API and the VPO sample library, while **MIDI** routes notes and CC events to your hardware or virtual MIDI devices (e.g. Jukebox VST rack). The **⬇ MIDI** button exports the compiled score as a Standard MIDI File (`.mid`), and the **⬇ MP3** button renders the score offline with the built-in sounds (tempo map included) and downloads it as an MP3.
 
-To play through real VST instruments, boot [jukebox](file:///home/felipe/workbench/jukebox)
+To play through real VST instruments, boot `jukebox`
 (`./jukebox`), pick its **Midi Through Port-0** in the MIDI panel, and route
 each track's instrument to it — the channel picker is labelled from the
 rack's own map, and each instrument lands on its channel by default.
@@ -720,18 +720,18 @@ to point at) — everything else about them behaves like hand-written measures.
 
 ## Example Songs
 
-You can find several complete multi-track songs in the [examples/](file:///Users/felipe/projects/oss/play.yaml/examples/) directory:
+You can find several complete multi-track songs in the [examples/](examples/) directory:
 
-- [lost-woods.play.yaml](file:///Users/felipe/projects/oss/play.yaml/examples/lost-woods.play.yaml): The magical "Lost Woods" theme (Saria's Song) from Ocarina of Time, configured as an infinite loop.
-- [take-5.play.yaml](file:///Users/felipe/projects/oss/play.yaml/examples/take-5.play.yaml): Dave Brubeck's famous jazz standard "Take Five", written in a 5/4 time signature.
-- [corridors-of-time.play.yaml](file:///Users/felipe/projects/oss/play.yaml/examples/corridors-of-time.play.yaml): Chrono Trigger's iconic "Corridors of Time" (Zeal Theme).
-- [preciso-me-encontrar.play.yaml](file:///Users/felipe/projects/oss/play.yaml/examples/preciso-me-encontrar.play.yaml): Cartola's classic Brazilian samba masterpiece.
-- [bwv1007.play.yaml](file:///Users/felipe/projects/oss/play.yaml/examples/bwv1007.play.yaml): J.S. Bach's Cello Suite No. 1 in G major (Prelude).
-- [sur-le-fil.play.yaml](file:///Users/felipe/projects/oss/play.yaml/examples/sur-le-fil.play.yaml): Yann Tiersen's "Sur le fil" for solo violin, from the quiet double-stop theme to the furious hammered climax.
-- [sur-le-fil-cello-vst.play.yaml](file:///Users/felipe/projects/oss/play.yaml/examples/sur-le-fil-cello-vst.play.yaml): the same piece voiced for SWAM Cello 3 — expression-driven dynamics, auto-tremolo, martelé, portamento slides.
-- [bwv881.play.yaml](file:///Users/felipe/projects/oss/play.yaml/examples/bwv881.play.yaml): J.S. Bach's Prelude No. 12 in F minor from The Well-Tempered Clavier.
-- [severance.play.yaml](file:///Users/felipe/projects/oss/play.yaml/examples/severance.play.yaml): The haunting intro theme song of the TV show *Severance*.
-- [experiments-cello.play.yaml](file:///Users/felipe/projects/oss/play.yaml/examples/experiments-cello.play.yaml): A short cello-soundscape composition testing dynamic variations.
+- [lost-woods.play.yaml](examples/lost-woods.play.yaml): The magical "Lost Woods" theme (Saria's Song) from Ocarina of Time, configured as an infinite loop.
+- [take-5.play.yaml](examples/take-5.play.yaml): Dave Brubeck's famous jazz standard "Take Five", written in a 5/4 time signature.
+- [corridors-of-time.play.yaml](examples/corridors-of-time.play.yaml): Chrono Trigger's iconic "Corridors of Time" (Zeal Theme).
+- [preciso-me-encontrar.play.yaml](examples/preciso-me-encontrar.play.yaml): Cartola's classic Brazilian samba masterpiece.
+- [bwv1007.play.yaml](examples/bwv1007.play.yaml): J.S. Bach's Cello Suite No. 1 in G major (Prelude).
+- [sur-le-fil.play.yaml](examples/sur-le-fil.play.yaml): Yann Tiersen's "Sur le fil" for solo violin, from the quiet double-stop theme to the furious hammered climax.
+- [sur-le-fil-cello-vst.play.yaml](examples/sur-le-fil-cello-vst.play.yaml): the same piece voiced for SWAM Cello 3 — expression-driven dynamics, auto-tremolo, martelé, portamento slides.
+- [bwv881.play.yaml](examples/bwv881.play.yaml): J.S. Bach's Prelude No. 12 in F minor from The Well-Tempered Clavier.
+- [severance.play.yaml](examples/severance.play.yaml): The haunting intro theme song of the TV show *Severance*.
+- [experiments-cello.play.yaml](examples/experiments-cello.play.yaml): A short cello-soundscape composition testing dynamic variations.
 
 To play any of these songs through your speakers:
 

@@ -40,15 +40,11 @@ During CLI playback, it would be useful to have real-time console controls:
 
 ---
 
-## 3. Download .mid from the web studio
-Core's `encodeMidi` is environment-free (returns a `Uint8Array`), so the web app
-can offer a "Download .mid" button with a few lines of Blob + anchor code. No
-engine work needed — just UI.
-
----
-
 ## Shipped
 
+* **Download .mid from the web studio** — the studio toolbar's **⬇ MIDI**
+  button encodes the compiled score in-browser via `@play.yaml/core`'s
+  `encodeMidi` and downloads a `.mid` file alongside **⬇ MP3**.
 * **Drums & percussion** — `kit:` tracks with GM drum tokens (`bd hh sd hh`),
   rolls (`sd~`), flams, choke groups, channel-10 export; sampled acoustic +
   hand-percussion library (VSCO CE/VCSL, CC0) and a synthesized 808 kit.

@@ -2,7 +2,7 @@ import { ReactElement, useCallback, useEffect, useMemo, useRef, useState } from 
 import CodeMirror from '@uiw/react-codemirror';
 import { yaml } from '@codemirror/lang-yaml';
 import type { EditorView } from '@codemirror/view';
-import { parseYaml, compileDoc, CompiledSong } from '@play.yaml/core';
+import { parseYaml, compileDoc, CompiledSong, encodeMidi, suggestRackChannel } from '@play.yaml/core';
 import {
   CircleCheck,
   CircleX,
@@ -29,7 +29,6 @@ import { playingNoteExtension, setPlayingNotes } from './highlight';
 import { useMidi } from './useMidi';
 import { useRack, useRackReadiness, type RackSnapshot } from './useRack';
 import { isRackOutput } from './rack';
-import { suggestRackChannel } from '@play.yaml/core';
 import MidiPanel, { SampleEntry } from './MidiPanel';
 import InstrumentPanel from './InstrumentPanel';
 import { clearShareHash, decodeShareHash, encodeShareHash, isShareHash } from './share';
@@ -383,6 +382,35 @@ export default function App() {
     });
   };
 
+  const downloadSlug = () => {
+    const raw =
+      song?.title ??
+      (source.kind === 'example'
+        ? source.name
+        : source.kind === 'file'
+          ? source.name.replace(/(?:\.play)?\.ya?ml$/i, '')
+          : 'song');
+    return raw.replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '') || 'song';
+  };
+
+  // Encode the compiled score into a Standard MIDI File (.mid) and download it.
+  const downloadMid = () => {
+    if (!song) return;
+    try {
+      const bytes = encodeMidi(song);
+      const blob = new Blob([bytes as BlobPart], { type: 'audio/midi' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${downloadSlug()}.mid`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setStatus(`Downloaded ${a.download} (${(bytes.byteLength / 1024).toFixed(1)} KB)`);
+    } catch (err) {
+      setStatus(`MIDI export failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
   // Offline-render the song with the built-in sounds and download it as MP3.
   const downloadMp3 = async () => {
     if (!song || rendering) return;
@@ -394,7 +422,7 @@ export default function App() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${(song.title ?? 'song').replace(/[^\w.-]+/g, '-')}.mp3`;
+      a.download = `${downloadSlug()}.mp3`;
       a.click();
       URL.revokeObjectURL(url);
       setStatus(`Rendered ${(blob.size / 1e6).toFixed(1)} MB MP3`);
@@ -467,6 +495,13 @@ export default function App() {
           {playing ? <Square className="fill-current" /> : <Play className="fill-current" />}
           {playing ? 'Stop' : 'Play'}
         </Button>
+
+        <Hint label="Download the compiled score as a Standard MIDI File (.mid)">
+          <Button onClick={downloadMid} disabled={!song}>
+            <Download />
+            MIDI
+          </Button>
+        </Hint>
 
         <Hint label="Render the song offline with the built-in sounds and download it as MP3">
           <Button onClick={() => void downloadMp3()} disabled={!song || rendering}>
