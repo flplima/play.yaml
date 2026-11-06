@@ -1,0 +1,366 @@
+# Zequinha de Abreu - "Tico-Tico no Fuba" (1917)
+#
+#   Composed in 1917 in Santa Rita do Passa Quatro (first titled "Tico-Tico
+#   no Farelo") by Jose Gomes de Abreu ("Zequinha de Abreu", 1880-1935).
+#   Published by Irmaos Vitale, Sao Paulo (Plate I. 620 V.). Public domain
+#   worldwide.
+#
+#   Form (84 bars of 2/4 at 100 bpm, 168 beats):
+#     - intro      (bars 1-4):   4-bar descending choro flourish in A minor
+#                                over chromatic sixths (G3 -> F#3 -> F3 -> E3)
+#     - part_a1    (bars 5-20):  16-bar main theme in A minor; flute leads the
+#                                first 8 bars (E4-E5), clarinet answers in the
+#                                chalumeau register for bars 13-20 (D#3-D4)
+#     - part_a2    (bars 21-36): 16-bar repeat of Part A, closing with the
+#                                A-major pickup ({a3 c#4 e4}) into the Trio
+#     - trio_c1    (bars 37-52): 16-bar Trio in the parallel key of A major,
+#                                capped by the 16th-note cascade (bars 49-51)
+#     - trio_c2    (bars 53-68): 16-bar repeat of the Trio, pivoting back to
+#                                A minor on {e4 d#4 e4}
+#     - reprise_a  (bars 69-84): 16-bar da capo restatement of Part A, ending
+#                                on a crisp Picardy-third A major chord
+#
+#   Sources & verification:
+#     Transcribed from Eugene Kirpichov's 2/4 guitar engraving MIDI
+#     (abreu_ticotico.mid, 783 notes, verified 100% exact via play-yaml-import
+#     and 97.8/100 via play-yaml-fidelity), cross-checked against the Irmaos
+#     Vitale solo score (IMSLP #211430), MIDIfind two-track score (#64805),
+#     and Steve Owen's concert-pitch ABC transcription (The Session #4357).
+#     See research/report.md and research/sources.md.
+#
+#   Casting (Brazilian choro regional on Virtual Playing Orchestra samples):
+#     - flute:    lead choro melody & upper offbeat chord stabs
+#     - clarinet: syncopated inner harmony & chalumeau-register melody answers
+#     - cello:    walking bass & chromatic baixaria counter-lines
+
+title: "Tico-Tico no Fuba"
+composer: "Zequinha de Abreu"
+tempo: 100
+measure: 2/4
+scale: a minor
+
+tracks:
+  flute: { sample: flute, velocity: 92 }
+  clarinet: { sample: clarinet, velocity: 82 }
+  cello: { sample: cello, velocity: 84 }
+
+sections:
+  intro:
+    loop: false
+    flute:
+      # Descending A-minor run answered by rising chromatic sixths on beat 2,
+      # landing on the E7 dominant chord and the signature {e4 d#4 e4} pickup.
+      play:
+        - "{e5 d5 _ c5} {b4 a4}"
+        - "{g#4 b4} {c5 d5}"
+        - "e5 ~"
+        - "[e4 g#4 e5] {~ e4 d#4 e4}"
+    clarinet:
+      play:
+        - "~ ~"
+        - "{~ g3} {f#3 f3}"
+        - "~ ~"
+        - "~ ~"
+    cello:
+      play:
+        - "~ ~"
+        - "~ ~"
+        - "e3 ~"
+        - "e2 ~"
+
+  part_a1:
+    loop: false
+    flute:
+      # Bars 5-12: the iconic syncopated sixteenth-note melody in A minor.
+      # Bars 13-15: offbeat upper chord stabs answering the clarinet's low line.
+      play:
+        - "{f4 e4 _ a4} {~ e4 d#4 e4}"
+        - "{f4 e4 _ g#4} {~ e4 d#4 e4}"
+        - "{f4 e4 d5 b4} {g#4 e4 d4 c#4}"
+        - "c4 {~ a4 g#4 g4}"
+        - "{f4 a4 d5 _} {_ c5 _ _}"
+        - "{e4 a4 c5 _} {_ c5 b4 a#4}"
+        - "{b4 ~ ~ ~} {~ ~ b4 a4}"
+        - "{g#4 e5 _ [e4 g#4 e5]} ~"
+        - "{~ ~ ~ [a3 c4 e4]} ~"
+        - "{~ ~ ~ [g#3 d4 e4]} ~"
+        - "{~ ~ d4 b3} ~"
+        - "~ ~"
+        - "~ ~"
+        - "~ ~"
+        - "~ ~"
+        - "~ {[c4 e4 a4] e4 d#4 e4}"
+    clarinet:
+      # Bars 5-11: syncopated choro accompaniment and B7 arpeggio climb.
+      # Bars 12-20: takes over the main theme in the warm chalumeau register.
+      play:
+        - "{~ ~ ~ [c4 e4]} ~"
+        - "{~ ~ ~ [d4 e4]} ~"
+        - "{[g#3 b3] ~ ~ ~} ~"
+        - "{~ [e3 a3] _ [e3 a3]} ~"
+        - "{f4 _ _ f4} {a4 _ a4 f4}"
+        - "{e4 _ _ e4} {a4 ~ ~ ~}"
+        - "{~ ~ f#3 b3} {d#4 f4 _ _}"
+        - "e4 {~ e3 d#3 e3}"
+        - "{f3 e3 _ _} {~ e3 d#3 e3}"
+        - "{f3 e3 _ _} {~ e3 d#3 e3}"
+        - "{[f3 g#3] e3 _ _} {g3 e3 d3 c#3}"
+        - "{c3 [e3 a3] _ [e3 a3]} {~ a3 g#3 g3}"
+        - "{f3 a3 d4 _} {[a3 d4] c4 b3 a3}"
+        - "{e3 a3 c4 _} {[a3 c4] c4 b3 a#3}"
+        - "{b3 e3 g#3 b3} {e4 d4 c4 b3}"
+        - "a3 ~"
+    cello:
+      # Two-beat choro bass (Am -> E7 -> Am -> Dm -> Am/E -> B7 -> E7 -> Am).
+      play:
+        - "a2 c3"
+        - "e2 b2"
+        - "e2 e2"
+        - "a2 c3"
+        - "d3 _"
+        - "e2 _"
+        - "{~ b2 _ _} ~"
+        - "e2 e2"
+        - "a2 c3"
+        - "e2 b2"
+        - "e2 _"
+        - "c3 c3"
+        - "{f2 _ _ d3} _"
+        - "{e2 _ _ e3} _"
+        - "e2 _"
+        - "{a2 e2} a2"
+
+  part_a2:
+    loop: false
+    flute:
+      play:
+        - "{f4 e4 _ a4} {~ e4 d#4 e4}"
+        - "{f4 e4 _ g#4} {~ e4 d#4 e4}"
+        - "{f4 e4 d5 b4} {g#4 e4 d4 c#4}"
+        - "c4 {~ a4 g#4 g4}"
+        - "{f4 a4 d5 _} {_ c5 _ _}"
+        - "{e4 a4 c5 _} {_ c5 b4 a#4}"
+        - "{b4 ~ ~ ~} {~ ~ b4 a4}"
+        - "{g#4 e5 _ [e4 g#4 e5]} ~"
+        - "{~ ~ ~ [a3 c4 e4]} ~"
+        - "{~ ~ ~ [g#3 d4 e4]} ~"
+        - "{~ ~ d4 b3} ~"
+        - "~ ~"
+        - "~ ~"
+        - "~ ~"
+        - "~ ~"
+        - "~ {[c4 e4 a4] ~ ~ ~}"
+    clarinet:
+      # Bar 36: pivots to the A-major arpeggio pickup {~ a3 c#4 e4} for the Trio.
+      play:
+        - "{~ ~ ~ [c4 e4]} ~"
+        - "{~ ~ ~ [d4 e4]} ~"
+        - "{[g#3 b3] ~ ~ ~} ~"
+        - "{~ [e3 a3] _ [e3 a3]} ~"
+        - "{f4 _ _ f4} {a4 _ a4 f4}"
+        - "{e4 _ _ e4} {a4 ~ ~ ~}"
+        - "{~ ~ f#3 b3} {d#4 f4 _ _}"
+        - "e4 {~ e3 d#3 e3}"
+        - "{f3 e3 _ _} {~ e3 d#3 e3}"
+        - "{f3 e3 _ _} {~ e3 d#3 e3}"
+        - "{[f3 g#3] e3 _ _} {g3 e3 d3 c#3}"
+        - "{c3 [e3 a3] _ [e3 a3]} {~ a3 g#3 g3}"
+        - "{f3 a3 d4 _} {[a3 d4] c4 b3 a3}"
+        - "{e3 a3 c4 _} {[a3 c4] c4 b3 a#3}"
+        - "{b3 e3 g#3 b3} {e4 d4 c4 b3}"
+        - "a3 {~ a3 c#4 e4}"
+    cello:
+      play:
+        - "a2 c3"
+        - "e2 b2"
+        - "e2 e2"
+        - "a2 c3"
+        - "d3 _"
+        - "e2 _"
+        - "{~ b2 _ _} ~"
+        - "e2 e2"
+        - "a2 c3"
+        - "e2 b2"
+        - "e2 _"
+        - "c3 c3"
+        - "{f2 _ _ d3} _"
+        - "{e2 _ _ e3} _"
+        - "e2 _"
+        - "{a2 e2} a2"
+
+  trio_c1:
+    loop: false
+    flute:
+      # Trio in the parallel major (A major): syncopated dotted-eighth/sixteenth
+      # leaps {a4 _ _ g#4} {_ _ _ f#4} answered by the blazing 16th-note scale
+      # cascade across bars 49-51 ({e4..f#5..b3}).
+      play:
+        - "{a4 _ _ g#4} {_ _ _ f#4}"
+        - "{f#4 _ _ e4} {_ _ c#4 f#4}"
+        - "{f#4 _ _ e4} {_ _ c#4 f#4}"
+        - "{f#4 ~ ~ ~} {~ ~ ~ f#4}"
+        - "{a4 _ _ g#4} {~ ~ ~ ~}"
+        - "f#4 {~ ~ ~ f#4}"
+        - "{a4 _ _ g#4} {~ ~ ~ ~}"
+        - "f#4 ~"
+        - "{a4 _ _ g#4} {_ _ _ f#4}"
+        - "{f#4 _ _ e4} {_ _ c#4 e4}"
+        - "{f#4 e4 c#4 _} {f#4 e4 _ _}"
+        - "~ ~"
+        - "{~ ~ ~ e4} {f#4 g#4 a4 b4}"
+        - "{c#5 d5 d#5 e5} {f#5 e5 d5 c#5}"
+        - "{b4 a4 g#4 f#4} {e4 d4 c#4 b3}"
+        - "~ {[a3 c#4 b4] ~ ~ ~}"
+    clarinet:
+      # Offbeat A-major and E7 choro figures, plus the F#7 -> Bm turn (bars 47-49).
+      play:
+        - "{~ a3 c#4 _} {~ a3 c#4 _}"
+        - "{~ a3 c#4 _} {~ a3 _ _}"
+        - "{~ a3 c#4 _} {~ a3 _ _}"
+        - "{~ b3 d4 e4} {_ d4 e4 _}"
+        - "{~ b3 d4 _} {~ d4 e4 f#4}"
+        - "{~ b3 d4 e4} {_ d4 e4 _}"
+        - "{~ b3 d4 _} {~ d4 e4 f#4}"
+        - "{~ a3 c#4 e4} {_ a3 c#4 e4}"
+        - "{~ a3 c#4 _} {~ a3 c#4 _}"
+        - "{~ a3 c#4 _} {~ a3 _ _}"
+        - "{~ ~ ~ a#3} {~ ~ c#4 a#3}"
+        - "{b3 a#3 b3 c#4} d4"
+        - "{d4 c#4 d4 _} ~"
+        - "~ ~"
+        - "~ ~"
+        - "{a3 e3} {~ a3 c#4 e4}"
+    cello:
+      play:
+        - "a2 e2"
+        - "a2 e2"
+        - "b2 e2"
+        - "b2 e2"
+        - "b2 e2"
+        - "b2 e2"
+        - "b2 d3"
+        - "c#3 e2"
+        - "a2 e2"
+        - "a2 e2"
+        - "f#2 c#3"
+        - "b2 _"
+        - "d3 e2"
+        - "a2 _"
+        - "e2 _"
+        - "a2 a2"
+
+  trio_c2:
+    loop: false
+    flute:
+      # Repeat of the A-major Trio; bar 68 pivots back to A minor via {~ e4 d#4 e4}.
+      play:
+        - "{a4 _ _ g#4} {_ _ _ f#4}"
+        - "{f#4 _ _ e4} {_ _ c#4 f#4}"
+        - "{f#4 _ _ e4} {_ _ c#4 f#4}"
+        - "{f#4 ~ ~ ~} {~ ~ ~ f#4}"
+        - "{a4 _ _ g#4} {~ ~ ~ ~}"
+        - "f#4 {~ ~ ~ f#4}"
+        - "{a4 _ _ g#4} {~ ~ ~ ~}"
+        - "f#4 ~"
+        - "{a4 _ _ g#4} {_ _ _ f#4}"
+        - "{f#4 _ _ e4} {_ _ c#4 e4}"
+        - "{f#4 e4 c#4 _} {f#4 e4 _ _}"
+        - "~ ~"
+        - "{~ ~ ~ e4} {f#4 g#4 a4 b4}"
+        - "{c#5 d5 d#5 e5} {f#5 e5 d5 c#5}"
+        - "{b4 a4 g#4 f#4} {e4 d4 c#4 b3}"
+        - "~ {~ e4 d#4 e4}"
+    clarinet:
+      play:
+        - "{~ a3 c#4 _} {~ a3 c#4 _}"
+        - "{~ a3 c#4 _} {~ a3 _ _}"
+        - "{~ a3 c#4 _} {~ a3 _ _}"
+        - "{~ b3 d4 e4} {_ d4 e4 _}"
+        - "{~ b3 d4 _} {~ d4 e4 f#4}"
+        - "{~ b3 d4 e4} {_ d4 e4 _}"
+        - "{~ b3 d4 _} {~ d4 e4 f#4}"
+        - "{~ a3 c#4 e4} {_ a3 c#4 e4}"
+        - "{~ a3 c#4 _} {~ a3 c#4 _}"
+        - "{~ a3 c#4 _} {~ a3 _ _}"
+        - "{~ ~ ~ a#3} {~ ~ c#4 a#3}"
+        - "{b3 a#3 b3 c#4} d4"
+        - "{d4 c#4 d4 _} ~"
+        - "~ ~"
+        - "~ ~"
+        - "a3 ~"
+    cello:
+      play:
+        - "a2 e2"
+        - "a2 e2"
+        - "b2 e2"
+        - "b2 e2"
+        - "b2 e2"
+        - "b2 e2"
+        - "b2 d3"
+        - "c#3 e2"
+        - "a2 e2"
+        - "a2 e2"
+        - "f#2 c#3"
+        - "b2 _"
+        - "d3 e2"
+        - "a2 _"
+        - "e2 _"
+        - "a2 _"
+
+  reprise_a:
+    loop: false
+    flute:
+      # Final da capo restatement of Part A, closing on the Picardy A-major chord.
+      play:
+        - "{f4 e4 _ a4} {~ e4 d#4 e4}"
+        - "{f4 e4 _ g#4} {~ e4 d#4 e4}"
+        - "{f4 e4 d5 b4} {g#4 e4 d4 c#4}"
+        - "c4 {~ a4 g#4 g4}"
+        - "{f4 a4 d5 _} {_ c5 _ _}"
+        - "{e4 a4 c5 _} {_ c5 b4 a#4}"
+        - "{b4 ~ ~ ~} {~ ~ b4 a4}"
+        - "{g#4 e5 _ [e4 g#4 e5]} ~"
+        - "{~ ~ ~ [a3 c4 e4]} ~"
+        - "{~ ~ ~ [g#3 d4 e4]} ~"
+        - "{~ ~ d4 b3} ~"
+        - "~ ~"
+        - "~ ~"
+        - "~ ~"
+        - "~ ~"
+        - "~ [c#4 e4 a4]"
+    clarinet:
+      play:
+        - "{~ ~ ~ [c4 e4]} ~"
+        - "{~ ~ ~ [d4 e4]} ~"
+        - "{[g#3 b3] ~ ~ ~} ~"
+        - "{~ [e3 a3] _ [e3 a3]} ~"
+        - "{f4 _ _ f4} {a4 _ a4 f4}"
+        - "{e4 _ _ e4} {a4 ~ ~ ~}"
+        - "{~ ~ f#3 b3} {d#4 f4 _ _}"
+        - "e4 {~ e3 d#3 e3}"
+        - "{f3 e3 _ _} {~ e3 d#3 e3}"
+        - "{f3 e3 _ _} {~ e3 d#3 e3}"
+        - "{[f3 g#3] e3 _ _} {g3 e3 d3 c#3}"
+        - "{c3 [e3 a3] _ [e3 a3]} {~ a3 g#3 g3}"
+        - "{f3 a3 d4 _} {[a3 d4] c4 b3 a3}"
+        - "{e3 a3 c4 _} {[a3 c4] c4 b3 a#3}"
+        - "{b3 e3 g#3 b3} {e4 d4 c4 b3}"
+        - "a3 ~"
+    cello:
+      play:
+        - "a2 c3"
+        - "e2 b2"
+        - "e2 e2"
+        - "a2 c3"
+        - "d3 _"
+        - "e2 _"
+        - "{~ b2 _ _} ~"
+        - "e2 e2"
+        - "a2 c3"
+        - "e2 b2"
+        - "e2 _"
+        - "c3 c3"
+        - "{f2 _ _ d3} _"
+        - "{e2 _ _ e3} _"
+        - "e2 _"
+        - "{a2 e2} ~"

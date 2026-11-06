@@ -298,5 +298,11 @@
     "notes": 516,
     "lengthBeats": 165,
     "sha256": "d3de786cac4e7ec5e7a90bb36efc0f109d8c850c27f29846befab5dbfa798c06"
+  },
+  "songs/tico-tico-no-fuba/tico-tico-no-fuba.play.yaml": {
+    "tracks": 3,
+    "notes": 780,
+    "lengthBeats": 168,
+    "sha256": "974a5e275226cffafdc6afd72266ced836d1f1ee1d3ff12b009a2053296c15fc"
   }
 }
