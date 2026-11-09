@@ -4,17 +4,14 @@
  * shadcn/ui design tokens, Tailwind v4 style.
  *
  * The studio is a dark-only tool — it sits next to a code editor and is looked
- * at for hours — so the dark values live in `:root` and are what you get by
- * default. `.light` is defined too, for the day someone wants it, and nothing
- * in the app hardcodes a colour: components reference the tokens, so a theme
- * swap is a change to this file alone.
+ * at for hours — so the dark values live in `:root`. Nothing in the app
+ * hardcodes a colour: components reference the tokens, so a theme swap is a
+ * change to this file alone.
  *
  * The accent is the same emerald the studio has always used for "sounding" and
  * for the play button, kept as `--primary` so the shadcn components inherit it
  * rather than fighting it.
  */
-@custom-variant dark (&:is(.dark *));
-
 :root {
   --radius: 0.5rem;
 
@@ -42,30 +39,8 @@
 
   /* Studio-specific accents, so panels stop inventing their own zinc scale. */
   --warning: oklch(0.80 0.15 85);           /* compile warnings, unsaved dot */
-  --info: oklch(0.75 0.13 235);             /* rack-translated instrument controls */
 }
 
-.light {
-  --background: oklch(0.99 0 0);
-  --foreground: oklch(0.21 0.006 285);
-  --card: oklch(1 0 0);
-  --card-foreground: var(--foreground);
-  --popover: oklch(1 0 0);
-  --popover-foreground: var(--foreground);
-  --primary: oklch(0.60 0.15 158);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.96 0.002 285);
-  --secondary-foreground: var(--foreground);
-  --muted: oklch(0.96 0.002 285);
-  --muted-foreground: oklch(0.50 0.01 285);
-  --accent: oklch(0.95 0.003 285);
-  --accent-foreground: var(--foreground);
-  --border: oklch(0.90 0.004 285);
-  --input: oklch(0.88 0.004 285);
-  --ring: oklch(0.60 0.15 158 / 45%);
-  --warning: oklch(0.60 0.14 70);
-  --info: oklch(0.55 0.15 235);
-}
 
 @theme inline {
   --color-background: var(--background);
@@ -88,7 +63,6 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-warning: var(--warning);
-  --color-info: var(--info);
 
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
@@ -99,9 +73,6 @@
   :root {
     /* Native widgets — scrollbars, the file picker, focus rings — follow this. */
     color-scheme: dark;
-  }
-  .light {
-    color-scheme: light;
   }
   * {
     border-color: var(--border);

@@ -7,6 +7,8 @@
  */
 
 import { parseScale } from './theory';
+import { isMeasureToken, splitTopLevel } from './tokens';
+import { normalizeHumanize } from './generate';
 import {
   ARTICULATIONS, CONTROL_TERMS, ControlSpec, DYNAMICS, DYNAMIC_STEP, EXPRESSIONS,
   PEDAL_PATTERNS, PedalPattern, RUBATO_TERMS, TEMPO_GRADUAL, TEMPO_MARKS, TEMPO_RELATIVE,
@@ -35,7 +37,7 @@ export interface SetPatch {
   /** "a tempo" — return to the tempo the track started at. */
   aTempo?: boolean;
   /** A time-signature change ("2/4") for the measures that follow. */
-  measure?: string | number;
+  measure?: string;
   /** Roll spread for `~` chords, in beats between successive notes. */
   strum?: number;
   /** Sustained-note limit inside rolled chords (0 = unlimited). */
@@ -47,13 +49,6 @@ export interface SetPatch {
    */
   strumTail?: number;
   ccs?: { cc: number; value: number }[];
-  /**
-   * Preset and sound changes, by name — `preset "Classic Flute - Bass"`,
-   * `sound "Angelic Choir"`. Not control changes: a rack selects these by
-   * name over its control port, because the plugins that have the most to
-   * offer here expose no MIDI-addressable programs at all.
-   */
-  patches?: { kind: 'preset' | 'sound'; name: string }[];
   /** Control drifts: reach `to` over `overMeasures`, from wherever the
    *  control last sat ("sul ponticello over 6", "bow to 110 over 4"). */
   ccRamps?: { cc: number; to: number; overMeasures: number }[];
@@ -69,27 +64,7 @@ const NUM = String.raw`-?\d+(?:\.\d+)?`;
 
 const clamp127 = (v: number) => Math.max(0, Math.min(127, Math.round(v)));
 
-/**
- * Parse a `set` value (a string of comma-separated clauses, or an array of
- * such strings) into a prop patch. Clauses:
- *   "g lydian" / "c mix"          → scale (abbreviations welcome)
- *   "octave up" / "oct down"      → relative octave shift
- *   "octave 3" / "oct 3"          → absolute octave
- *   "tempo 60" / "tempo 60 over 2" → tempo, optionally ramped over N measures
- *   "legato" / "detached" / "staccato" / "gate 1.05" → articulation
- *   "rubato" / "molto rubato" / "rubato 0.4" / "a battuta" → rubato depth
- *   "velocity 90"                 → dynamics
- *   "cc74 30"                     → a raw control change
- *   "bow 30"                      → a control change via the track's `controls`
- */
-/**
- * Split a `set:` string on commas, ignoring commas inside quotes.
- *
- * Everything else in a set clause is a word or a number, so a plain split was
- * enough until preset names arrived: real racks ship sounds called
- * "Strings - Loud Sustain, Big", and cutting that in half would look for a
- * preset that does not exist.
- */
+/** Split a `set:` string on commas, ignoring commas inside quotes. */
 function splitClauses(text: string): string[] {
   const out: string[] = [];
   let current = '';
@@ -112,6 +87,49 @@ function splitClauses(text: string): string[] {
   return out;
 }
 
+/**
+ * A gradual mark: a stem, then "to <target>" and/or "over <measures>" in
+ * either order ("rit. over 2 to 54", "cresc. to ff"). Trailing dots are
+ * abbreviations. Null when the word has another shape or the stem does not
+ * match `stems`.
+ */
+function parseGradual(
+  word: string,
+  stems: RegExp,
+): { stem: string; target?: string; overMeasures: number } | null {
+  const m = new RegExp(
+    `^([a-z]+\\.?)(?:\\s+(to|over)\\s+([a-z]+\\.?|${NUM}))?(?:\\s+(to|over)\\s+([a-z]+\\.?|${NUM}))?$`,
+    'i',
+  ).exec(word);
+  if (!m) return null;
+  const stem = m[1].toLowerCase().replace(/\.$/, '');
+  if (!stems.test(stem)) return null;
+  let target: string | undefined;
+  let over: string | undefined;
+  for (const [kind, value] of [[m[2], m[3]], [m[4], m[5]]]) {
+    if (kind?.toLowerCase() === 'to') target = value.toLowerCase().replace(/\.$/, '');
+    else if (kind?.toLowerCase() === 'over') over = value;
+  }
+  return { stem, target, overMeasures: over ? Number(over) : 1 };
+}
+
+/**
+ * Parse a `set` value (a string of comma-separated clauses, or an array of
+ * such strings) into a prop patch. Clauses:
+ *   "g lydian" / "c mix"          → scale (abbreviations welcome)
+ *   "octave up" / "oct down"      → relative octave shift
+ *   "octave 3" / "oct 3"          → absolute octave
+ *   "tempo 60" / "tempo 60 over 2" → tempo, optionally ramped over N measures
+ *   "legato" / "detached" / "staccato" / "gate 1.05" → articulation
+ *   "rubato" / "molto rubato" / "rubato 0.4" / "a battuta" → rubato depth
+ *   "velocity 90"                 → dynamics
+ *   "cc74 30"                     → a raw control change
+ *   "bow 30"                      → a control change via the track's `controls`
+ *
+ * `ignoreMissingControls` is classification mode (see isDirectiveString): a
+ * technique word counts as a clause even when the track has not mapped its
+ * control, and "name value" clauses naming unknown controls are accepted.
+ */
 export function parseSet(
   value: string | string[],
   controls: Record<string, number | ControlSpec> = {},
@@ -128,27 +146,6 @@ export function parseSet(
   };
 
   for (const clause of clauses) {
-    // `preset "Classic Flute - Bass"` / `sound "Angelic Choir"`. Checked before
-    // anything else: the name is free text and would otherwise be picked apart
-    // by the word-matching below.
-    const patchClause = /^(preset|sound)\s+(?:"([^"]*)"|'([^']*)')$/i.exec(clause);
-    if (patchClause) {
-      const name = (patchClause[2] ?? patchClause[3] ?? '').trim();
-      if (!name) throw new Error(`"${clause}" names no ${patchClause[1].toLowerCase()}`);
-      (patch.patches ??= []).push({
-        kind: patchClause[1].toLowerCase() as 'preset' | 'sound',
-        name,
-      });
-      continue;
-    }
-    // The same words without quotes are a common slip, and the message should
-    // say so rather than "unknown set clause".
-    if (/^(preset|sound)\s+\S/i.test(clause)) {
-      throw new Error(
-        `"${clause}" — a preset or sound name must be quoted, e.g. ` +
-          `set: ${clause.split(/\s+/)[0]} "${clause.replace(/^\S+\s+/, '')}"`,
-      );
-    }
 
     const oct = /^oct(?:ave)?\s+(up|down|-?\d+)$/i.exec(clause);
     if (oct) {
@@ -269,78 +266,28 @@ export function parseSet(
     }
 
     // Gradual marks: "ritardando", "rit. over 2 to 54", "allargando to adagio over 3".
-    const gradualMatch = new RegExp(
-      `^([a-z]+\\.?)(?:\\s+(to|over)\\s+([a-z]+\\.?|${NUM}))?(?:\\s+(to|over)\\s+([a-z]+\\.?|${NUM}))?$`,
-      'i',
-    ).exec(word);
-
-    if (gradualMatch) {
-      const stem = gradualMatch[1].toLowerCase().replace(/\.$/, '');
-      if (TEMPO_GRADUAL[stem] !== undefined) {
-        let targetStr: string | undefined;
-        let overStr: string | undefined;
-
-        const p1Type = gradualMatch[2]?.toLowerCase();
-        const p1Val = gradualMatch[3];
-        const p2Type = gradualMatch[4]?.toLowerCase();
-        const p2Val = gradualMatch[5];
-
-        if (p1Type === 'to') targetStr = p1Val;
-        else if (p1Type === 'over') overStr = p1Val;
-
-        if (p2Type === 'to') targetStr = p2Val;
-        else if (p2Type === 'over') overStr = p2Val;
-
-        const overMeasures = overStr ? Number(overStr) : 1;
-
-        if (targetStr !== undefined) {
-          const cleanTarget = targetStr.toLowerCase().replace(/\.$/, '');
-          const bpm = TEMPO_MARKS[cleanTarget] ?? Number(cleanTarget);
-          if (!Number.isFinite(bpm)) {
-            throw new Error(`Unknown tempo "${targetStr}" in "${clause}".`);
-          }
-          patch.tempo = { bpm, overMeasures };
-        } else {
-          patch.tempo = { scale: TEMPO_GRADUAL[stem], overMeasures };
-        }
-        continue;
+    const gradual = parseGradual(word, /^([a-z]+)$/);
+    if (gradual && TEMPO_GRADUAL[gradual.stem] !== undefined) {
+      if (gradual.target !== undefined) {
+        const bpm = TEMPO_MARKS[gradual.target] ?? Number(gradual.target);
+        if (!Number.isFinite(bpm)) throw new Error(`Unknown tempo "${gradual.target}" in "${clause}".`);
+        patch.tempo = { bpm, overMeasures: gradual.overMeasures };
+      } else {
+        patch.tempo = { scale: TEMPO_GRADUAL[gradual.stem], overMeasures: gradual.overMeasures };
       }
+      continue;
     }
 
     // "crescendo", "cresc. over 2 to fortissimo", "diminuendo over 4".
-    const hairpinMatch = new RegExp(
-      `^(crescendo|cresc|diminuendo|dim|decrescendo|decresc)\\.?` +
-        `(?:\\s+(to|over)\\s+([a-z]+\\.?|${NUM}))?(?:\\s+(to|over)\\s+([a-z]+\\.?|${NUM}))?$`,
-      'i',
-    ).exec(word);
-
-    if (hairpinMatch) {
-      const rising = /^cres/i.test(hairpinMatch[1]);
-      let targetStr: string | undefined;
-      let overStr: string | undefined;
-
-      const p1Type = hairpinMatch[2]?.toLowerCase();
-      const p1Val = hairpinMatch[3];
-      const p2Type = hairpinMatch[4]?.toLowerCase();
-      const p2Val = hairpinMatch[5];
-
-      if (p1Type === 'to') targetStr = p1Val;
-      else if (p1Type === 'over') overStr = p1Val;
-
-      if (p2Type === 'to') targetStr = p2Val;
-      else if (p2Type === 'over') overStr = p2Val;
-
-      const overMeasures = overStr ? Number(overStr) : 1;
-
-      if (targetStr !== undefined) {
-        const cleanTarget = targetStr.toLowerCase().replace(/\.$/, '');
-        const to = DYNAMICS[cleanTarget] ?? Number(cleanTarget);
-        if (!Number.isFinite(to)) {
-          throw new Error(`Unknown dynamic "${targetStr}" in "${clause}".`);
-        }
-        patch.velocityRamp = { to, overMeasures };
+    const hairpin = parseGradual(word, /^(crescendo|cresc|diminuendo|dim|decrescendo|decresc)$/);
+    if (hairpin) {
+      if (hairpin.target !== undefined) {
+        const to = DYNAMICS[hairpin.target] ?? Number(hairpin.target);
+        if (!Number.isFinite(to)) throw new Error(`Unknown dynamic "${hairpin.target}" in "${clause}".`);
+        patch.velocityRamp = { to, overMeasures: hairpin.overMeasures };
       } else {
-        patch.velocityRamp = { scale: rising ? 1.4 : 0.65, overMeasures };
+        const rising = /^cres/.test(hairpin.stem);
+        patch.velocityRamp = { scale: rising ? 1.4 : 0.65, overMeasures: hairpin.overMeasures };
       }
       continue;
     }
@@ -401,8 +348,7 @@ export function parseSet(
       } else {
         const amount = Number(humanize[1]);
         if (amount < 0) throw new Error(`"${clause}" — humanize is an intensity from 0 up (0.5 is subtle).`);
-        // Intensity 1 ≈ ±0.03 beats, ±10 velocity — mirrors normalizeHumanize.
-        patch.humanize = amount > 0 ? { time: 0.03 * amount, velocity: 10 * amount } : null;
+        patch.humanize = normalizeHumanize(amount) ?? null;
       }
       continue;
     }
@@ -446,7 +392,7 @@ export function parseSet(
       patch.scale = clause;
       continue;
     } catch {
-      // Not a scale either — fall through to the error below.
+      // not a scale
     }
     throw new Error(
       `Unknown set clause "${clause}" — expected a dynamic ("mezzoforte", "dolce", ` +
@@ -458,4 +404,24 @@ export function parseSet(
     );
   }
   return patch;
+}
+
+/**
+ * Is this play-list string an expression mark rather than a measure?
+ *
+ * Measures win any tie: a string whose tokens all read as notes is always a
+ * measure, so `"f"` stays the note F rather than becoming forte (write
+ * `"forte"`, or `set: f`, when you mean the dynamic).
+ */
+export function isDirectiveString(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  const tokens = splitTopLevel(trimmed);
+  if (tokens.length > 0 && tokens.every(isMeasureToken)) return false;
+  try {
+    parseSet(trimmed, {}, { ignoreMissingControls: true });
+    return true;
+  } catch {
+    return false;
+  }
 }

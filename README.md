@@ -6,65 +6,48 @@ A project dedicated to the `play.yaml` format — a human-readable, developer-fr
 
 This is a monorepo managed with npm workspaces:
 
-- `packages/core/`: The `play.yaml` engine — dependency-free and environment-free (no Node or DOM APIs), so it runs identically in Node and browsers. Layered as: `theory` (pitch/scale/meter math) → `vocabulary` (dynamics, articulations, tempo marks, techniques, named controls) → `set` (the `set:` shorthand) → `tokens` (measure tokenizing) → `song` (the compiler), plus the zero-dep YAML subset (`yaml`), the `.mid` encoder (`exporter`), the `.mid` decoder + musical fidelity comparator (`fidelity`), beat→seconds tempo mapping (`time`), the Web Audio synth presets (`synth`), the SFZ parser and sampler that play the orchestra (`sfz`, `sfzSampler`, `vpo` — see below), the jukebox rack protocol (`rack`) and the VST control surfaces (`surface`). Everything re-exports from the package root.
-- `packages/cli/`: Command-line tools built on core: `play-yaml` exports scores to `.mid`; `play-yaml-play` plays them through the speakers (via `webaudio-node`) or streams live MIDI — notes, the score's CC automation and the tempo map — to a virtual MIDI port; `play-yaml-fidelity` scores a `.play.yaml` against a reference `.mid` and flags where they diverge.
-- `packages/web/`: The browser studio (Vite/React): CodeMirror editor with played-note highlighting, Tone.js transport playback on the built-in orchestra & synth, per-instrument WebMIDI routing, and the instrument panel (🎛) for the rack's channels and the VSTs on them. Consumes core by source, so core edits hot-reload without a rebuild. The interface is [shadcn/ui](https://ui.shadcn.com) (Radix primitives, vendored into `src/components/ui/`) on Tailwind v4; every colour comes from the tokens in `src/index.css`, which hold a dark palette in `:root` — the studio is a dark-only tool — and a `.light` block beside it.
+- `packages/core/`: The `play.yaml` engine — dependency-free and environment-free (no Node or DOM APIs), so it runs identically in Node and browsers. Layered as: `theory` (pitch/scale/meter math) → `vocabulary` (dynamics, articulations, tempo marks, techniques, named controls) → `set` (the `set:` shorthand) → `tokens` (measure tokenizing) → `song` (the compiler), plus the zero-dep YAML subset (`yaml`), the `.mid` encoder (`exporter`), the `.mid` decoder + musical fidelity comparator (`fidelity`), beat→seconds tempo mapping (`time`), the Web Audio synth presets (`synth`), and the SFZ parser and sampler that play the orchestra (`sfz`, `sfzSampler`, `vpoCatalogue`, `vpo` — see below). Everything re-exports from the package root.
+- `packages/cli/`: Command-line tools built on core: `play-yaml` exports scores to `.mid`; `play-yaml-play` plays them through the speakers (rendered offline by `packages/node-audio/`) or streams live MIDI — notes, the score's CC automation and the tempo map — to a virtual MIDI port; `play-yaml-fidelity` scores a `.play.yaml` against a reference `.mid` and flags where they diverge.
+- `packages/web/`: The browser studio (Vite/React): CodeMirror editor with played-note highlighting, Tone.js transport playback on the built-in orchestra & synth, and per-instrument WebMIDI routing to any MIDI device or virtual instrument. Consumes core by source, so core edits hot-reload without a rebuild. The interface is [shadcn/ui](https://ui.shadcn.com) (Radix primitives, vendored into `src/components/ui/`) on Tailwind v4; every colour comes from the tokens in `src/index.css`, which hold a dark palette in `:root` — the studio is a dark-only tool.
 
 ### The built-in orchestra
 
 The studio's own sound is the [Virtual Playing Orchestra](http://virtualplaying.com)
-(free, SFZ) — the same library jukebox hosts on its channels 4–6, so a score
-previewed in the browser and the same score on the rack differ in the engine,
-not in the recordings. Nothing is bundled: the dev server serves the library
-off this machine's disk at `/vpo/` (`~/samples/VPO/Virtual-Playing-Orchestra3`,
-or `PLAY_YAML_VPO`), the sampler parses the `.sfz` program a track needs and
-downloads only the samples that track's notes reach. `sample: cello` is a solo
-cello with its pizzicato, tremolo and staccato programs switched in by the
-score's `pizzicato`/`tremolo` words and by note length; `violins`, `horns`
-and the other plurals are the sections; `strings`, `woodwinds`, `brass` are
-the whole families; kit tracks land on the orchestral percussion key by key
-and fall through to the synthesized kit for what an orchestra does not own.
-The sampler honours the library's controller opcodes, so the score's CC
-stream — expression, the mod wheel's attack length and layer crossfades, the
-sustain pedal — shapes the recordings the way it would in a DAW. VPO has no
-piano: `piano`, `keys` and the synth names stay on the oscillator presets.
-`core/src/vpo.ts` is the catalogue, `core/src/sfzSampler.ts` the engine.
+(VPO, free, SFZ). Nothing is bundled: the dev server serves the library off
+your own disk at `/vpo/`, the sampler parses the `.sfz` program a track needs
+and downloads only the samples that track's notes reach.
 
-### Playing on the rack
+**Installing it is optional.** Without the library every track plays on the
+synth presets (`piano`, `keys`, `pad`, `lead`, and a synthesized drum kit),
+and the studio says so in the status bar. To hear the sampled orchestra:
 
-A score says what to play; `jukebox` (the companion headless VST rack)
-says what to play it *on*: one MIDI port, sixteen channels, three instances
-of each plugin — Pianoteq on 1–3, VPO on 4–6, Surge on 7–9, SWAM Cello on
-10–12, ROLI Studio Player on 13–15 — and ROLI Studio Drums on 16. The rack
-publishes that map to `~/.cache/jukebox/channels.json`, and the studio reads
-it: the routing panel names every channel by what is on it and, when a track
-is routed to the rack, lands it where the map says its instrument lives.
+1. Download *Virtual Playing Orchestra 3* from
+   [virtualplaying.com](http://virtualplaying.com) and unpack it.
+2. Put it at `~/samples/VPO/Virtual-Playing-Orchestra3`, or point
+   `PLAY_YAML_VPO` at wherever it lives (the dev server and the CLI both
+   read that variable).
 
-The rack is lazy — an instrument loads on its first note and swallows the
-notes played while it loads — so before the transport starts, every channel
-the score plays is asked to load (CC 119 = 100) and its answer (CC 119 = 127)
-waited for; the panel shows which channels are ready and which are still
-warming. A track can also switch its channel to an entry of the rack's patch
-catalogue first, with `patch: 6` (a Program Change; the catalogue is the
-`patches:` list in `jukebox.yaml`). The same handshake runs from the browser
-and from `play-yaml-play --midi`. `core/src/rack.ts` is the protocol.
+`sample: cello` is a solo cello with its pizzicato, tremolo and staccato
+programs switched in by the score's `pizzicato`/`tremolo` words and by note
+length; `violins`, `horns` and the other plurals are the sections;
+`strings`, `woodwinds`, `brass` are the whole families; kit tracks land on
+the orchestral percussion key by key and fall through to the synthesized kit
+for what an orchestra does not own. The sampler honours the library's
+controller opcodes, so the score's CC stream — expression, the mod wheel's
+attack length and layer crossfades, the sustain pedal — shapes the
+recordings the way it would in a DAW. VPO has no piano: `piano`, `keys` and
+the synth names stay on the oscillator presets. `core/src/vpo.ts` is the
+catalogue, `core/src/sfzSampler.ts` the engine.
 
-### Tweaking the instruments a score plays on
+### Playing on your own instruments
 
-The instrument panel (🎛) lists the rack's channels with their readiness and,
-for the selected one, shows the plugin's options as sliders and dropdowns,
-sent over MIDI.
-
-Roughly half of those options are not a control change and cannot be. SWAM
-Cello 3 exposes 2,220 parameters and documents one factory CC mapping; ROLI
-Studio Player exposes 72 and answers to none — a host writes those through the
-plugin API, and there is no MIDI message for it. So a control declares how it
-travels: an ordinary CC the plugin already understands, or a small SysEx the
-rack decodes and applies for us. Both go to the same port.
-
-[docs/instrument-surfaces.md](docs/instrument-surfaces.md) has the design;
-`packages/core/src/surface.ts` is the encoder, checked against jukebox's
-independent decoder by a shared table of byte vectors.
+A score says what to play; the studio's **MIDI** output mode and
+`play-yaml-play --midi` say what to play it *on*. Every track goes out as
+plain MIDI — notes, the score's control changes (expression, bow, pedal, the
+mix) and the tempo map — on the channel you pick, to any device the browser
+or the OS can see: a hardware synth, a DAW, a standalone software instrument
+on a virtual MIDI port. The routing panel lists the score's instruments and
+lets you send each to a port and channel, with a test note per mapping.
 
 ## Getting Started
 
@@ -128,7 +111,7 @@ track in drum tokens. Recorded playing needs `--snap 48 --legato`, and the
 report then says `COMPLETE (quantized)` with the largest onset it moved —
 notes moving is what `--snap` is for, notes vanishing never is.
 
-This is the workflow the SNES collection below was built by hand with;
+This is the workflow the song projects below were built with;
 `docs/audio-and-midi-import.md` covers it, and the audio → MIDI stage in front
 of it.
 
@@ -142,7 +125,7 @@ node packages/cli/dist/cli.js examples/my-score.play.yaml
 Or run the preconfigured sample song play command:
 
 ```bash
-npm run play -w @play.yaml/cli
+npx play-yaml-play examples/my-score.play.yaml
 ```
 
 #### Score a `play.yaml` against a reference recording
@@ -173,12 +156,7 @@ npm run logs         # print the last 100 log lines
 npm run logs:follow  # stream logs live
 npm run dev:stop     # stop the dev server
 ```
-It offers a YAML editor with syntax highlighting, the bundled example scores (editable in-session, never persisted), opening/saving local `.play.yaml` files via the File System Access API, playback on the built-in orchestra, and per-instrument routing to your MIDI devices via WebMIDI (with a per-mapping test note). The panel picks the output: **Built-in** renders everything in the browser using the Web Audio API and the VPO sample library, while **MIDI** routes notes and CC events to your hardware or virtual MIDI devices (e.g. Jukebox VST rack). The **⬇ MIDI** button exports the compiled score as a Standard MIDI File (`.mid`), and the **⬇ MP3** button renders the score offline with the built-in sounds (tempo map included) and downloads it as an MP3.
-
-To play through real VST instruments, boot `jukebox`
-(`./jukebox`), pick its **Midi Through Port-0** in the MIDI panel, and route
-each track's instrument to it — the channel picker is labelled from the
-rack's own map, and each instrument lands on its channel by default.
+It offers a YAML editor with syntax highlighting, the bundled example scores (editable in-session, never persisted), opening/saving local `.play.yaml` files via the File System Access API, playback on the built-in orchestra, and per-instrument routing to your MIDI devices via WebMIDI (with a per-mapping test note). The panel picks the output: **Built-in** renders everything in the browser using the Web Audio API and the VPO sample library, while **MIDI** routes notes and CC events to your hardware or virtual MIDI devices. The **⬇ MIDI** button exports the compiled score as a Standard MIDI File (`.mid`), and the **⬇ MP3** button renders the score offline with the built-in sounds (tempo map included) and downloads it as an MP3.
 
 Two studio behaviors worth knowing:
 
@@ -225,7 +203,7 @@ Each string in the `play` array (or each line of a `play: |` multiline string) i
 - `c4:` / `c4.` — **duration weights**: a trailing `:` doubles a token's share of the measure, a `.` is a dot (×1.5); they stack and combine (`c4::` = ×4, `c4:.` = ×3). The measure (or group) divides proportionally to the tokens' weights, so `"c4: d4 c4"` in 4/4 is a half note and two quarters, and `"c4. d4."` fills 3/4. Rests and holds take weights too (`~:`, `_:`). Note for YAML: a measure containing `:` must be quoted.
 - `5>` — an accent: a trailing `>` stresses that one note (+16 velocity), and stacks for a sforzando (`5>>`). Its dual `5<` softens. Both mark whole chords too — `[1 5]>` hits every note in the chord.
 - `[c e g]~` — a **rolled** chord (arpeggiando/strum): notes speak one after another in **written order** and end together, so `[c e g]~` breaks bass-first like a string player's triple stop or a guitar down-stroke, and `[g e c]~` strums the other way. `~~` doubles the spread for a slower, more deliberate strum. The spread defaults to 0.03 beats per note and is tuned with the `strum:` prop or a `set: strum 0.06` clause; it auto-clamps inside fast subdivisions. Combines with accents: `[c e g]>~`.
-- `voices: 2` (prop, or `set: voices 2`) — the sustain limit inside rolled chords, for instruments whose excitation is physically limited: a bow holds two strings, so with `voices: 2` a rolled triple stop releases its bass as the top pair lands, exactly how a cellist breaks the chord — and exactly what SWAM needs to voice all three notes instead of dropping one. `voices all` lifts the limit (piano, guitar, samplers).
+- `voices: 2` (prop, or `set: voices 2`) — the sustain limit inside rolled chords, for instruments whose excitation is physically limited: a bow holds two strings, so with `voices: 2` a rolled triple stop releases its bass as the top pair lands, exactly how a cellist breaks the chord — and exactly what a two-voice physical model needs to voice all three notes instead of dropping one. `voices all` lifts the limit (piano, guitar, samplers).
 - `[c e g]` — a chord: all notes sound together for the whole slot
 - `{c d}` — a group: the slot is subdivided equally among its elements
 
@@ -302,8 +280,8 @@ sections:
   (intro plays once; turn Loop off for a single pass), the CLI's `--loop`
   restarts from it, and `.mid` exports write a `loopStart` marker meta-event.
 
-See `examples/take-5.play.yaml`: intro with staggered `wait` entries, then
-theme + chorus looping forever.
+See `songs/tico-tico-no-fuba/tico-tico-no-fuba.play.yaml`: an intro, then
+the sections in form order with staggered `wait` entries.
 
 Built-in sounds, each mapped to a General MIDI program for `.mid` export. The orchestra (Virtual Playing Orchestra, fetched on demand): solo `violin`, `viola`, `cello`, `contrabass`, `bass` (plucked until the score says `arco`), `harp`; `flute`, `piccolo`, `alto-flute`, `oboe`, `english-horn`, `clarinet`, `bass-clarinet`, `bassoon`, `contrabassoon`; `trumpet`, `horn`, `trombone`, `bass-trombone`, `tuba`; `celesta`, `glockenspiel`, `xylophone`, `vibraphone`, `tubular-bells`, `timpani`; `choir`, `choir-female`, `choir-male`; the sections `violins`, `violas`, `cellos`, `basses`, `flutes`, `oboes`, `clarinets`, `bassoons`, `trumpets`, `horns`, `trombones`; and the families `strings`, `woodwinds`, `brass`. `ocarina` rides the flute. The synth presets: `piano`, `epiano`/`keys` (an FM electric piano), `pad`, `lead` (a sawtooth), and any name the orchestra does not know.
 
@@ -370,7 +348,7 @@ The numeric forms (`velocity 88`, `gate 1.05`, `tempo 60 over 2`) all still work
 
 ### Articulation (`gate`)
 
-`gate` is the fraction of its slot a note sounds. Below 1 the note releases before the next begins; **above 1 the notes overlap**, which is how physical-model instruments (SWAM and friends) are told to slur rather than re-attack each note:
+`gate` is the fraction of its slot a note sounds. Below 1 the note releases before the next begins; **above 1 the notes overlap**, which is how a physical-model instrument is told to slur rather than re-attack each note:
 
 ```yaml
 gate: 0.9              # default — detached
@@ -419,7 +397,7 @@ play:
   - 2: "5 6 7 8"
 ```
 
-SWAM's Bow Position and Bow Pressure have no fixed CC numbers — they're assigned on its "MIDI Mapping" page — so `controls:` retargets them. A control can also declare a range, which narrows the band or, by putting `min` above `max`, inverts a mapping that runs the other way:
+Physical-model instruments often let you assign Bow Position and Bow Pressure to any CC on their MIDI-mapping page — so `controls:` retargets them. A control can also declare a range, which narrows the band or, by putting `min` above `max`, inverts a mapping that runs the other way:
 
 ```yaml
 controls:
@@ -482,47 +460,6 @@ control's own range, so `to: 0` on the declaration above releases to 78, the
 quietest that instrument speaks at, rather than to nothing. Needs an
 `expression` control; without one there is nothing to ease off.
 
-### Changing a preset mid-score
-
-`preset` and `sound` name one of the instrument's own patches, at a point in
-the timeline:
-
-```yaml
-voice:
-  channel: 8
-  set: sound "Angelic Choir"      # what it opens on
-  play:
-    - "c5 _ _ _"
-    - set: sound "Deep and High Choir"
-    - "e5 _ _ _"
-```
-
-`preset` selects a program the plugin exposes; `sound` selects a ROLI Studio
-sound, which is a different mechanism in the rack. Names are quoted, and may
-contain commas — the clause splitter respects quotes, because real racks ship
-sounds called `Strings - Loud Sustain, Big`.
-
-**Why not program change.** MIDI's own answer to this is a Program Change, and
-it does not work: measured through a Carla rack, PC moves neither Pianoteq nor
-SWAM Cello (identical RMS and spectral centroid across four program numbers),
-because a host selects programs through its API and nothing wires PC to it.
-ROLI Studio exposes no programs at all, so PC could never reach its 1,196
-sounds. Names also have no 128-per-bank ceiling and read as what they are. So
-these travel as SysEx on the rack's control port instead, and the rack resolves
-the name — see `core/src/surface.ts` for the protocol.
-
-**Timing.** Measured round-trip to a live rack, including the rack's
-acknowledgement: a `preset` change on a plugin that exposes programs is 20 ms.
-A ROLI `sound` change is **1.9 s**, because it rewrites and reloads the
-plugin's saved state — and 1.5 s of that is a fixed settle the rack waits out,
-not work. Either is fine at a section boundary; only the second is worth
-keeping out of the middle of a phrase.
-
-`preset` works on instruments that have no programs at all: the rack falls
-through to its sound catalogue rather than refusing on a distinction only the
-plugin API cares about. So one keyword covers every instrument, and `sound`
-stays for when you want to be explicit about which mechanism you mean.
-
 ### The mix: volume, pan, reverb, chorus
 
 Past the instrument itself are the four controls every General MIDI device
@@ -545,7 +482,7 @@ tracks:
 
 They behave like any other control: drift them with a span (`fade out over 4`,
 `reverb to 90 over 8`), address them numerically (`pan 20`, `cc91 64`), or
-retarget them under `controls:` if your rack disagrees.
+retarget them under `controls:` if your instrument disagrees.
 
 Two things worth knowing:
 
@@ -563,19 +500,22 @@ them sound like they are in one. It renders identically in the browser, the
 offline MP3 export, the CLI, and any track routed out to
 MIDI sends the same CCs to the hardware or plugin instead.
 
-### Physical models (SWAM and friends)
+### Physical-model instruments
 
-Modeled instruments expose the whole player, and the DSL speaks that language.
-Beyond `bow`, `pressure` and `vibrato`, these named controls exist for words to
-land on — none has a conventional CC, so map them in `controls:` to whatever
-you assign on the instrument's MIDI-mapping page:
+Modelled instruments (bowed strings, winds, brass that are synthesised from
+the physics of the player rather than sampled) expose the whole player, and
+the DSL speaks that language. Beyond `bow`, `pressure` and `vibrato`, these
+named controls exist for words to land on — none has a conventional CC, so
+map them in `controls:` to whatever you assign on the instrument's
+MIDI-mapping page:
 
-- `expression` — **the big one.** A SWAM instrument is silent until its
-  expression control (default CC11) moves: it is the bow speed, and with it the
-  real loudness. Declare it and every dynamic in the score drives it: `mf`
-  emits one CC, `crescendo to ff over 4` a ramp of CCs at eighth-note steps,
-  and the track opens with the starting dynamic so the model sounds at all.
-  Note velocity stays what a modeled string wants it to be — attack character.
+- `expression` — **the big one.** A modelled instrument is silent until its
+  expression control (default CC11) moves: it is the bow speed or the breath,
+  and with it the real loudness. Declare it and every dynamic in the score
+  drives it: `mf` emits one CC, `crescendo to ff over 4` a ramp of CCs at
+  eighth-note steps, and the track opens with the starting dynamic so the
+  model sounds at all. Note velocity stays what a modelled string wants it
+  to be — attack character.
 - `playmode` — `arco`, `pizzicato` (or `pizz`), `col legno`
 - `tremolo` — `tremolo` / `tremolo slow`, `tremolo fast`, `tremolo off`: the
   instrument's own bowed tremolo on a held note, no written-out 32nds needed
@@ -592,7 +532,8 @@ you assign on the instrument's MIDI-mapping page:
 New articulation words round it out: `spiccato` (gate 0.3) and `martelé`
 (hammered — velocity 112, gate 0.55), plus `scratch` for full bow overpressure.
 And the accent's dual, `<`, softens one note (`12<`): under a legato overlap
-SWAM turns exactly that — a soft-velocity overlapped note — into a slide.
+a modelled string turns exactly that — a soft-velocity overlapped note — into
+a slide.
 
 ```yaml
 sample: cello
@@ -607,6 +548,7 @@ play:
   - set: tremolo off, pizzicato
   - 4: "1 5 8 5"
 ```
+
 
 ### Tempo changes and rubato
 
@@ -720,48 +662,36 @@ to point at) — everything else about them behaves like hand-written measures.
 
 ## Example Songs
 
-You can find several complete multi-track songs in the [examples/](examples/) directory:
+Complete scores live in the [examples/](examples/) directory. All of them are
+public-domain compositions or original material:
 
-- [lost-woods.play.yaml](examples/lost-woods.play.yaml): The magical "Lost Woods" theme (Saria's Song) from Ocarina of Time, configured as an infinite loop.
-- [take-5.play.yaml](examples/take-5.play.yaml): Dave Brubeck's famous jazz standard "Take Five", written in a 5/4 time signature.
-- [corridors-of-time.play.yaml](examples/corridors-of-time.play.yaml): Chrono Trigger's iconic "Corridors of Time" (Zeal Theme).
-- [preciso-me-encontrar.play.yaml](examples/preciso-me-encontrar.play.yaml): Cartola's classic Brazilian samba masterpiece.
-- [bwv1007.play.yaml](examples/bwv1007.play.yaml): J.S. Bach's Cello Suite No. 1 in G major (Prelude).
-- [sur-le-fil.play.yaml](examples/sur-le-fil.play.yaml): Yann Tiersen's "Sur le fil" for solo violin, from the quiet double-stop theme to the furious hammered climax.
-- [sur-le-fil-cello-vst.play.yaml](examples/sur-le-fil-cello-vst.play.yaml): the same piece voiced for SWAM Cello 3 — expression-driven dynamics, auto-tremolo, martelé, portamento slides.
-- [bwv881.play.yaml](examples/bwv881.play.yaml): J.S. Bach's Prelude No. 12 in F minor from The Well-Tempered Clavier.
-- [severance.play.yaml](examples/severance.play.yaml): The haunting intro theme song of the TV show *Severance*.
-- [experiments-cello.play.yaml](examples/experiments-cello.play.yaml): A short cello-soundscape composition testing dynamic variations.
+- [bwv1007.play.yaml](examples/bwv1007.play.yaml): J.S. Bach's Cello Suite No. 1 in G major (Prelude) — the theory edition, written in scale degrees over inline chord-scales.
+- [bwv846.play.yaml](examples/bwv846.play.yaml): Bach's Prelude in C major from The Well-Tempered Clavier, with pedalling and natural dynamic swells.
+- [bwv881.play.yaml](examples/bwv881.play.yaml): Bach's Prelude No. 12 in F minor from The Well-Tempered Clavier.
+- [clair-de-lune.play.yaml](examples/clair-de-lune.play.yaml): Debussy's *Clair de lune*, 9/8 with a tempo map.
+- [fur-elise.play.yaml](examples/fur-elise.play.yaml): Beethoven's *Für Elise*.
+- [nocturne-op9-no2.play.yaml](examples/nocturne-op9-no2.play.yaml): Chopin's Nocturne Op. 9 No. 2 in 12/8.
+- [twinkle.play.yaml](examples/twinkle.play.yaml): the smallest complete score — start here.
+- [drum-lab.play.yaml](examples/drum-lab.play.yaml): a tour of `kit:` tracks — grooves and fills, son clave with congas, 808 trap hats.
+- [generative-lab.play.yaml](examples/generative-lab.play.yaml): a tour of the generators — `spread:`, `alternate:`, `arp:`, `walk:`, `chance`, `humanize`.
+- [my-score.play.yaml](examples/my-score.play.yaml): the spec's two-track reference score.
 
-To play any of these songs through your speakers:
+To play any of these through your speakers:
 
 ```bash
-node packages/cli/dist/cli.js examples/take-5.play.yaml
+node packages/cli/dist/cli.js examples/bwv846.play.yaml
 ```
 
 ### Song projects
 
 Larger transcriptions live in [songs/](songs/) as project directories —
 score, `README.md`, and a `research/` folder recording where every fact came
-from (see [docs/song-workflow.md](docs/song-workflow.md)). Among them is a
-**SNES collection**: the five best-known cues from each of *Chrono Trigger*
-(Yasunori Mitsuda), *Donkey Kong Country* (David Wise) and *Super Mario
-World* (Koji Kondo).
+from (see [docs/song-workflow.md](docs/song-workflow.md)): Bach cantata
+movements and keyboard works (BWV 106, 528, 784, 881), the Bach/Gounod
+*Ave Maria*, Debussy's *Clair de lune*, and Zequinha de Abreu's
+*Tico-Tico no Fubá*. Each is checked against a reference MIDI with
+`play-yaml-fidelity`; the scores land between 92 and 98 out of 100.
 
-These were transcribed from each game's own sound data rather than by ear or
-from memory: the SPC rip is converted to MIDI, read out as a per-channel bar
-grid, and the resulting score is checked back against that MIDI with
-`play-yaml-fidelity`. Every score lands between 92.7 and 98.1 out of 100.
-Each header comments the harmony bar by bar and maps the original SNES
-channels onto the arrangement's tracks.
-
-| Chrono Trigger | Donkey Kong Country | Super Mario World |
-|---|---|---|
-| `ct-main-theme` | `dkc-aquatic-ambiance` | `smw-overworld` |
-| `ct-corridors-of-time` | `dkc-dk-island-swing` | `smw-athletic` |
-| `ct-frogs-theme` | `dkc-gang-plank-galleon` | `smw-haunted-house` |
-| `ct-schalas-theme` | `dkc-fear-factory` | `smw-fortress` |
-| `ct-wind-scene` | `dkc-mine-cart-madness` | `smw-swimming` |
-
-Only the transcriptions and the analysis are committed — no ripped audio,
-MIDI, or third-party sheet music.
+Only compositions in the public domain are published here, and only the
+transcription and the analysis are committed — no audio, MIDI or
+third-party sheet music. See [CONTRIBUTING.md](CONTRIBUTING.md) for the rule.

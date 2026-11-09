@@ -8,43 +8,21 @@
  */
 
 import { Mp3Encoder } from '@breezystack/lamejs';
-import { CompiledSong, beatsToSeconds, scheduleSong, tempoSegments } from '@play.yaml/core';
-import { loadOrchestra } from './vpo';
+import {
+  CompiledSong, beatsToSeconds, prepareVpo, scheduleSong, songEndBeat, tempoSegments,
+} from '@play.yaml/core';
+import { httpAssets } from './vpo';
 
 const SAMPLE_RATE = 44100;
 /** Ring-out after the last note, in seconds. */
 const TAIL = 1.5;
 
-/** Render the whole song (or its first `maxBeats`) to an AudioBuffer. */
-export async function renderSong(
-  song: CompiledSong,
-  opts: { maxBeats?: number; onlyTracks?: string[] } = {},
-): Promise<AudioBuffer> {
-  const segments = tempoSegments(song.bpm || 120, song.tempoMap);
-  const at = (beat: number) => beatsToSeconds(segments, beat);
-  const tracks = song.tracks.filter(
-    (t) => !opts.onlyTracks || opts.onlyTracks.includes(t.name),
-  );
-  const limit = opts.maxBeats ?? Infinity;
-
-  let endSec = 1;
-  for (const track of tracks) {
-    for (const note of track.timeline) {
-      if (note.time >= limit) continue;
-      endSec = Math.max(endSec, at(Math.min(note.time + note.duration, limit)));
-    }
-  }
+/** Render the whole song to an AudioBuffer. */
+export async function renderSong(song: CompiledSong): Promise<AudioBuffer> {
+  const endSec = Math.max(1, beatsToSeconds(tempoSegments(song.bpm, song.tempoMap), songEndBeat(song)));
   const ctx = new OfflineAudioContext(2, Math.ceil((endSec + TAIL) * SAMPLE_RATE), SAMPLE_RATE);
-
-  const orchestra = await loadOrchestra(ctx, song, { onlyTracks: opts.onlyTracks });
-
-  scheduleSong(ctx, ctx.destination, song, {
-    originTime: 0,
-    maxBeats: opts.maxBeats,
-    onlyTracks: opts.onlyTracks,
-    instrumentFor: (track) => orchestra.get(track.name) ?? null,
-  });
-
+  const orchestra = await prepareVpo(ctx, httpAssets, song);
+  scheduleSong(ctx, ctx.destination, song, { originTime: 0, orchestra });
   return ctx.startRendering();
 }
 
@@ -64,7 +42,7 @@ export async function encodeMp3(buffer: AudioBuffer): Promise<Blob> {
   const l = toInt16(left);
   const r = toInt16(right);
   const chunks: Uint8Array[] = [];
-  const BLOCK = 1152;
+  const BLOCK = 1152; // one MP3 frame
   for (let i = 0, block = 0; i < l.length; i += BLOCK, block++) {
     const data = encoder.encodeBuffer(l.subarray(i, i + BLOCK), r.subarray(i, i + BLOCK));
     if (data.length > 0) chunks.push(data);

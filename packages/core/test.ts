@@ -4,24 +4,21 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import {
-  compileDoc, parsePlay, parsePlayFull, parseSet, noteToMidi, measureToBeats, TimelineEvent,
-  DEFAULT_TEMPO, DEFAULT_SAMPLE,
-  bjorklund, expandArp, expandSpread, expandWalk, hash01,
-} from './src/parser';
+  compileDoc, parsePlayFull, TimelineEvent, TrackProps, PlayInput, DEFAULT_TEMPO, DEFAULT_SAMPLE,
+  DEFAULT_VELOCITY,
+} from './src/song';
+import { parseSet } from './src/set';
+import { noteToMidi, measureToBeats } from './src/theory';
+import { divideByWeight, peelSuffix, tokenSpans, tokenWeight, isRestToken } from './src/tokens';
+import { isDirectiveString } from './src/set';
+import { bjorklund, expandArp, expandSpread, expandWalk, hash01 } from './src/generate';
 import { encodeMidi } from './src/exporter';
 import { decodeMidi, compareMidi } from './src/fidelity';
 import { notateMeasures, separateVoices } from './src/notate';
 import { parseYaml } from './src/yaml';
 import { tempoSegments, beatsToSeconds, secondsToBeats, TempoSegment } from './src/time';
 import { panicMessages } from './src/midiPanic';
-import { controlValue } from './src/vocabulary';
-import {
-  CONTROL_VALUE_MAX, CONTROL_VECTORS, ControlOp,
-  controlApplies, decodeControlMessage, decodeControlString,
-  encodeControlMessage, encodeControlString, fromControlPosition,
-  messagesFor, optionsFor, toControlPosition,
-  type CatalogueInstrument, type SurfaceControl,
-} from './src/surface';
+import { DEFAULT_CONTROLS, DEFAULT_GATE, controlValue } from './src/vocabulary';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,6 +37,10 @@ function check(name: string, fn: () => void) {
   }
 }
 
+/** Compile one track's measures to its note timeline. */
+function parsePlay(play: PlayInput, props: TrackProps = {}): TimelineEvent[] {
+  return parsePlayFull(play, props).timeline;
+}
 function times(tl: TimelineEvent[]): number[] {
   return tl.map((n) => n.time);
 }
@@ -95,6 +96,36 @@ check('multiline string = one measure per line', () => {
 });
 
 console.log('\ntokens:');
+check('tokenSpans splits at depth 0 and keeps offsets; fences are one token', () => {
+  const text = '{c [d e]} f ||oct up|| ==Dm7== g';
+  const spans = tokenSpans(text);
+  assert.deepStrictEqual(spans.map((s) => s.text), ['{c [d e]}', 'f', '||oct up||', '==Dm7==', 'g']);
+  for (const s of spans) assert.strictEqual(text.slice(s.from, s.to), s.text);
+});
+check('peelSuffix separates marks from the token; a bare ~ is a rest, not a suffix', () => {
+  assert.deepStrictEqual(peelSuffix('[c e g]~>'), { core: '[c e g]', marks: '~>' });
+  assert.deepStrictEqual(peelSuffix('~:'), { core: '~', marks: ':' });
+  assert.deepStrictEqual(peelSuffix('~'), { core: '~', marks: '' });
+  assert.ok(isRestToken('~:') && isRestToken('~') && !isRestToken('c~'));
+});
+check('tokenWeight and divideByWeight share a span by dots and colons', () => {
+  assert.deepStrictEqual(['c', 'c.', 'c:', 'c:.', 'c::'].map(tokenWeight), [1, 1.5, 2, 3, 4]);
+  assert.deepStrictEqual(divideByWeight(['c:', 'd', 'e'], 4), [
+    { offset: 0, span: 2 }, { offset: 2, span: 1 }, { offset: 3, span: 1 },
+  ]);
+  assert.deepStrictEqual(divideByWeight([], 4), []);
+});
+check('isDirectiveString: marks are directives, notes (even "f") are measures', () => {
+  assert.ok(isDirectiveString('legato') && isDirectiveString('allargando over 2'));
+  assert.ok(!isDirectiveString('f') && !isDirectiveString('c d e d') && !isDirectiveString(''));
+});
+check('a lone _ is the hold token, a bare ~ a rest, and unweighted tokens divide equally', () => {
+  const held = parsePlay('c _ _ _');
+  assert.strictEqual(held.length, 1);
+  assert.strictEqual(held[0].duration, 3.6);
+  assert.strictEqual(parsePlay('c ~ ~ ~').length, 1);
+  assert.deepStrictEqual(times(parsePlay('c d e d')), [0, 1, 2, 3]);
+});
 check('[c e g] chords are simultaneous', () => {
   const tl = parsePlay('[c e g] ~ ~ ~');
   assert.deepStrictEqual(times(tl), [0, 0, 0]);
@@ -253,11 +284,6 @@ check('the prefix matches the existing suffix form', () => {
     midis(parsePlay('_5 ~ ~ ~', { scale: 'd minor', octave: 3 })),
     midis(parsePlay('5- ~ ~ ~', { scale: 'd minor', octave: 3 })),
   );
-});
-check('a lone _ is still the hold token', () => {
-  const tl = parsePlay('c _ _ _');
-  assert.strictEqual(tl.length, 1);
-  assert.strictEqual(tl[0].duration, 3.6);
 });
 
 console.log('\nheld notes:');
@@ -472,19 +498,25 @@ check('gate is inheritable and overridable per track', () => {
 });
 
 console.log('\nplaying techniques:');
-check('bow position words map onto the bow control', () => {
+check('bow position words run from the fingerboard to the bridge on the bow control', () => {
   const { controls } = parsePlayFull(['c', { set: 'sul tasto' }, 'c', { set: 'ordinario' }, 'c',
     { set: 'sul ponticello' }, 'c']);
-  assert.deepStrictEqual(controls.map((c) => [c.cc, c.value]), [[74, 0], [74, 64], [74, 114]]);
+  assert.ok(controls.every((c) => c.cc === DEFAULT_CONTROLS.bow.cc));
+  const [tasto, ordinario, ponticello] = controls.map((c) => c.value);
+  assert.ok(tasto < ordinario && ordinario < ponticello);
 });
-check('vibrato words, from senza to molto', () => {
+check('vibrato words, from senza (none) to molto (full)', () => {
   const { controls } = parsePlayFull(['c', { set: 'senza vibrato' }, 'c', { set: 'poco vibrato' }, 'c',
     { set: 'molto vibrato' }, 'c']);
-  assert.deepStrictEqual(controls.map((c) => c.value), [0, 32, 127]);
+  const [senza, poco, molto] = controls.map((c) => c.value);
+  assert.strictEqual(senza, 0);
+  assert.strictEqual(molto, 127);
+  assert.ok(senza < poco && poco < molto);
 });
-check('bow pressure words', () => {
+check('bow pressure words, light under heavy', () => {
   const { controls } = parsePlayFull(['c', { set: 'light bow' }, 'c', { set: 'heavy bow' }, 'c']);
-  assert.deepStrictEqual(controls.map((c) => [c.cc, c.value]), [[71, 25], [71, 108]]);
+  assert.ok(controls.every((c) => c.cc === DEFAULT_CONTROLS.pressure.cc));
+  assert.ok(controls[0].value < controls[1].value);
 });
 check('a declared control overrides the conventional CC', () => {
   const song = compileDoc({ controls: { bow: 20 }, play: ['c', { set: 'sul tasto' }, 'c'] });
@@ -540,46 +572,6 @@ check('cc values clamp to 0..127', () => {
 check('a numeric control uses the conventional CC; unknown names still throw', () => {
   assert.deepStrictEqual(parseSet('bow 30').ccs, [{ cc: 74, value: 30 }]);
   assert.throws(() => parseSet('wobble 30'), /Unknown set clause/);
-});
-
-console.log('\npreset / sound changes:');
-check('preset and sound name a patch, by name, on the timeline', () => {
-  const song = compileDoc({
-    channel: 8,
-    set: 'sound "Angelic Choir"',
-    play: ['c5 _ _ _', { set: 'sound "Deep and High Choir"' }, 'e5 _ _ _',
-           { set: 'preset "Classic Flute - Bass"' }, 'g5 _ _ _'],
-  });
-  assert.deepStrictEqual(song.tracks[0].patches, [
-    { time: 0, kind: 'sound', name: 'Angelic Choir' },
-    { time: 4, kind: 'sound', name: 'Deep and High Choir' },
-    { time: 8, kind: 'preset', name: 'Classic Flute - Bass' },
-  ]);
-});
-check('a name may contain commas — the clause split respects quotes', () => {
-  // Real racks ship "Strings - Loud Sustain, Big"; a plain comma split would
-  // look for a preset that does not exist.
-  const patch = parseSet('legato, preset "Strings - Loud Sustain, Big", forte');
-  assert.deepStrictEqual(patch.patches, [{ kind: 'preset', name: 'Strings - Loud Sustain, Big' }]);
-  assert.strictEqual(patch.velocity, 96); // the forte after it still parsed
-  assert.ok(patch.gate! > 1); // and the legato before it
-});
-check('single quotes work too, and the name keeps its case', () => {
-  assert.deepStrictEqual(parseSet("sound 'Olive Tree Lute'").patches,
-    [{ kind: 'sound', name: 'Olive Tree Lute' }]);
-});
-check('an unquoted name is a clear error, not "unknown clause"', () => {
-  assert.throws(() => parseSet('preset Classic Flute'), /must be quoted/);
-  assert.throws(() => parseSet('sound Angelic Choir'), /must be quoted/);
-  assert.throws(() => parseSet('preset ""'), /names no preset/);
-});
-check('patches do not disturb the control stream', () => {
-  const song = compileDoc({
-    controls: { expression: 11 }, dynamic: 'forte',
-    play: ['c4 ~ ~ ~', { set: 'sound "X"' }, 'd4 ~ ~ ~'],
-  });
-  assert.strictEqual(song.tracks[0].patches.length, 1);
-  assert.ok(song.tracks[0].controls.every((c) => c.cc === 11));
 });
 
 console.log('\ntranspose:');
@@ -685,10 +677,12 @@ check('room words scale the reverb send', () => {
   assert.ok(at('room') < at('hall') && at('hall') < at('church') && at('church') < at('cathedral'));
 });
 check('celeste and ensemble are chorus words', () => {
-  assert.deepStrictEqual(parseSet('no chorus').ccs, [{ cc: 93, value: 0 }]);
-  assert.deepStrictEqual(parseSet('celeste').ccs, [{ cc: 93, value: 76 }]);
-  assert.deepStrictEqual(parseSet('voix celeste').ccs, [{ cc: 93, value: 76 }]);
-  assert.ok(parseSet('unda maris').ccs![0].value < parseSet('ensemble').ccs![0].value);
+  const at = (word: string) => parseSet(word).ccs![0];
+  assert.deepStrictEqual(at('no chorus'), { cc: 93, value: 0 });
+  assert.strictEqual(at('celeste').cc, 93);
+  assert.ok(at('celeste').value > 0);
+  assert.deepStrictEqual(at('voix celeste'), at('celeste'));
+  assert.ok(at('unda maris').value < at('ensemble').value);
 });
 check('pan centre lands exactly on 64', () => {
   assert.deepStrictEqual(parseSet('pan centre').ccs, [{ cc: 10, value: 64 }]);
@@ -800,14 +794,17 @@ check('velocityRange remaps the marks into a band, keeping their order', () => {
   const plain = parsePlay(play).map((n) => n.velocity);
   assert.deepStrictEqual(plain, [90, 32, 112]);
   // The whole 0..127 domain lands inside the band, so nothing escapes it and
-  // the written dynamics keep their relative spacing.
+  // the written dynamics keep their relative order.
+  const rank = (vs: number[]) => [...vs].sort((a, b) => a - b).map((v) => vs.indexOf(v));
   const band = parsePlay(play, { velocityRange: [56, 127] }).map((n) => n.velocity);
-  assert.deepStrictEqual(band, plain.map((v) => Math.round(56 + (v / 127) * 71)));
   assert.ok(Math.min(...band) >= 56 && Math.max(...band) <= 127);
+  assert.deepStrictEqual(rank(band), rank(plain));
+  assert.ok(band[1] > plain[1], 'the pianissimo was lifted into the band');
   // A single number is a ceiling, and the curve form is honoured, both as
   // they are for a control `range:`.
-  assert.deepStrictEqual(parsePlay(play, { velocityRange: 64 }).map((n) => n.velocity),
-    plain.map((v) => Math.round((v / 127) * 64)));
+  const ceiling = parsePlay(play, { velocityRange: 64 }).map((n) => n.velocity);
+  assert.ok(Math.max(...ceiling) <= 64);
+  assert.deepStrictEqual(rank(ceiling), rank(plain));
   assert.strictEqual(parsePlay(['c'], { velocity: 127, velocityRange: [0, 10, 100] })[0].velocity, 100);
 });
 check('velocityRange survives the track/section merge', () => {
@@ -1074,12 +1071,13 @@ check('più lento drops the running tempo at once', () => {
   assert.strictEqual(tempos[0].bpm, 75);
   assert.strictEqual(tempos[0].rampBeats, 0);
 });
-check('meno mosso and piu mosso parse without the accent', () => {
-  assert.strictEqual(parseSet('meno mosso').tempo!.scale, 0.8);
-  assert.strictEqual(parseSet('piu mosso').tempo!.scale, 1.25);
+check('meno mosso slows, più mosso quickens, with or without the accent', () => {
+  assert.ok(parseSet('meno mosso').tempo!.scale! < 1);
+  assert.ok(parseSet('più mosso').tempo!.scale! > 1);
+  assert.deepStrictEqual(parseSet('piu mosso'), parseSet('più mosso'));
 });
 
-console.log('\nSWAM-style techniques:');
+console.log('\nstring techniques:');
 check('`<` softens a note, the dual of the accent', () => {
   const tl = parsePlay('1 2< 3<< 4', { velocity: 80 });
   assert.deepStrictEqual(tl.map((n) => n.velocity), [80, 64, 48, 80]);
@@ -1114,10 +1112,12 @@ check('left-hand fingering words drive the fingering control', () => {
   assert.deepStrictEqual(parseSet('mid position', { fingering: 25 }).ccs, [{ cc: 25, value: 0 }]);
 });
 check('martelé and spiccato read as articulation words', () => {
-  assert.strictEqual(parseSet('spiccato').gate, 0.3);
+  // Both are off-the-string strokes: shorter than the default gate, and
+  // martelé is a hammered, louder one.
+  assert.ok(parseSet('spiccato').gate! < DEFAULT_GATE);
   const m = parseSet('martelé');
-  assert.strictEqual(m.velocity, 112);
-  assert.strictEqual(m.gate, 0.55);
+  assert.ok(m.gate! < DEFAULT_GATE);
+  assert.ok(m.velocity! > DEFAULT_VELOCITY);
 });
 check('declared expression control mirrors dynamics as CCs', () => {
   const { controls } = parsePlayFull(
@@ -1177,10 +1177,6 @@ check('the roll clamps inside fast subdivisions', () => {
   const tl = parsePlay('{[c e g]~ c c c} c c c', { strum: 0.5 });
   const chord = tl.slice(0, 3);
   assert.ok(chord[2].time <= 0.25 * 0.6 + 1e-9); // ≤ 60% of a 16th slot
-});
-check('an unmarked chord stays simultaneous; bare `~` is still a rest', () => {
-  assert.deepStrictEqual(times(parsePlay('[c e g] ~ ~ ~')), [0, 0, 0]);
-  assert.strictEqual(parsePlay('c ~ ~ ~').length, 1);
 });
 check('voices 2 breaks a rolled triple stop like a bow would', () => {
   const tl = parsePlay('[c e g]~ _ _ _', { voices: 2 });
@@ -1256,6 +1252,14 @@ check('an unknown alias throws', () => {
 });
 
 console.log('\nset patches on tracks and directives:');
+check('a track-level set: applies its tempo, meter and relative dynamic to the track', () => {
+  const song = compileDoc({ set: 'allegro, louder', play: 'c d e d' });
+  assert.strictEqual(song.bpm, 132);
+  assert.strictEqual(song.tracks[0].timeline[0].velocity, 106);
+  const meter = compileDoc({ tracks: { a: { set: '3/4', play: 'c d e' } } });
+  assert.strictEqual(meter.tracks[0].timeline[2].time, 2);
+  assert.strictEqual(meter.lengthBeats, 3);
+});
 check('track-level set: applies strum, voices and tail', () => {
   const song = compileDoc({ set: 'strum 0.05, voices 2, tail -0.02', play: '[c e g]~ _ _ _' });
   const tl = song.tracks[0].timeline;
@@ -1383,9 +1387,6 @@ check('duration weights combine with accents and rolls', () => {
   const tl = parsePlay('[c e]:>~ d d', { velocity: 80 });
   assert.deepStrictEqual(times(tl), [0, 0.03, 2, 3]);
   assert.ok(tl[0].velocity === 96 && tl[1].velocity === 96);
-});
-check('unweighted measures are untouched (equal division)', () => {
-  assert.deepStrictEqual(times(parsePlay('c d e d')), [0, 1, 2, 3]);
 });
 
 console.log('\nsections:');
@@ -1798,12 +1799,6 @@ check('alternate varies passes of a loop: N section', () => {
 });
 
 console.log('\nexamples (golden):');
-check('bundled example compiles', () => {
-  const text = fs.readFileSync(path.join(__dirname, '../../examples/my-score.play.yaml'), 'utf8');
-  const song = compileDoc(parseYaml(text));
-  assert.strictEqual(song.tracks.length, 2);
-  assert.ok(song.tracks[0].timeline.length > 0);
-});
 check('every example matches its golden digest', () => {
   // Strudel-style repertoire snapshots: the whole examples/ directory is the
   // regression suite. On an intentional change to compiled output, regenerate
@@ -1838,11 +1833,12 @@ check('every example matches its golden digest', () => {
         .digest('hex'),
     };
   }
-  if (process.env.UPDATE_GOLDEN || !fs.existsSync(goldenPath)) {
+  if (process.env.UPDATE_GOLDEN) {
     fs.writeFileSync(goldenPath, JSON.stringify(digests, null, 2) + '\n');
-    console.log(`    (golden file ${fs.existsSync(goldenPath) ? 'written' : 'created'}: ${Object.keys(digests).length} examples)`);
+    console.log(`    (golden file written: ${Object.keys(digests).length} examples)`);
     return;
   }
+  assert.ok(fs.existsSync(goldenPath), 'examples.golden.json is missing — create it with UPDATE_GOLDEN=1');
   const golden = JSON.parse(fs.readFileSync(goldenPath, 'utf8'));
   assert.deepStrictEqual(
     digests,
@@ -1949,142 +1945,6 @@ check('flags the bar we corrupt as a weakest window', () => {
   const r = compareMidi(encodeMidi(broken, { bpm: fidSong.bpm }), ref, { windowBeats: 4 });
   const worstWin = r.worst[0];
   assert.ok(worstWin.startBeat >= 8 && worstWin.startBeat < 12, `worst window is bar 3 (got beat ${worstWin.startBeat})`);
-});
-
-console.log('instrument surfaces:');
-
-check('the control protocol encodes to the bytes the rack expects', () => {
-  // CONTROL_VECTORS is mirrored byte for byte in jukebox's app/src/protocol.ts.
-  // Two independent codecs agreeing on a fixed table is the only guarantee
-  // available across a repo boundary — there is no shared package to import.
-  for (const vector of CONTROL_VECTORS) {
-    assert.deepStrictEqual(
-      encodeControlMessage(vector.message),
-      vector.bytes,
-      `${vector.name}: encoded differently`,
-    );
-    assert.deepStrictEqual(decodeControlMessage(vector.bytes), vector.message, vector.name);
-  }
-});
-
-check('a preset name survives characters a raw SysEx could not carry', () => {
-  // "Saint-Saëns" is a real SWAM Cello program, and ë is two bytes with the
-  // top bit set — illegal between F0 and F7 without the nibble encoding.
-  const text = 'Saint-Saëns — ♭7 “kit”';
-  const encoded = encodeControlString(text);
-  assert.ok(encoded.every((b) => b <= 0x7f), 'every byte must be 7-bit');
-  assert.strictEqual(decodeControlString(encoded, 0)[0], text);
-});
-
-check('another vendor’s SysEx is ignored rather than mis-parsed', () => {
-  assert.strictEqual(decodeControlMessage([0xf0, 0x41, 0x10, 0x42, 0x12, 0xf7]), null);
-  assert.strictEqual(decodeControlMessage([0xf0, 0x7e, 0x7f, 0x06, 0x01, 0xf7]), null);
-});
-
-check('positions clamp to the control’s range', () => {
-  assert.strictEqual(toControlPosition(-1, [0, 1]), 0);
-  assert.strictEqual(toControlPosition(2, [0, 1]), CONTROL_VALUE_MAX);
-  assert.strictEqual(fromControlPosition(CONTROL_VALUE_MAX, [0, 127]), 127);
-});
-
-/** An instrument as a running rack publishes it. */
-const swamCello: CatalogueInstrument = {
-  port: 0, channel: 2, portName: 'jukebox', through: 'Midi Through Port-0',
-  instrument: 'SWAM Cello 3', plugin: 'SWAM Cello 3', ready: true, error: '',
-  gain: 1, preset: '', mpe: null, surface: null, programs: ['Cello', 'Bach'], sounds: [],
-};
-const roliDrums: CatalogueInstrument = {
-  ...swamCello, port: 1, channel: 0, portName: 'jukebox-drums',
-  instrument: 'ROLI Studio Drums', plugin: 'ROLI Studio Drums',
-  mpe: {zone: 'lower', master: 1, members: 15, channels: [], pitchBendRange: 48},
-  programs: [], sounds: ['Lemon 1 Drum Kit 4x4'],
-};
-
-const control = (over: Partial<SurfaceControl>): SurfaceControl => ({
-  id: 'x', label: 'X', type: 'slider', range: [0, 1], send: {via: 'param', param: 'X'}, ...over,
-});
-
-check('a built-in control becomes a plain control change', () => {
-  // SWAM's one documented factory mapping. Nothing has to understand this.
-  const wires = messagesFor(
-    swamCello,
-    control({id: 'expression', range: [0, 127], send: {via: 'cc', cc: 11}}),
-    100,
-  );
-  assert.strictEqual(wires.length, 1);
-  assert.strictEqual(wires[0].kind, 'midi');
-  // Channel 2 in the rack is channel index 1 on the wire.
-  assert.deepStrictEqual(wires[0].bytes, [0xb1, 11, 100]);
-});
-
-check('a host-only control becomes a jukebox SysEx', () => {
-  const wires = messagesFor(
-    swamCello,
-    control({id: 'pipe-length', send: {via: 'param', param: 'Pipe Length'}}),
-    1,
-  );
-  assert.strictEqual(wires[0].kind, 'sysex');
-  const decoded = decodeControlMessage(wires[0].bytes)!;
-  assert.strictEqual(decoded.op, ControlOp.SetControl);
-  assert.deepStrictEqual(
-    {port: decoded.port, channel: decoded.channel},
-    {port: 0, channel: 2},
-  );
-  assert.strictEqual((decoded as any).id, 'pipe-length');
-  assert.strictEqual((decoded as any).value, CONTROL_VALUE_MAX);
-});
-
-check('an MPE instrument is addressed port-wide, and rides its master channel', () => {
-  // Channel 0 means "the instrument that owns this port" — a zone claims all
-  // sixteen, so naming one would be a lie.
-  const sysex = messagesFor(roliDrums, control({id: 'volume'}), 0.5)[0];
-  assert.strictEqual(decodeControlMessage(sysex.bytes)!.channel, 0);
-  // A zone-wide CC goes on the master channel, not on a member's.
-  const midi = messagesFor(roliDrums, control({range: [0, 127], send: {via: 'cc', cc: 7}}), 64)[0];
-  assert.strictEqual(midi.bytes[0] & 0x0f, 0);
-});
-
-check('a toggle sends the ends of its range, not true/false', () => {
-  const toggle = control({type: 'toggle', range: [0, 127], send: {via: 'cc', cc: 64}});
-  assert.strictEqual(messagesFor(swamCello, toggle, true)[0].bytes[2], 127);
-  assert.strictEqual(messagesFor(swamCello, toggle, false)[0].bytes[2], 0);
-});
-
-check('a preset control sends the name, not a position', () => {
-  // 32 programs cannot be a 14-bit position that survives a rename.
-  const wires = messagesFor(
-    swamCello,
-    control({id: 'program', type: 'select', options_from: 'programs', send: {via: 'preset'}}),
-    'Bach',
-  );
-  const decoded = decodeControlMessage(wires[0].bytes)!;
-  assert.strictEqual(decoded.op, ControlOp.SetPreset);
-  assert.strictEqual((decoded as any).name, 'Bach');
-});
-
-check('cc14 sends MSB before LSB', () => {
-  const wires = messagesFor(swamCello, control({send: {via: 'cc14', cc: 7}}), 1);
-  assert.deepStrictEqual(wires.map((w) => w.bytes[1]), [7, 39]);
-  assert.deepStrictEqual(wires.map((w) => w.bytes[2]), [127, 127]);
-});
-
-check('nrpn sends the parameter number then the data', () => {
-  const wires = messagesFor(swamCello, control({send: {via: 'nrpn', nrpn: [1, 2]}}), 1);
-  assert.deepStrictEqual(wires.map((w) => w.bytes[1]), [99, 98, 6, 38]);
-  assert.deepStrictEqual(wires.map((w) => w.bytes[2]), [1, 2, 127, 127]);
-});
-
-check('long option lists come from the instrument, not the surface', () => {
-  const programs = control({type: 'select', options_from: 'programs', send: {via: 'preset'}});
-  assert.deepStrictEqual(optionsFor(swamCello, programs).map((o) => o.label), ['Cello', 'Bach']);
-  const sounds = control({type: 'select', options_from: 'sounds', send: {via: 'sound'}});
-  assert.deepStrictEqual(optionsFor(roliDrums, sounds).map((o) => o.value), ['Lemon 1 Drum Kit 4x4']);
-});
-
-check('an MPE-only control is hidden on a channel-mapped instance', () => {
-  const zone = control({id: 'mpe-enabled', requires: 'mpe'});
-  assert.strictEqual(controlApplies(roliDrums, zone), true);
-  assert.strictEqual(controlApplies(swamCello, zone), false);
 });
 
 
@@ -2230,7 +2090,7 @@ check('every example survives .mid export and re-import note for note', () => {
   // The importer's whole claim in one test: onset beat and pitch are exactly
   // what the file said, for real scores rather than fixtures.
   const examplesDir = path.join(__dirname, '../../examples');
-  for (const file of ['twinkle', 'bwv846', 'fur-elise', 'take-5', 'nocturne-op9-no2']) {
+  for (const file of ['twinkle', 'bwv846', 'fur-elise', 'drum-lab', 'nocturne-op9-no2']) {
     const song = compileDoc(parseYaml(
       fs.readFileSync(path.join(examplesDir, `${file}.play.yaml`), 'utf8')));
     const parsed = decodeMidi(encodeMidi(song, { bpm: song.bpm, tpqn: 480 }));

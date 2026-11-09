@@ -1,17 +1,13 @@
 /**
  * server.ts — the production server for @play.yaml/web.
  *
- * `vite build` emits only the client bundle. The studio's server side — the
- * `/api/server-*` routes, the SSE snapshot stream, offline rendering and MIDI
- * output — lived solely in a Vite *dev-server* plugin, so a built bundle served
- * as static files had a UI with no engine behind it and `vite preview` did not
- * help (it does not run `configureServer`).
+ * `vite build` emits only the client bundle, and `vite preview` does not run
+ * `configureServer`, so the orchestra route the dev plugin provides would be
+ * missing from a static deploy. This mounts the same handler
+ * (`playYamlApiMiddleware`) in front of the built assets, so dev and
+ * production run one implementation.
  *
- * This mounts the very same handler the dev plugin uses
- * (`playYamlApiMiddleware`, extracted in serverMiddleware.ts) in front of the
- * built assets, so dev and production run one implementation.
- *
- * TLS and the public hostname are Caddy's job; this binds to loopback.
+ * TLS and the public hostname are the reverse proxy's job; this binds to loopback.
  *
  *   PORT=4851 HOST=127.0.0.1 npm run serve -w @play.yaml/web
  */
@@ -48,9 +44,9 @@ if (!fs.existsSync(path.join(DIST, 'index.html'))) {
   process.exit(1);
 }
 
-function sendFile(res: import('node:http').ServerResponse, file: string, status = 200): void {
+function sendFile(res: import('node:http').ServerResponse, file: string): void {
   const ext = path.extname(file).toLowerCase();
-  res.statusCode = status;
+  res.statusCode = 200;
   res.setHeader('Content-Type', MIME[ext] ?? 'application/octet-stream');
   // Vite fingerprints everything under /assets, so those are immutable;
   // index.html must not be cached or a deploy never reaches the browser.
@@ -64,8 +60,7 @@ function sendFile(res: import('node:http').ServerResponse, file: string, status 
 }
 
 const server = createServer((req, res) => {
-  // The API handler calls next() for anything it does not own.
-  void playYamlApiMiddleware(req, res, () => {
+  playYamlApiMiddleware(req, res, () => {
     const urlPath = decodeURIComponent((req.url ?? '/').split('?')[0]);
 
     // Resolve inside DIST and verify, so `..` cannot escape the build dir.
@@ -79,12 +74,7 @@ const server = createServer((req, res) => {
       return sendFile(res, candidate);
     }
 
-    // Single-page app: unknown paths are client routes, not 404s. Asset
-    // requests are excluded so a missing bundle fails loudly instead of
-    // silently returning HTML.
-    if (!urlPath.startsWith('/assets/') && !path.extname(urlPath)) {
-      return sendFile(res, path.join(DIST, 'index.html'));
-    }
+    if (urlPath === '/') return sendFile(res, path.join(DIST, 'index.html'));
 
     res.statusCode = 404;
     res.end('not found');

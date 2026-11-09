@@ -87,11 +87,10 @@ are GM2 keys — old GM1 synths approximate or ignore them.
 
 ## Choke groups
 
-`DRUMS` entries may carry `choke: 'hh'`: the open hi-hat dies when a closed or
-pedal hat starts. The compiler does nothing with this — it is playback
-behavior. The web sampler keeps per-bus voice sets by group and fades the
-previous voices out in ~10 ms at the new hit's start time. `drumChoke(note)`
-in core exposes the mapping to any backend.
+Choke groups (an open hi-hat dying when a closed one starts) are the
+sampler's business: the orchestra's SFZ programs declare them with
+`group`/`off_by`, and `sfzSampler.ts` honours those. The synthesized kit has
+no choke groups.
 
 ## Sound engines
 
@@ -99,7 +98,7 @@ in core exposes the mapping to any backend.
   recipes per GM key (pitch-drop sine kick, bandpassed-noise snare, filtered
   noise hats with open/closed envelope lengths, two-detuned-squares cowbell,
   tuned sine toms/congas, noise-burst clap…). Runs anywhere Web Audio does,
-  including the CLI through webaudio-node.
+  including the CLI through node-web-audio-api.
 - **The orchestra's percussion** — `core/vpo.ts` maps GM keys onto VPO's
   `Percussion/bassdrum-snare-cymbals.sfz` and `Percussion/misc.sfz` (bass
   drums, snares with round-robin hands, cymbals, tambourine, cowbell,

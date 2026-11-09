@@ -92,7 +92,7 @@ W3C group) — the formalized version of what we do informally.
 *token* layer — with theory awareness few of these have: scale-degree tokens
 against named scales *and chord symbols* (`==Dm7==` chord-scales), dynamics/
 articulation/technique vocabularies emitting CCs, physical-model support
-(SWAM expression mapping), a sampled+synth browser engine, MIDI-file export
+(expression-driven dynamics), a sampled+synth browser engine, MIDI-file export
 with tempo maps and GM percussion, offline MP3 rendering, and golden-digest
 regression tests over a real repertoire. Alda has the language but no studio
 or samples; Strudel has the studio but cycles instead of scores (no song

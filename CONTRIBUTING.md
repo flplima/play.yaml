@@ -30,7 +30,7 @@ npm run build
 npm test
 ```
 
-To open the browser studio on `https://localhost:5173`:
+To open the browser studio (the dev server prints its `https://localhost:<port>` URL; the port comes from `packages/web/.env.example`):
 
 ```bash
 npm run dev:vite -w @play.yaml/web
@@ -41,8 +41,8 @@ npm run dev:vite -w @play.yaml/web
 
 You do not need to learn the whole compiler to ship something cool. These four areas live in one file or folder each:
 
-1. **Transcribe a song (`songs/<slug>/`)**: pick a classical piece, jazz standard, Brazilian samba/choro, or retro video game track. Follow [docs/song-workflow.md](docs/song-workflow.md) and aim for 92+ on `play-yaml-fidelity`.
-2. **Add vocabulary or instrument controls (`packages/core/src/vocabulary.ts`, `surface.ts`)**: add playing technique words, drum tokens, or VST parameter surfaces with a unit test in `packages/core/test.ts`.
+1. **Transcribe a song (`songs/<slug>/`)**: pick a piece whose composition is in the public domain — Bach, Chopin, Debussy, Villa-Lobos' predecessors, early choro and samba, folk tunes. Follow [docs/song-workflow.md](docs/song-workflow.md) and aim for 92+ on `play-yaml-fidelity`.
+2. **Add vocabulary or instrument controls (`packages/core/src/vocabulary.ts`)**: add playing technique words, drum tokens, or named controls with a unit test in `packages/core/test.ts`.
 3. **Add a compile-time generator (`packages/core/src/generate.ts`)**: each generator (`spread:`, `alternate:`, `arp:`, `walk:`) is a pure function that expands a YAML block into measure strings. See [docs/generative-design.md](docs/generative-design.md) for the next ones on the list (`talea:`, `markov:`, `sieve:`).
 4. **Improve the web studio or CLI (`packages/web/`, `packages/cli/`)**: UI polish, keyboard shortcuts, or CLI playback flags.
 
@@ -57,9 +57,11 @@ Please make sure both you and your agent follow these rules:
 
 ## copyright rule for songs
 
-This is an open-source MIT repository. Commit only your own `.play.yaml` transcription and your own notes in `research/*.md`.
+This is an open-source MIT repository, and the MIT license covers the code and the scores — so a score can only be here if the **composition itself is free to redistribute**: in the public domain (in Brazil, the EU and most of the world that means the composer died more than 70 years ago; in the US, published before 1930), or your own original work, or released by its author under a licence that allows it.
 
-Never commit third-party `.mid` files, `.musicxml` files, PDF sheet music scans, SPC game rips, or song lyrics. Your agent can use a reference `.mid` in a temporary folder to run `play-yaml-import --verify` and `play-yaml-fidelity`, then delete the `.mid` before committing.
+A note-for-note transcription of a copyrighted piece is a derivative work, however it was made. Film and game soundtracks, jazz standards from the 1950s on, bossa nova, MPB and anything by a living composer do **not** qualify, even when transcribed by ear or from the game's own sound data. Keep those in your own private folder.
+
+For the pieces that do qualify, commit only your own `.play.yaml` transcription and your own notes in `research/*.md`. Never commit third-party `.mid` files, `.musicxml` files, PDF sheet music scans or song lyrics. Your agent can use a reference `.mid` in a temporary folder to run `play-yaml-import --verify` and `play-yaml-fidelity`, then delete the `.mid` before committing.
 
 ## submitting a pr
 

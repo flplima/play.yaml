@@ -16,10 +16,10 @@ interface Props {
   song: CompiledSong | null;
   /** Transport position. Notes are placed relative to it. */
   currentBeat: number;
-  playing: boolean;
-  /** Beats of music visible above the keyboard — the look-ahead. */
-  lookAhead?: number;
 }
+
+/** Beats of music visible above the keyboard. */
+const LOOK_AHEAD = 8;
 
 /** Which semitones are black keys, indexed by pitch class. */
 const BLACK = [false, true, false, true, false, false, true, false, true, false, true, false];
@@ -30,8 +30,9 @@ const BLACK = [false, true, false, true, false, false, true, false, true, false,
  * alone, so the hues are spaced rather than pretty.
  */
 const TRACK_HUES = [265, 190, 42, 330, 150, 15, 220, 95];
+const KEY_DOWN_HUE = TRACK_HUES[0];
 
-export default function PianoRoll({ song, currentBeat, playing, lookAhead = 8 }: Props) {
+export default function PianoRoll({ song, currentBeat }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -83,8 +84,7 @@ export default function PianoRoll({ song, currentBeat, playing, lookAhead = 8 }:
 
       const keyboardH = Math.min(72, Math.max(40, h * 0.16));
       const rollH = h - keyboardH;
-      /** Beats → pixels. The keyboard is "now"; time runs upward. */
-      const pxPerBeat = rollH / lookAhead;
+      const pxPerBeat = rollH / LOOK_AHEAD;
       const xOf = (midi: number) => (midi - lo) * keyW;
 
       // ── the keyboard ────────────────────────────────────────────────────
@@ -107,10 +107,11 @@ export default function PianoRoll({ song, currentBeat, playing, lookAhead = 8 }:
 
       // ── beat lines ──────────────────────────────────────────────────────
       const firstBeat = Math.floor(currentBeat);
-      for (let b = firstBeat; b <= currentBeat + lookAhead; b++) {
+      const measureBeats = Math.max(1, Math.round(song?.measureBeats ?? 4));
+      for (let b = firstBeat; b <= currentBeat + LOOK_AHEAD; b++) {
         const y = rollH - (b - currentBeat) * pxPerBeat;
         if (y < 0 || y > rollH) continue;
-        const bar = b % 4 === 0;
+        const bar = b % measureBeats === 0;
         ctx.strokeStyle = bar ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.06)';
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -123,7 +124,7 @@ export default function PianoRoll({ song, currentBeat, playing, lookAhead = 8 }:
       const sounding: number[] = [];
       for (const n of notes) {
         const end = n.time + n.duration;
-        if (end < currentBeat - 0.5 || n.time > currentBeat + lookAhead) continue;
+        if (end < currentBeat - 0.5 || n.time > currentBeat + LOOK_AHEAD) continue;
         const top = rollH - (end - currentBeat) * pxPerBeat;
         const bottom = rollH - (n.time - currentBeat) * pxPerBeat;
         const height = Math.max(2, bottom - top);
@@ -152,7 +153,7 @@ export default function PianoRoll({ song, currentBeat, playing, lookAhead = 8 }:
       for (const m of sounding) {
         if (m < lo || m > hi) continue;
         const black = BLACK[((m % 12) + 12) % 12];
-        ctx.fillStyle = black ? 'hsl(265 70% 52%)' : 'hsl(265 80% 68%)';
+        ctx.fillStyle = black ? `hsl(${KEY_DOWN_HUE} 70% 52%)` : `hsl(${KEY_DOWN_HUE} 80% 68%)`;
         ctx.fillRect(xOf(m), rollH, keyW, keyboardH);
       }
 
@@ -169,7 +170,7 @@ export default function PianoRoll({ song, currentBeat, playing, lookAhead = 8 }:
     const observer = new ResizeObserver(draw);
     observer.observe(wrap);
     return () => observer.disconnect();
-  }, [song, currentBeat, playing, lookAhead]);
+  }, [song, currentBeat]);
 
   return (
     <div ref={wrapRef} className="relative h-full w-full overflow-hidden bg-[#0b0c10]">

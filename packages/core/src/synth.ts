@@ -1,17 +1,17 @@
 'use strict';
 
 /**
- * synth.ts — the oscillator instrument presets, shared by every Web Audio
- * backend (the browser player and the CLI via webaudio-node). Pure
- * fire-and-forget voices: each note builds its own little graph against the
- * caller's context/destination and is garbage-collected when it ends.
+ * synth.ts — the oscillator instrument presets and the synthesized drum kit,
+ * shared by every Web Audio backend. Pure fire-and-forget voices: each note
+ * builds its own little graph against the caller's context/destination and
+ * is garbage-collected when it ends.
  */
 
 import type { CompiledTrack } from './song';
+import { loudness } from './bus';
 
 export type InstrumentPreset = 'piano' | 'epiano' | 'strings' | 'flute' | 'bass' | 'lead';
 
-/** Known sample names → built-in synth preset. */
 const SAMPLE_PRESETS: Record<string, InstrumentPreset> = {
   piano: 'piano',
   epiano: 'epiano',
@@ -54,7 +54,7 @@ function playNotePreset(
   startSec: number,
   durationSec: number,
   targetVolume: number,
-  vibrato?: GainNode,
+  vibrato: GainNode,
 ): void {
   const osc = ctx.createOscillator();
   const gainNode = ctx.createGain();
@@ -81,9 +81,8 @@ function playNotePreset(
     gainNode.gain.exponentialRampToValueAtTime(targetVolume * 0.4, startSec + 0.12);
     gainNode.gain.linearRampToValueAtTime(0, endSec);
   } else if (instrument === 'piano') {
-    osc.type = 'triangle'; // Mellow fundamental
+    osc.type = 'triangle';
 
-    // Add a sine overtone for key strike transient (2nd harmonic)
     const osc2 = ctx.createOscillator();
     osc2.type = 'sine';
     osc2.frequency.value = freq * 2;
@@ -94,7 +93,7 @@ function playNotePreset(
     gain2.gain.value = targetVolume * 0.25;
     gain2.gain.setValueAtTime(0, startSec);
     gain2.gain.linearRampToValueAtTime(targetVolume * 0.25, startSec + 0.002);
-    gain2.gain.exponentialRampToValueAtTime(0.0001, startSec + 0.08); // Quick key hit decay
+    gain2.gain.exponentialRampToValueAtTime(0.0001, startSec + 0.08);
 
     osc.connect(gainNode);
     osc2.connect(gain2);
@@ -104,7 +103,7 @@ function playNotePreset(
     gainNode.gain.setValueAtTime(0, startSec);
     gainNode.gain.linearRampToValueAtTime(targetVolume, startSec + 0.003);
     gainNode.gain.exponentialRampToValueAtTime(targetVolume * 0.35, startSec + 0.2);
-    gainNode.gain.exponentialRampToValueAtTime(0.0001, endSec + 0.4); // Long sustain tail
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, endSec + 0.4);
   } else if (instrument === 'epiano') {
     // Two-operator FM electric piano: a decaying modulator gives the tine
     // bark, a quiet 4th-partial sine the bell sparkle on top, and a sharp
@@ -121,7 +120,6 @@ function playNotePreset(
     modGain.connect(osc.frequency);
     activeNodes.push(mod);
 
-    // Sharp percussive key-strike attack transient
     const attackOsc = ctx.createOscillator();
     attackOsc.type = 'triangle';
     attackOsc.frequency.value = freq * 4;
@@ -153,16 +151,14 @@ function playNotePreset(
   } else if (instrument === 'strings') {
     osc.type = 'sawtooth';
 
-    // Warm strings filter
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
     filter.frequency.value = 1400;
 
-    // Vibrato LFO
     const lfo = ctx.createOscillator();
     const lfoGain = ctx.createGain();
     lfo.frequency.value = 5.5;
-    lfoGain.gain.value = 2.0; // Pitch variation depth
+    lfoGain.gain.value = 2.0;
 
     lfo.connect(lfoGain);
     lfoGain.connect(osc.frequency);
@@ -171,16 +167,14 @@ function playNotePreset(
     osc.connect(filter);
     filter.connect(gainNode);
 
-    // Slow bowed string envelope
     gainNode.gain.value = targetVolume;
     gainNode.gain.setValueAtTime(0, startSec);
-    gainNode.gain.linearRampToValueAtTime(targetVolume, startSec + 0.08); // Slow attack
+    gainNode.gain.linearRampToValueAtTime(targetVolume, startSec + 0.08);
     gainNode.gain.setValueAtTime(targetVolume, Math.max(startSec + 0.08, endSec - 0.04));
-    gainNode.gain.linearRampToValueAtTime(0, endSec + 0.15); // Long release
+    gainNode.gain.linearRampToValueAtTime(0, endSec + 0.15);
   } else if (instrument === 'flute') {
     osc.type = 'sine';
 
-    // Soft vibrato
     const lfo = ctx.createOscillator();
     const lfoGain = ctx.createGain();
     lfo.frequency.value = 6.0;
@@ -192,14 +186,12 @@ function playNotePreset(
 
     osc.connect(gainNode);
 
-    // Wind instrument envelope
     gainNode.gain.value = targetVolume;
     gainNode.gain.setValueAtTime(0, startSec);
     gainNode.gain.linearRampToValueAtTime(targetVolume, startSec + 0.04);
     gainNode.gain.setValueAtTime(targetVolume, Math.max(startSec + 0.04, endSec - 0.02));
     gainNode.gain.linearRampToValueAtTime(0, endSec + 0.06);
   } else {
-    // Default synth lead (sawtooth)
     osc.type = 'sawtooth';
     osc.connect(gainNode);
 
@@ -217,19 +209,13 @@ function playNotePreset(
     // this the `vibrato` family of words moved a control nothing listened to,
     // so vibrato was inaudible on the synth presets (it only ever reached the
     // sampled instruments).
-    if (vibrato) {
-      try {
-        vibrato.connect(node.detune);
-      } catch {
-        // Some engines reject connecting to a detune param; skip vibrato there.
-      }
-    }
+    vibrato.connect(node.detune);
     node.start(startSec);
-    node.stop(endSec + 1.0); // Stop safely after decay/release
+    node.stop(endSec + 1.0);
   }
 }
 
-/** Short metronome blip — accented (higher, louder) on the downbeat. */
+/** Metronome blip, accented (higher, louder) on the downbeat. */
 export function metronomeClick(
   ctx: BaseAudioContext,
   destination: AudioNode,
@@ -258,14 +244,13 @@ export function playNote(
   velocity: number,
   startSec: number,
   durationSec: number,
-  /** Track-bus vibrato feed (cents) — connect it to every voice's detune. */
-  vibrato?: GainNode,
+  /** Track-bus vibrato feed (cents) — connected to every voice's detune. */
+  vibrato: GainNode,
 ): void {
   const maxVolume =
     instrument === 'bass' ? 0.35 : instrument === 'piano' || instrument === 'epiano' ? 0.25 : 0.15;
   const freq = 440 * Math.pow(2, (midi - 69) / 12);
-  const velScale = Math.pow(velocity / 127, 1.85);
-  playNotePreset(ctx, destination, instrument, freq, startSec, durationSec, maxVolume * velScale, vibrato);
+  playNotePreset(ctx, destination, instrument, freq, startSec, durationSec, maxVolume * loudness(velocity), vibrato);
 }
 
 // ---------------------------------------------------------------------------
@@ -359,7 +344,7 @@ export function playDrum(
   velocity: number,
   time: number,
 ): void {
-  const level = Math.pow(velocity / 127, 1.85);
+  const level = loudness(velocity);
   const noise = (v: NoiseVoice) => noiseHit(ctx, destination, time, { ...v, gain: v.gain * level });
   const tone = (v: ToneVoice) => toneHit(ctx, destination, time, { ...v, gain: v.gain * level });
 

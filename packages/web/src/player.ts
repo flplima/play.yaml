@@ -1,36 +1,12 @@
 import * as Tone from 'tone';
-import type { CompiledSong } from '@play.yaml/core';
 import {
-  createTrackBus, detectPreset, metronomeClick, panicMessages, playDrum, playNote,
-  type ScheduleInstrument, type TrackBus,
+  DEFAULT_VELOCITY, beatsToSeconds, metronomeClick, prepareVpo, tempoSegments, trackVoice,
+  type CompiledSong, type Orchestra, type TrackBus,
 } from '@play.yaml/core';
-import { loadOrchestra } from './vpo';
-import { findRackInput, isRackOutput, warmRack, type WarmProgress } from './rack';
-
-/** Where a sample (the DSL's instrument name) should be routed. */
-export interface MidiRoute {
-  outputId: string;
-  channel: number; // 1-16
-}
-
-/** Keyed by sample name — "cello", "piano", … */
-export type RouteMap = Record<string, MidiRoute | undefined>;
-
-/** The routing key for a compiled track: its kit, else its sample. */
-export function routeKey(track: { sample?: string; kit?: string }): string {
-  return track.kit ?? track.sample ?? 'piano';
-}
-
-/** What the player needs to know about a jukebox rack among the outputs. */
-export interface RackOptions {
-  /** The rack's loopback — outputs whose name carries it are the rack. */
-  through: string;
-  /** This browser's MIDI inputs, to listen for readiness reports on. */
-  inputs: MIDIInput[];
-  /** What the rack has already reported; updated as more arrives. */
-  ready: Map<number, boolean>;
-  onWarming?: (progress: WarmProgress) => void;
-}
+import { httpAssets } from './vpo';
+import {
+  CONTROL_CHANGE, NOTE_OFF, NOTE_ON, allNotesOff, routeKey, sendExpression, wireChannel, type RouteMap,
+} from './routes';
 
 export interface PlaybackHandle {
   stop: () => void;
@@ -48,59 +24,23 @@ export interface PlaybackHandle {
   update: (song: CompiledSong) => Promise<number | null>;
 }
 
-const NOTE_ON = 0x90;
-const NOTE_OFF = 0x80;
-const CC = 0xb0;
-const CC_BREATH = 2;
-const CC_EXPRESSION = 11;
-
-/**
- * Physical-modeling instruments (SWAM and friends) take their loudness from
- * the expression controller rather than from note velocity: a bowed or blown
- * voice with expression at zero has zero bow speed / breath pressure, so it
- * stays silent however many notes arrive. Send expression alongside the notes.
- * CC11 is the default mapping in keyboard mode and CC2 in wind-controller
- * mode, so both go out; instruments that use neither simply ignore them.
- */
-function sendExpression(output: MIDIOutput, channel: number, value: number): void {
-  const v = Math.max(0, Math.min(127, Math.round(value)));
-  output.send([CC | channel, CC_EXPRESSION, v]);
-  output.send([CC | channel, CC_BREATH, v]);
-}
-
-function allNotesOff(output: MIDIOutput) {
-  try {
-    // Drop any timestamped messages still queued. In the spec but missing
-    // from TS's lib.dom, and optional in some implementations.
-    (output as MIDIOutput & { clear?: () => void }).clear?.();
-  } catch {
-    // Ignore.
-  }
-  // Pedals first, then the blanket kills: All Notes Off leaves damper-held
-  // notes sounding, so a score holding the sustain pedal rang on after Stop.
-  // See core's midiPanic for the order.
-  for (const msg of panicMessages()) {
-    try {
-      output.send([CC | msg.channel, msg.controller, msg.value]);
-    } catch {
-      // Ignore — the device may have been unplugged mid-playback.
-    }
-  }
-}
-
-/** Send a short middle-C blip so the user can verify a device/channel mapping. */
-export function sendTestNote(output: MIDIOutput, channel: number, note = 60): void {
-  const ch = (channel - 1) & 0x0f;
-  sendExpression(output, ch, 100); // else bowed/blown instruments test silently
-  output.send([NOTE_ON | ch, note, 100]);
-  // Held open by a timer rather than a send() timestamp — see playSong().
-  window.setTimeout(() => output.send([NOTE_OFF | ch, note, 0]), 400);
+export interface PlayOptions {
+  loop?: boolean;
+  /** 0.0 to 1.0. */
+  volume?: number;
+  /** Live switch, checked on every beat, so it can be toggled mid-playback. */
+  metronome?: () => boolean;
+  /**
+   * Tracks that wanted the orchestra but fell back to a synth preset —
+   * the sample library is not installed, or a program failed to load.
+   */
+  onOrchestraFallback?: (trackNames: string[]) => void;
 }
 
 /**
  * Play a compiled song on the Tone.js Transport. Tracks with a MIDI route go
  * out through WebMIDI (timestamped sends); everything else is rendered by the
- * built-in Web Audio synth at transport-accurate times.
+ * built-in orchestra and synth at transport-accurate times.
  *
  * Hot-swap model: every scheduled transport event belongs to a *generation*
  * (one per spliced-in score). `update()` schedules the incoming generation
@@ -112,47 +52,15 @@ export async function playSong(
   song: CompiledSong,
   routes: RouteMap,
   midiOutputs: Map<string, MIDIOutput>,
-  opts: {
-    loop?: boolean;
-    volume?: number;
-    /** Live switch, checked on every beat, so it can be toggled mid-playback. */
-    metronome?: () => boolean;
-    rack?: RackOptions;
-  } = {},
+  opts: PlayOptions = {},
 ): Promise<PlaybackHandle> {
   await Tone.start(); // Resume the audio context (requires a user gesture).
-
-  /*
-   * A jukebox rack loads lazily and swallows the notes played while an
-   * instrument comes up, so before the transport starts every rack channel
-   * the score plays is switched to its patch, asked to load, and waited for.
-   * Done here, before the transport is touched, because the wait can be half
-   * a minute for a bridged plugin and nothing should be ticking meanwhile.
-   */
-  if (opts.rack) {
-    const rackChannels = new Map<number, number | null>();
-    let rackOutput: MIDIOutput | null = null;
-    for (const track of song.tracks) {
-      const route = routes[routeKey(track)];
-      const output = route && midiOutputs.get(route.outputId);
-      if (!output || !isRackOutput(output, opts.rack.through)) continue;
-      rackOutput = output;
-      const declared = track.patch ?? null;
-      if (declared !== null || !rackChannels.has(route.channel)) rackChannels.set(route.channel, declared);
-    }
-    if (rackOutput && rackChannels.size) {
-      const input = findRackInput(opts.rack.inputs, opts.rack.through);
-      await warmRack(rackOutput, input, rackChannels, opts.rack.ready, { onProgress: opts.rack.onWarming });
-    }
-  }
 
   const transport = Tone.getTransport();
   transport.stop();
   transport.cancel(0);
   transport.position = 0;
-
-  const bpm = song.bpm || 120;
-  transport.bpm.value = bpm;
+  transport.bpm.value = song.bpm;
   const ppq = transport.PPQ;
   const atBeat = (beat: number) => `${Math.round(beat * ppq)}i`;
 
@@ -160,16 +68,14 @@ export async function playSong(
   // Per-playback master gain: lets stop() cut ringing synth tails instantly
   // without touching Tone's shared context.
   const masterGain = ctx.createGain();
-  const initialVol = opts.volume != null ? Math.max(0, Math.min(1, opts.volume)) : 1.0;
-  masterGain.gain.setValueAtTime(initialVol, ctx.currentTime);
+  masterGain.gain.setValueAtTime(Math.max(0, Math.min(1, opts.volume ?? 1)), ctx.currentTime);
   masterGain.connect(ctx.destination);
 
   const usedOutputs = new Set<MIDIOutput>();
   const noteTimers = new Set<number>();
   const activeNotes = new Set<string>(); // "outputId,channel,note"
   const expressionByChannel = new Map<string, number>(); // "outputId,channel" → last CC value
-  /** The orchestra for the song being played, by track name. */
-  let orchestra = new Map<string, ScheduleInstrument>();
+  let orchestra: Orchestra = new Map();
 
   // Generation bookkeeping for hot-swap.
   let generation = 0;
@@ -178,7 +84,7 @@ export async function playSong(
   const resolvers = new Map<number, (bar: number | null) => void>();
   const disposeTimers = new Set<number>();
   let currentSong = song;
-  let clicksPerMeasure = Math.max(1, Math.round(song.measureBeats || 4));
+  let clicksPerMeasure = Math.max(1, Math.round(song.measureBeats));
   let looping = false;
   let loopStartBeat = 0;
   let loopEndBeat = 0;
@@ -208,28 +114,37 @@ export async function playSong(
     noteTimers.add(timer);
   };
 
+  const isRouted = (track: CompiledSong['tracks'][number]) => {
+    const route = routes[routeKey(track)];
+    return Boolean(route && midiOutputs.get(route.outputId));
+  };
+
   // The orchestra loads before any note is scheduled — only the programs
   // and samples this score's built-in tracks reach, fetched on demand and
   // cached after — so first notes are never fallback oscillators. Tracks
   // routed out to MIDI need nothing.
   const loadOrchestraFor = async (s: CompiledSong) => {
-    const builtIn = s.tracks
-      .filter((track) => {
-        const route = routes[routeKey(track)];
-        return !(route && midiOutputs.get(route.outputId));
-      })
-      .map((track) => track.name);
-    orchestra = await loadOrchestra(ctx, s, { onlyTracks: builtIn });
+    const fallen: string[] = [];
+    orchestra = await prepareVpo(ctx, httpAssets, s, {
+      onlyTracks: s.tracks.filter((t) => !isRouted(t)).map((t) => t.name),
+      onMissing: (name, err) => {
+        fallen.push(name);
+        console.warn(`"${name}" plays on a synth preset — the orchestra could not load:`, err);
+      },
+    });
+    if (fallen.length) opts.onOrchestraFallback?.(fallen);
   };
 
   /**
-   * Resolve a song's tracks to buses/outputs once, and return a scheduler
+   * Resolve a song's tracks to voices/outputs once, and return a scheduler
    * that can place any beat window of its events on the transport — the
    * whole song for the first generation, the two sides of the splice
    * boundary for later ones.
    */
   const buildGeneration = (s: CompiledSong, gen: number, initial: boolean) => {
-    const secPerBeat = 60 / (s.bpm || 120);
+    // Note lengths follow the tempo map, as every offline render's do.
+    const segments = tempoSegments(s.bpm, s.tempoMap);
+    const seconds = (from: number, to: number) => beatsToSeconds(segments, to) - beatsToSeconds(segments, from);
     const buses: TrackBus[] = [];
     busesByGen.set(gen, buses);
     let endBeat = 0;
@@ -245,23 +160,24 @@ export async function playSong(
 
       if (output) {
         usedOutputs.add(output);
-        const ch = (route.channel - 1) & 0x0f;
-        const key = (midi: number) => `${route.outputId},${ch},${midi}`;
+        const ch = wireChannel(route.channel);
+        const chKey = `${route.outputId},${ch}`;
+        const key = (midi: number) => `${chKey},${midi}`;
 
         if (initial) {
           // Open the channel up front so the instrument has expression before
-          // the first note (SWAM otherwise warns "Expression controller not
-          // received").
-          const firstVelocity = track.timeline[0]?.velocity ?? 90;
+          // the first note (a physical model otherwise plays nothing until the
+          // controller arrives).
+          const firstVelocity = track.timeline[0]?.velocity ?? DEFAULT_VELOCITY;
           sendExpression(output, ch, firstVelocity);
-          expressionByChannel.set(`${route.outputId},${ch}`, firstVelocity);
+          expressionByChannel.set(chKey, firstVelocity);
         }
 
         schedulers.push((from, to) => {
-          for (const control of track.controls ?? []) {
+          for (const control of track.controls) {
             if (control.time < from || control.time >= to) continue;
             register(gen, transport.schedule((time) => {
-              sendAt(time, () => output.send([CC | ch, control.cc & 0x7f, control.value & 0x7f]));
+              sendAt(time, () => output.send([CONTROL_CHANGE | ch, control.cc & 0x7f, control.value & 0x7f]));
             }, atBeat(control.time)));
           }
           for (const note of track.timeline) {
@@ -270,7 +186,6 @@ export async function playSong(
               sendAt(time, () => {
                 // Track the score's dynamics with expression, so velocity means
                 // something on instruments that ignore it. Only resend on change.
-                const chKey = `${route.outputId},${ch}`;
                 if (expressionByChannel.get(chKey) !== note.velocity) {
                   expressionByChannel.set(chKey, note.velocity);
                   sendExpression(output, ch, note.velocity);
@@ -292,24 +207,16 @@ export async function playSong(
           }
         });
       } else {
-        // Built-in rendering: every track gets a control bus so the score's CC
-        // stream (expression swells, bow-position drifts, vibrato, pizzicato)
-        // shapes the sound, whether sampled or synthesized.
-        const preset = track.kit ? null : detectPreset(track);
-        const bus = createTrackBus(ctx, masterGain, {
-          hasExpression: (track.controls ?? []).some((c) => c.cc === 11),
-          usesCC: new Set((track.controls ?? []).map((c) => c.cc)),
-        });
-        buses.push(bus);
-        const sampled = orchestra.get(track.name) ?? null;
+        const voice = trackVoice(ctx, masterGain, track, orchestra.get(track.name));
+        buses.push(voice.bus);
 
         schedulers.push((from, to) => {
-          for (const control of track.controls ?? []) {
+          for (const control of track.controls) {
             if (control.time < from || control.time >= to) continue;
             // Scheduled ahead of the notes at the same beat (insertion order),
             // so articulation switches land before the note that needs them.
             register(gen, transport.schedule((time) => {
-              bus.applyCC(control.cc, control.value, time);
+              voice.bus.applyCC(control.cc, control.value, time);
             }, atBeat(control.time)));
           }
           for (const note of track.timeline) {
@@ -318,14 +225,7 @@ export async function playSong(
               // One bad voice must never break the transport's callback batch —
               // an uncaught throw here silences every event after it in the tick.
               try {
-                if (track.kit) {
-                  if (sampled?.kind === 'drums') sampled.play(bus, note.midi, note.velocity, time);
-                  else playDrum(ctx, bus.input, note.midi, note.velocity, time);
-                } else if (sampled?.kind === 'melodic') {
-                  sampled.play(bus, note.midi, note.velocity, time, note.duration * secPerBeat);
-                } else {
-                  playNote(ctx, bus.input, preset!, note.midi, note.velocity, time, note.duration * secPerBeat);
-                }
+                voice.play(note, time, seconds(note.time, note.time + note.duration));
               } catch (err) {
                 console.warn(`Voice failed (${track.name} @${note.time}):`, err);
               }
@@ -338,8 +238,8 @@ export async function playSong(
     // Tempo map: everything above is scheduled in ticks, so changing the
     // transport's bpm stretches notes, controls and highlighting together.
     schedulers.push((from, to) => {
-      let runningBpm = s.bpm || 120;
-      for (const change of s.tempoMap ?? []) {
+      let runningBpm = s.bpm;
+      for (const change of s.tempoMap) {
         const fromBpm = runningBpm;
         runningBpm = change.bpm;
         if (change.time < from || change.time >= to) continue;
@@ -374,7 +274,6 @@ export async function playSong(
     transport.cancel(0);
     for (const timer of noteTimers) window.clearTimeout(timer);
     noteTimers.clear();
-    // Release anything still sounding before the panic messages.
     for (const entry of activeNotes) {
       const [outputId, channel, midi] = entry.split(',');
       midiOutputs.get(outputId)?.send([NOTE_OFF | Number(channel), Number(midi), 0]);
@@ -383,7 +282,6 @@ export async function playSong(
     for (const output of usedOutputs) allNotesOff(output);
     for (const resolve of resolvers.values()) resolve(null);
     resolvers.clear();
-    // Fade the master bus out fast, then detach it.
     masterGain.gain.setTargetAtTime(0, ctx.currentTime, 0.03);
     window.setTimeout(() => {
       masterGain.disconnect();
@@ -398,7 +296,7 @@ export async function playSong(
   // A sections document with a forever-loop plays its intro once and cycles
   // from loopStartBeats; classic documents cycle the whole song.
   const applyEnds = (s: CompiledSong, gen: number, endBeat: number, minBeat = 0) => {
-    const songEnd = Math.max(s.lengthBeats || 0, endBeat);
+    const songEnd = Math.max(s.lengthBeats, endBeat);
     if (opts.loop && songEnd > 0) {
       looping = true;
       loopStartBeat = Math.min(s.loopStartBeats ?? 0, songEnd);
@@ -453,8 +351,8 @@ export async function playSong(
       cleanupEventId = null;
     }
 
-    const mb = Math.max(1e-6, next.measureBeats || 4);
-    const bpmNow = transport.bpm.value || 120;
+    const mb = next.measureBeats;
+    const bpmNow = transport.bpm.value;
     // The splice driver runs `lead` beats before the boundary: enough that
     // its events land on the timeline before the transport's head sweeps
     // those ticks (~0.35 s), but under half the loop so it stays in range.
@@ -481,7 +379,6 @@ export async function playSong(
       fired = true;
       pendingSplice = null;
 
-      // From the boundary on, the timeline belongs to the new generation.
       transport.cancel(atBeat(boundary));
 
       // Boundary event — scheduled first at its tick (same-tick events fire
@@ -522,13 +419,13 @@ export async function playSong(
           });
         }
         // Land on the new score's effective tempo at the boundary.
-        let effBpm = next.bpm || 120;
-        for (const change of next.tempoMap ?? []) {
+        let effBpm = next.bpm;
+        for (const change of next.tempoMap) {
           if (change.time <= boundary) effBpm = change.bpm;
         }
-        const tempoTouched = (next.tempoMap?.length ?? 0) > 0
-          || (currentSong.tempoMap?.length ?? 0) > 0
-          || (next.bpm || 120) !== (currentSong.bpm || 120);
+        const tempoTouched = next.tempoMap.length > 0
+          || currentSong.tempoMap.length > 0
+          || next.bpm !== currentSong.bpm;
         if (tempoTouched) {
           try {
             transport.bpm.cancelScheduledValues(time);
@@ -547,7 +444,7 @@ export async function playSong(
         if (opts.loop) prep.scheduleWindow(0, boundary);
         applyEnds(next, gen, prep.endBeat, boundary);
         currentSong = next;
-        clicksPerMeasure = Math.max(1, Math.round(next.measureBeats || 4));
+        clicksPerMeasure = Math.max(1, Math.round(next.measureBeats));
         resolvers.get(gen)?.(barNumber);
         resolvers.delete(gen);
       }, atBeat(boundary)));
@@ -576,8 +473,7 @@ export async function playSong(
     done,
     getPositionBeats: () => (stopped ? 0 : transport.ticks / ppq),
     setVolume: (v: number) => {
-      const vol = Math.max(0, Math.min(1, v));
-      masterGain.gain.setValueAtTime(vol, ctx.currentTime);
+      masterGain.gain.setValueAtTime(Math.max(0, Math.min(1, v)), ctx.currentTime);
     },
     update,
   };

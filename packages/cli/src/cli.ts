@@ -1,7 +1,7 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import { parseYaml, compileDoc } from '@play.yaml/core';
 import { playSong, playSongMidi } from './index';
+import { loadScore, parseFlags, run, usage } from './shared';
+
+const DEFAULT_PORT = 'play.yaml Output';
 
 const HELP = `play.yaml Player CLI
 
@@ -10,78 +10,29 @@ Usage:
 
 Options:
   -l, --loop         Loop the playback infinitely
-  -m, --midi         Output live MIDI events to virtual MIDI port instead of Web Audio
-  -p, --midi-port    Name of the MIDI output port to create/use (default: "play.yaml Output")
+  -m, --midi         Output live MIDI events to a virtual MIDI port instead of Web Audio
+  -p, --midi-port    Name of the MIDI output port to create/use (default: "${DEFAULT_PORT}")
   -h, --help         Show this help message`;
 
-async function main() {
-  const args = process.argv.slice(2);
-  let inputPath = '';
-  let loop = false;
-  let useMidi = false;
-  let midiPort = 'play.yaml Output';
+run(async () => {
+  const { flags, positional } = parseFlags(process.argv.slice(2), {
+    loop: { names: ['--loop', '-l'] },
+    midi: { names: ['--midi', '-m'] },
+    port: { names: ['--midi-port', '-p'], value: true },
+    help: { names: ['--help', '-h'] },
+  });
+  const input = positional[0];
+  if (flags.help || !input) usage(HELP, flags.help);
 
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    if (arg === '--loop' || arg === '-l') {
-      loop = true;
-    } else if (arg === '--midi' || arg === '-m') {
-      useMidi = true;
-    } else if (arg === '--midi-port' || arg === '-p') {
-      midiPort = args[++i];
-    } else if (arg === '--help' || arg === '-h') {
-      console.log(HELP);
-      process.exit(0);
-    } else if (!arg.startsWith('-')) {
-      inputPath = arg;
-    }
-  }
+  const compiled = loadScore(input);
+  const port = (flags.port as string | undefined) ?? DEFAULT_PORT;
+  const play = (fromBeat: number) =>
+    flags.midi ? playSongMidi(compiled, port, { fromBeat }) : playSong(compiled, { fromBeat });
 
-  if (!inputPath) {
-    console.log(HELP);
-    process.exit(1);
-  }
-
-  const resolvedPath = path.resolve(process.cwd(), inputPath);
-  if (!fs.existsSync(resolvedPath)) {
-    console.error(`Error: File not found: ${inputPath}`);
-    process.exit(1);
-  }
-
-  try {
-    const text = fs.readFileSync(resolvedPath, 'utf8');
-    const doc = parseYaml(text);
-    if (!doc || typeof doc !== 'object' || (doc.play == null && doc.tracks == null)) {
-      throw new Error(`Invalid score: must define a "play:" or "tracks:" key.`);
-    }
-
-    const compiled = compileDoc(doc);
-
-    // Play the compiled song. In loop mode, passes after the first restart
-    // from the song's forever-loop point (sections), or from the top.
-    if (loop) {
-      console.log('Loop playback enabled. Press Ctrl+C to stop.');
-      let fromBeat = 0;
-      while (true) {
-        if (useMidi) {
-          await playSongMidi(compiled, midiPort, { fromBeat });
-        } else {
-          await playSong(compiled, { fromBeat });
-        }
-        fromBeat = compiled.loopStartBeats ?? 0;
-      }
-    } else {
-      if (useMidi) {
-        await playSongMidi(compiled, midiPort);
-      } else {
-        await playSong(compiled);
-      }
-      process.exit(0);
-    }
-  } catch (err: any) {
-    console.error(`Playback Error: ${err.message}`);
-    process.exit(1);
-  }
-}
-
-main();
+  // In loop mode, passes after the first restart from the song's forever-loop
+  // point (sections), or from the top.
+  if (flags.loop) console.log('Loop playback enabled. Press Ctrl+C to stop.');
+  await play(0);
+  while (flags.loop) await play(compiled.loopStartBeats ?? 0);
+  process.exit(0);
+});

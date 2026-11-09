@@ -5,7 +5,7 @@
  * for and turns each into a voice: a buffer source at the right pitch, an
  * amplitude envelope, the static trims the region asks for, and whatever the
  * control stream does to it while it sounds. It runs on any BaseAudioContext
- * — the browser's live transport, its offline MP3 render, and the server's
+ * — the browser's live transport, its offline MP3 render, and the CLI's
  * node-web-audio-api render all share it — and it honours the opcodes the
  * Virtual Playing Orchestra actually uses rather than the whole SFZ spec:
  *
@@ -30,7 +30,8 @@
  * memory when its note arrives stays silent rather than late.
  */
 
-import type { TrackBus } from './bus';
+import { glideParam, type TrackBus } from './bus';
+import { CC } from './vocabulary';
 import { parseSfz, sfzKey, sfzNumber, type SfzInstrument, type SfzOpcodes, type SfzReader } from './sfz';
 
 // ---------------------------------------------------------------------------
@@ -125,7 +126,7 @@ function ccCrossfades(op: SfzOpcodes): CcCrossfade[] {
   return out;
 }
 
-export function typedRegion(sample: string, op: SfzOpcodes): Region {
+function typedRegion(sample: string, op: SfzOpcodes): Region {
   const key = sfzKey(op.key);
   const loopMode = op.loop_mode as Region['loopMode'] | undefined;
   return {
@@ -188,7 +189,7 @@ export function typedRegion(sample: string, op: SfzOpcodes): Region {
  * throws that chunk away — so it is read here, off the bytes, before the
  * decoder gets them. `end` is inclusive in the chunk and exclusive here.
  */
-export function wavLoopPoints(bytes: ArrayBuffer): { start: number; end: number } | null {
+function wavLoopPoints(bytes: ArrayBuffer): { start: number; end: number } | null {
   const view = new DataView(bytes);
   if (bytes.byteLength < 12) return null;
   const tag = (at: number) => String.fromCharCode(view.getUint8(at), view.getUint8(at + 1), view.getUint8(at + 2), view.getUint8(at + 3));
@@ -229,10 +230,8 @@ interface Sample {
 }
 
 /**
- * Decoded samples, shared by every program and every render in a process.
- * A buffer is not bound to the context that decoded it, so the same cello C3
- * serves the live transport and the offline render alike; keyed by path so a
- * sample two regions share is fetched once.
+ * Decoded samples, shared by every program and every render in a process:
+ * a buffer is not bound to the context that decoded it.
  */
 const samples = new Map<string, Promise<Sample | null>>();
 
@@ -292,12 +291,7 @@ export class SfzProgram {
 
   /** Regions a note-on (or, with `release`, a note-off) at this key reaches. */
   candidates(midi: number, velocity: number, release = false): Region[] {
-    return this.regions.filter((r) =>
-      r.releaseTrigger === release &&
-      midi >= r.lokey && midi <= r.hikey &&
-      velocity >= r.lovel && velocity <= r.hivel &&
-      (r.swLast === undefined || r.swLast === r.swDefault),
-    );
+    return this.regions.filter((r) => r.releaseTrigger === release && reaches(r, midi, velocity));
   }
 
   /** Fetch every sample these notes could reach, ahead of playing them. */
@@ -305,11 +299,7 @@ export class SfzProgram {
     const wanted = new Set<string>();
     for (const note of notes) {
       for (const region of this.regions) {
-        if (note.midi >= region.lokey && note.midi <= region.hikey &&
-          note.velocity >= region.lovel && note.velocity <= region.hivel &&
-          (region.swLast === undefined || region.swLast === region.swDefault)) {
-          wanted.add(region.sample);
-        }
+        if (reaches(region, note.midi, note.velocity)) wanted.add(region.sample);
       }
     }
     await Promise.all([...wanted].filter((path) => !this.loaded.has(path)).map(async (path) => {
@@ -326,11 +316,10 @@ export class SfzProgram {
     return sample;
   }
 
-  /** Round-robin: which of a sequence a fresh note at this key gets. */
+  /** Round-robin: is it this region's turn in its sequence for a fresh note at this key? */
   advance(region: Region, midi: number): boolean {
     if (region.seqLength <= 1) return true;
-    const key = `${midi}:${region.lokey}-${region.hikey}:${region.lovel}-${region.hivel}`;
-    const count = this.seq.get(key) ?? 0;
+    const count = this.seq.get(sequenceKey(region, midi)) ?? 0;
     return (count % region.seqLength) + 1 === region.seqPosition;
   }
 
@@ -338,12 +327,24 @@ export class SfzProgram {
     const seen = new Set<string>();
     for (const region of regions) {
       if (region.seqLength <= 1) continue;
-      const key = `${midi}:${region.lokey}-${region.hikey}:${region.lovel}-${region.hivel}`;
+      const key = sequenceKey(region, midi);
       if (seen.has(key)) continue;
       seen.add(key);
       this.seq.set(key, (this.seq.get(key) ?? 0) + 1);
     }
   }
+}
+
+/** Does a note at this key and velocity fall in the region (keyswitch at its default)? */
+function reaches(r: Region, midi: number, velocity: number): boolean {
+  return midi >= r.lokey && midi <= r.hikey &&
+    velocity >= r.lovel && velocity <= r.hivel &&
+    (r.swLast === undefined || r.swLast === r.swDefault);
+}
+
+/** Round-robin regions share a sequence per key/velocity zone. */
+function sequenceKey(r: Region, midi: number): string {
+  return `${midi}:${r.lokey}-${r.hikey}:${r.lovel}-${r.hivel}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -414,38 +415,32 @@ interface Voice {
   release: (time: number) => void;
   /** Stop outright — a voice in a group another one turns off. */
   choke: (time: number) => void;
+  /** The controller value in force at `time`, as this voice's program reads it. */
+  ccAt: (cc: number, time: number) => number;
   released: boolean;
   /** Voices sound on a bus; the set is per bus so pedals and groups scope right. */
   bus: TrackBus;
 }
 
-const SUSTAIN_CC = 64;
+/** A pedal is down from the top of the range's lower half. */
+const PEDAL_DOWN = 64;
 
 /** Per-bus voice bookkeeping: what sounds, what the pedal holds, what a CC moves. */
 class BusVoices {
   readonly voices = new Set<Voice>();
   /** Notes whose note-off came while the pedal was down. */
   readonly held = new Set<Voice>();
-  private unsubscribe: (() => void) | null = null;
-
-  constructor(readonly bus: TrackBus) {}
-
-  attach(): void {
-    if (this.unsubscribe) return;
-    this.unsubscribe = this.bus.onCC((cc, value, time) => {
+  constructor(readonly bus: TrackBus) {
+    // The bus's own dispose() drops this listener with the rest.
+    bus.onCC((cc, value, time) => {
       // Live changes reach the voices that are sounding now; an offline
       // render already scheduled them from the history at note-on.
-      for (const voice of this.voices) applyControllerAt(voice, cc, value, time, this.bus);
-      if (cc === SUSTAIN_CC && value < 64) {
+      for (const voice of this.voices) applyControllerAt(voice, cc, value, time);
+      if (cc === CC.sustain && value < PEDAL_DOWN) {
         for (const voice of this.held) voice.release(time);
         this.held.clear();
       }
     });
-  }
-
-  detach(): void {
-    this.unsubscribe?.();
-    this.unsubscribe = null;
   }
 }
 
@@ -455,30 +450,15 @@ function voicesOf(bus: TrackBus): BusVoices {
   let entry = busVoices.get(bus);
   if (!entry) {
     entry = new BusVoices(bus);
-    entry.attach();
     busVoices.set(bus, entry);
   }
   return entry;
 }
 
-function applyControllerAt(voice: Voice, cc: number, value: number, time: number, bus: TrackBus): void {
+function applyControllerAt(voice: Voice, cc: number, value: number, time: number): void {
   const region = voice.region;
   if (!region.gainCc.some((m) => m.cc === cc) && !region.ccCrossfades.some((x) => x.cc === cc)) return;
-  voice.modulate(controllerGain(region, (n) => (n === cc ? value : (bus.ccAt(n, time) ?? 0))), time);
-}
-
-/**
- * A smooth move on a parameter whose last scheduled value the caller knows.
- *
- * `param.value` cannot be trusted for the anchor here: in an offline render
- * every move is scheduled before anything has played, so it still reads the
- * initial value, and pinning that at each change would make every crossfade
- * start over from the beginning. Keeping the last value ourselves is exact
- * on every engine.
- */
-function moveParam(param: AudioParam, from: number, to: number, time: number, smoothing: number): void {
-  param.setValueAtTime(from, time);
-  param.setTargetAtTime(to, time, smoothing);
+  voice.modulate(controllerGain(region, (n) => (n === cc ? value : voice.ccAt(n, time))), time);
 }
 
 /**
@@ -513,7 +493,10 @@ export function startNote(opts: VoiceOptions): number {
   if (!candidates.length) return 0;
 
   const registry = voicesOf(bus);
-  const ccNow = (cc: number) => bus.ccAt(cc, start) ?? program.ccDefaults.get(cc) ?? 0;
+  // Offline and live paths read the same defaults: the bus's history, then
+  // the program's own `set_ccN`.
+  const ccAt = (cc: number, time: number) => bus.ccAt(cc, time) ?? program.ccDefaults.get(cc) ?? 0;
+  const ccNow = (cc: number) => ccAt(cc, start);
   let started = 0;
 
   for (const region of candidates) {
@@ -580,19 +563,19 @@ export function startNote(opts: VoiceOptions): number {
     const modulation = ctx.createGain();
     let modulated = controllerGain(region, ccNow);
     modulation.gain.value = modulated;
+    // Anchored at the value last scheduled here, not `param.value`: in an
+    // offline render every move is scheduled before anything has played.
     const modulate = (gain: number, time: number) => {
-      moveParam(modulation.gain, modulated, gain, time, 0.02);
+      glideParam(modulation.gain, gain, time, 0.02, modulated);
       modulated = gain;
     };
-    // Controller moves already known — an offline render has the whole
-    // stream by now — are scheduled here; live ones arrive via the bus.
     const horizon = end === Infinity ? at + sample.buffer.duration : end + release + 1;
     const moves: Array<[number, number]> = [];
     for (const mod of [...region.gainCc, ...region.ccCrossfades]) {
       for (const [time] of bus.ccChanges(mod.cc, start, horizon)) moves.push([time, mod.cc]);
     }
     for (const [time] of moves.sort((a, b) => a[0] - b[0])) {
-      modulate(controllerGain(region, (n) => bus.ccAt(n, time) ?? program.ccDefaults.get(n) ?? 0), time);
+      modulate(controllerGain(region, (n) => ccAt(n, time)), time);
     }
 
     /**
@@ -612,7 +595,7 @@ export function startNote(opts: VoiceOptions): number {
     let tail: AudioNode = modulation;
     source.connect(envelope);
     envelope.connect(modulation);
-    if (region.pan && typeof (ctx as unknown as Record<string, unknown>).createStereoPanner === 'function') {
+    if (region.pan) {
       const panner = ctx.createStereoPanner();
       panner.pan.value = Math.max(-1, Math.min(1, region.pan / 100));
       modulation.connect(panner);
@@ -624,13 +607,11 @@ export function startNote(opts: VoiceOptions): number {
     source.start(at, Math.min(offset, Math.max(0, sample.buffer.duration - 0.01)));
 
     const voice: Voice = {
-      region, source, envelope, modulation, modulate, bus, released: false,
+      region, source, envelope, modulation, modulate, bus, ccAt, released: false,
       release: (time: number) => {
         if (voice.released) return;
         voice.released = true;
-        // Anchored, so an engine that extrapolates the curve backwards
-        // (node-web-audio-api) does not blow the level up — see glideParam.
-        moveParam(envelope.gain, envelopeAt(time), 0, time, release / 4);
+        glideParam(envelope.gain, 0, time, release / 4, envelopeAt(time));
         try {
           source.stop(time + release + 0.05);
         } catch {
@@ -640,7 +621,7 @@ export function startNote(opts: VoiceOptions): number {
       choke: (time: number) => {
         if (voice.released) return;
         voice.released = true;
-        moveParam(envelope.gain, envelopeAt(time), 0, time, 0.008);
+        glideParam(envelope.gain, 0, time, 0.008, envelopeAt(time));
         try {
           source.stop(time + 0.05);
         } catch {
@@ -708,9 +689,9 @@ export function startNote(opts: VoiceOptions): number {
  * the bus's held set instead (see BusVoices).
  */
 function pedalHoldsUntil(bus: TrackBus, time: number): number | null {
-  const pedal = bus.ccAt(SUSTAIN_CC, time) ?? 0;
-  if (pedal < 64) return null;
-  const up = bus.ccChanges(SUSTAIN_CC, time, Infinity).find(([, value]) => value < 64);
+  const pedal = bus.ccAt(CC.sustain, time) ?? 0;
+  if (pedal < PEDAL_DOWN) return null;
+  const up = bus.ccChanges(CC.sustain, time, Infinity).find(([, value]) => value < PEDAL_DOWN);
   return up ? up[0] : Infinity;
 }
 
@@ -721,12 +702,4 @@ function scheduleRelease(voice: Voice, bus: TrackBus, end: number): void {
   if (until !== Infinity) return voice.release(until);
   // Down with no lift in sight: live playback will lift it, or the pass ends.
   registry.held.add(voice);
-}
-
-/** Forget a bus's voices — call when the bus is disposed. */
-export function releaseBusVoices(bus: TrackBus): void {
-  const registry = busVoices.get(bus);
-  if (!registry) return;
-  registry.detach();
-  busVoices.delete(bus);
 }

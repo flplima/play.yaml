@@ -213,7 +213,7 @@ export function estimateLatency(notes, bpm, division = 4) {
 
 /** Ground truth from a compiled score: onset seconds + MIDI number. */
 export function truthFromSong(song, track) {
-  const spb = 60 / (song.bpm || 120);
+  const spb = 60 / song.bpm;
   return song.tracks
     .filter((t) => !track || t.name === track)
     .flatMap((t) => t.timeline.filter((e) => e.midi != null)
@@ -322,7 +322,7 @@ function parseArgs(argv) {
     switch (a) {
       case '-o': case '--output': args.output = next(); break;
       case '--render': args.render = next(); break;
-      case '--bpm': args.bpm = Number(next()); break;
+      case '--bpm': args.bpm = Number(next()); args.bpmGiven = true; break;
       case '--onset': args.onset = Number(next()); break;
       case '--frame': args.frame = Number(next()); break;
       case '--min-length': args.minLength = Number(next()); break;

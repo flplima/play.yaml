@@ -7,21 +7,20 @@
  * stepped exactly the way the .mid export steps them.
  */
 
-import { TempoEvent } from './song';
+import type { TempoEvent } from './song';
 
-/** From this beat on, `bpm` holds; `sec` is where the beat sits in seconds. */
 export interface TempoSegment {
   beat: number;
   sec: number;
   bpm: number;
 }
 
-/** A ramped tempo change is approximated with this many steps. */
 const RAMP_STEPS = 16;
 
 /**
  * Flatten a tempo map into piecewise-constant segments starting at beat 0.
- * Ramps become a staircase of RAMP_STEPS levels, matching the SMF export.
+ * Ramps become a staircase of RAMP_STEPS levels; the .mid export writes the
+ * same staircase, so a file and a render agree on where every beat falls.
  */
 export function tempoSegments(bpm: number, tempoMap: TempoEvent[] = []): TempoSegment[] {
   const segments: TempoSegment[] = [{ beat: 0, sec: 0, bpm }];
@@ -44,7 +43,6 @@ export function tempoSegments(bpm: number, tempoMap: TempoEvent[] = []): TempoSe
   return segments;
 }
 
-/** Where a beat lands in seconds, given segments from tempoSegments(). */
 export function beatsToSeconds(segments: TempoSegment[], beat: number): number {
   let seg = segments[0];
   for (const s of segments) {
@@ -56,8 +54,8 @@ export function beatsToSeconds(segments: TempoSegment[], beat: number): number {
 
 /**
  * The inverse of beatsToSeconds(): which beat is sounding at this many seconds
- * in. Backends that only know wall-clock elapsed time — the server's playback
- * engine reporting its position to the studio — use this to say where they are.
+ * in — how a renderer that cuts the song into seconds of audio finds the
+ * beats each chunk covers.
  */
 export function secondsToBeats(segments: TempoSegment[], sec: number): number {
   let seg = segments[0];

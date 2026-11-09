@@ -1,39 +1,9 @@
-'use strict';
-
 import * as fs from 'fs';
 import * as path from 'path';
-import { compileDoc, SongDoc, encodeMidi, parseYaml } from '@play.yaml/core';
+import { encodeMidi } from '@play.yaml/core';
+import { loadScore, parseFlags, run, usage } from './shared';
 
-interface CliArgs {
-  input?: string;
-  output?: string;
-  bpm?: number;
-  tpqn: number;
-  json: boolean;
-  help?: boolean;
-}
-
-export function parseArgs(argv: string[]): CliArgs {
-  const args: CliArgs = { tpqn: 480, json: false };
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    const next = () => argv[++i];
-    switch (a) {
-      case '--input': case '-i': args.input = next(); break;
-      case '--output': case '-o': args.output = next(); break;
-      case '--bpm': case '-b': args.bpm = Number(next()); break;
-      case '--tpqn': args.tpqn = Number(next()); break;
-      case '--json': args.json = true; break;
-      case '--help': case '-h': args.help = true; break;
-      default:
-        if (!args.input && !a.startsWith('-')) args.input = a; // allow bare path
-        else console.error(`Unknown argument: ${a}`);
-    }
-  }
-  return args;
-}
-
-const HELP = `musician-coder DSL → MIDI (YAML, multitrack)
+const HELP = `play.yaml → MIDI (multitrack)
 
 Usage:
   play-yaml --input song.play.yaml --output track.mid
@@ -41,53 +11,38 @@ Usage:
 Flags:
   -i, --input <file>    .play.yaml (or .json) song document
   -o, --output <file>   .mid output path (default: alongside the input)
-  -b, --bpm <n>         override tempo (default: meta.bpm)
+  -b, --bpm <n>         override tempo (default: the score's)
       --tpqn <n>        ticks per quarter note (default 480)
       --json            print compiled timelines instead of writing .mid
   -h, --help            this help`;
 
-/** Load a song document from YAML or JSON. */
-export function loadDoc(inputPath: string): SongDoc {
-  const text = fs.readFileSync(path.resolve(process.cwd(), inputPath), 'utf8');
-  const doc = /\.ya?ml$/i.test(inputPath) ? parseYaml(text) : JSON.parse(text);
-  if (!doc || typeof doc !== 'object' || (doc.play == null && doc.tracks == null)) {
-    throw new Error(`Score "${inputPath}" must define a "play:" or "tracks:" key.`);
-  }
-  return doc;
-}
+run(() => {
+  const { flags, positional } = parseFlags(process.argv.slice(2), {
+    input: { names: ['--input', '-i'], value: true },
+    output: { names: ['--output', '-o'], value: true },
+    bpm: { names: ['--bpm', '-b'], value: true },
+    tpqn: { names: ['--tpqn'], value: true },
+    json: { names: ['--json'] },
+    help: { names: ['--help', '-h'] },
+  });
+  const input = (flags.input as string | undefined) ?? positional[0];
+  if (flags.help || !input) usage(HELP, flags.help);
 
-function main() {
-  const args = parseArgs(process.argv.slice(2));
-  if (args.help || !args.input) {
-    console.log(HELP);
-    process.exit(args.input ? 0 : 1);
-  }
+  const compiled = loadScore(input);
+  const bpm = Number(flags.bpm) || compiled.bpm;
 
-  const doc = loadDoc(args.input);
-  const compiled = compileDoc(doc);
-  const bpm = args.bpm || compiled.bpm;
-
-  if (args.json) {
+  if (flags.json) {
     process.stdout.write(JSON.stringify({ ...compiled, bpm }, null, 2) + '\n');
     return;
   }
 
-  const output =
-    args.output ||
-    path.join(path.dirname(args.input), path.basename(args.input).replace(/\.[^.]+$/, '') + '.mid');
-
-  const buf = encodeMidi(compiled, { bpm, tpqn: args.tpqn });
+  const output = (flags.output as string | undefined) ??
+    path.join(path.dirname(input), path.basename(input).replace(/\.[^.]+$/, '') + '.mid');
+  const buf = encodeMidi(compiled, { bpm, tpqn: flags.tpqn ? Number(flags.tpqn) : undefined });
   fs.writeFileSync(output, buf);
 
-  const notes = compiled.tracks.reduce((n: number, t: any) => n + t.timeline.length, 0);
+  const notes = compiled.tracks.reduce((n, t) => n + t.timeline.length, 0);
   console.log(
     `✔ ${output}  —  ${compiled.tracks.length} track(s), ${notes} notes, ${bpm} bpm, ${buf.length} bytes`,
   );
-}
-
-try {
-  main();
-} catch (err: any) {
-  console.error(`✗ ${err.message}`);
-  process.exit(1);
-}
+});

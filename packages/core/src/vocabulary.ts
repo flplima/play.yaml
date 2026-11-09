@@ -6,6 +6,40 @@
  * named-control machinery that turns technique words into MIDI CCs.
  */
 
+/** GM percussion channel (1-based): every kit track plays here. */
+export const DRUM_CHANNEL = 10;
+/** The kit that is synthesized rather than sampled from the orchestra. */
+export const SYNTH_KIT = '808';
+/**
+ * The controllers the built-in instruments (bus.ts, vpo.ts) listen on.
+ *
+ * The General MIDI ones are also DEFAULT_CONTROLS, so a score reaches them
+ * by name without declaring anything. The instrument-specific ones (playmode,
+ * tremolo, sordino, vibratoRate) deliberately have no default: every sampler
+ * maps them differently, so a score declares them under `controls:` — and to
+ * hear them on the built-in orchestra it must use these numbers
+ * (`controls: { playmode: 20, tremolo: 21 }`, as the README shows).
+ */
+export const CC = {
+  vibrato: 1,
+  /** Wind-controller expression; physical models read it beside `expression`. */
+  breath: 2,
+  volume: 7,
+  pan: 10,
+  expression: 11,
+  sustain: 64,
+  sostenuto: 66,
+  soft: 67,
+  pressure: 71,
+  bow: 74,
+  vibratoRate: 76,
+  reverb: 91,
+  chorus: 93,
+  playmode: 20,
+  tremolo: 21,
+  sordino: 22,
+} as const;
+
 /** Fraction of a slot a note actually sounds, so repeated notes re-articulate. */
 export const DEFAULT_GATE = 0.9;
 
@@ -15,7 +49,7 @@ export const DEFAULT_GATE = 0.9;
  */
 export const ARTICULATIONS: Record<string, number> = {
   staccatissimo: 0.25,
-  spiccato: 0.3, // off-the-string bounce; on SWAM set Bow Lift to "Off String"
+  spiccato: 0.3, // off-the-string bounce (pair with `off the string` on a modelled instrument)
   staccato: 0.4,
   short: 0.4,
   portato: 0.7,
@@ -97,10 +131,6 @@ export const TEMPO_GRADUAL: Record<string, number> = {
 };
 
 /**
- * Character marks — the composite ones. Each expands to the combination of
- * dynamic and articulation a player would reach for on seeing the word.
- */
-/**
  * Rubato — "stolen time" — as depth, 0 (strict) to 1 (very free). The marks
  * that cancel it are the ones a score uses: `a battuta` ("to the beat") and
  * `tempo giusto` ("strict time") both mean stop stretching and play straight.
@@ -116,6 +146,10 @@ export const RUBATO_TERMS: Record<string, number> = {
   'tempo giusto': 0,
 };
 
+/**
+ * Character marks — the composite ones. Each expands to the combination of
+ * dynamic and articulation a player would reach for on seeing the word.
+ */
 export const EXPRESSIONS: Record<string, { velocity?: number; gate?: number }> = {
   dolce: { velocity: 56, gate: 1.02 }, // sweetly: soft and connected
   cantabile: { velocity: 80, gate: 1.05 }, // singing
@@ -193,7 +227,7 @@ export interface ControlSpec {
 }
 
 /** The breakpoints an amount is interpolated across. */
-export function controlCurve(spec: ControlSpec): number[] {
+function controlCurve(spec: ControlSpec): number[] {
   if (Array.isArray(spec.range) && spec.range.length) {
     return spec.range.length === 1 ? [0, spec.range[0]] : [...spec.range];
   }
@@ -221,26 +255,26 @@ export function controlValue(spec: ControlSpec, amount: number): number {
  * instrument's own MIDI mapping.
  */
 export const DEFAULT_CONTROLS: Record<string, ControlSpec> = {
-  bow: { cc: 74 }, // bow position / brightness
-  pressure: { cc: 71 },
-  vibrato: { cc: 1 }, // modulation, the near-universal vibrato control
-  pedal: { cc: 64 }, // damper — the piano pedal every score means by "pedal"
-  sostenuto: { cc: 66 }, // middle pedal: holds what is already down
-  soft: { cc: 67 }, // una corda
+  bow: { cc: CC.bow }, // bow position / brightness
+  pressure: { cc: CC.pressure },
+  vibrato: { cc: CC.vibrato }, // modulation, the near-universal vibrato control
+  pedal: { cc: CC.sustain }, // damper — the piano pedal every score means by "pedal"
+  sostenuto: { cc: CC.sostenuto }, // middle pedal: holds what is already down
+  soft: { cc: CC.soft }, // una corda
   // The mix controls. Unlike the instrument controls above — where every
   // sampler has its own idea of which CC does what — these four are fixed by
   // General MIDI, so a score can reach for them without declaring anything.
-  volume: { cc: 7 }, // the channel fader, not the playing
-  pan: { cc: 10 }, // 64 is centre
-  reverb: { cc: 91 }, // send into the room, not a room of its own
-  chorus: { cc: 93 },
+  volume: { cc: CC.volume }, // the channel fader, not the playing
+  pan: { cc: CC.pan }, // 64 is centre
+  reverb: { cc: CC.reverb }, // send into the room, not a room of its own
+  chorus: { cc: CC.chorus },
 };
 
 /**
  * Other names a score may have declared the same control under, so
  * `controls: { sustain: … }` still answers to the pedal words.
  */
-export const CONTROL_ALIASES: Record<string, string[]> = {
+const CONTROL_ALIASES: Record<string, string[]> = {
   pedal: ['sustain', 'damper'],
   soft: ['una corda', 'softpedal'],
   sostenuto: ['middle'],
@@ -256,7 +290,7 @@ export const CONTROL_ALIASES: Record<string, string[]> = {
 export const CONTROL_TERMS: Record<string, { control: string; amount: number }> = {
   // ── the piano pedals ──
   // Depth, not timing. `range:` on the control decides what "full" is worth,
-  // so a rack whose damper only wants 110 says so once in `controls:`.
+  // so an instrument whose damper only wants 110 says so once in `controls:`.
   'senza pedale': { control: 'pedal', amount: 0 },
   'pedal up': { control: 'pedal', amount: 0 },
   'quarter pedal': { control: 'pedal', amount: 0.25 },
@@ -287,7 +321,7 @@ export const CONTROL_TERMS: Record<string, { control: string; amount: number }> 
   'heavy bow': { control: 'pressure', amount: 0.85 },
   premuto: { control: 'pressure', amount: 0.9 }, // pressed
   pressed: { control: 'pressure', amount: 0.9 },
-  scratch: { control: 'pressure', amount: 1 }, // overpressure — SWAM shows "Scratch"
+  scratch: { control: 'pressure', amount: 1 }, // full bow overpressure
 
   // ── vibrato ──
   'senza vibrato': { control: 'vibrato', amount: 0 },
@@ -307,7 +341,7 @@ export const CONTROL_TERMS: Record<string, { control: string; amount: number }> 
   pizz: { control: 'playmode', amount: 0.5 },
   'col legno': { control: 'playmode', amount: 1 },
 
-  // ── bowed tremolo (the instrument's own, e.g. SWAM auto-tremolo) ──
+  // ── bowed tremolo (the instrument's own auto-tremolo, not written-out 32nds) ──
   'tremolo off': { control: 'tremolo', amount: 0 },
   tremolo: { control: 'tremolo', amount: 0.5 },
   'tremolo slow': { control: 'tremolo', amount: 0.5 },
@@ -330,7 +364,7 @@ export const CONTROL_TERMS: Record<string, { control: string; amount: number }> 
   harmonics: { control: 'harmonics', amount: 0.4 }, // 2nd harmonic — one octave up
   'high harmonics': { control: 'harmonics', amount: 0.9 }, // 3rd — octave and a fifth
 
-  // ── left-hand position (SWAM "Alternate Fingering"): where notes are
+  // ── left-hand position (a modelled instrument's fingering option): where notes are
   //    fingered, and whether open strings are allowed to ring ──
   'mid position': { control: 'fingering', amount: 0 },
   'high position': { control: 'fingering', amount: 0.5 }, // near the bridge
@@ -406,12 +440,9 @@ export function resolveControl(
   return spec && { min: 0, max: 127, ...spec };
 }
 
-/** One drum voice: its GM percussion key, and the choke group it silences. */
+/** One drum voice: its GM percussion key. */
 export interface DrumSpec {
-  /** General MIDI percussion note (channel 10). */
   note: number;
-  /** Sounding voices in the same group stop when this one starts (hi-hats). */
-  choke?: string;
 }
 
 /**
@@ -425,9 +456,9 @@ export const DRUMS: Record<string, DrumSpec> = {
   sd: { note: 38 }, // snare
   rim: { note: 37 }, // side stick
   cp: { note: 39 }, // hand clap
-  hh: { note: 42, choke: 'hh' }, // closed hi-hat
-  ph: { note: 44, choke: 'hh' }, // pedal hi-hat
-  oh: { note: 46, choke: 'hh' }, // open hi-hat
+  hh: { note: 42 }, // closed hi-hat
+  ph: { note: 44 }, // pedal hi-hat
+  oh: { note: 46 }, // open hi-hat
   ft: { note: 41 }, // floor tom
   lt: { note: 45 }, // low tom
   mt: { note: 47 }, // mid tom
@@ -501,12 +532,6 @@ for (const [name, spec] of Object.entries(DRUMS)) {
 /** Canonical name for a GM percussion key (aliases resolve to the short form). */
 export function drumName(note: number): string | undefined {
   return DRUM_NAMES[note];
-}
-
-/** Choke group of a GM percussion key (open hi-hat dies when a closed one hits). */
-export function drumChoke(note: number): string | undefined {
-  const name = DRUM_NAMES[note];
-  return name ? DRUMS[name].choke : undefined;
 }
 
 /** Resolve a drum token ("bd", "snare", or a raw GM number) in a kit track. */

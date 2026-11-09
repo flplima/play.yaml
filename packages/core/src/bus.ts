@@ -15,17 +15,11 @@
  * the graph it did before they existed.
  *
  * This is plain Web Audio — no browser-only APIs — so the browser, the
- * offline MP3 render, the server-side engine and the CLI all shape notes
- * through the same graph rather than each growing its own.
+ * offline MP3 render and the CLI all shape notes through the same graph
+ * rather than each growing its own.
  */
 
-/** How the score has set the string in motion; 'default' = the instrument's habit. */
-type PlayMode = 'default' | 'arco' | 'pizz';
-
-interface ChokeableVoice {
-  gain: GainNode;
-  source: AudioBufferSourceNode;
-}
+import { CC } from './vocabulary';
 
 export interface TrackBus {
   /** Where notes are fed. */
@@ -35,18 +29,8 @@ export interface TrackBus {
   applyCC: (cc: number, value: number, time: number) => void;
   /** Per-note vibrato feed — connect to each source's detune (cents). */
   vibrato: GainNode;
-  /** Articulation flags consumed at note-on. */
-  state: { playmode: PlayMode; tremolo: boolean };
-  /** Sounding drum voices by choke group — a new hit silences its group. */
-  chokes: Map<string, Set<ChokeableVoice>>;
   /** The track declares an expression stream, so velocity is attack only. */
   hasExpression: boolean;
-  /**
-   * Master level for this track, folded into the bus's own gain. Backends use
-   * this instead of hanging a GainNode off the output — see the graph note in
-   * createTrackBus for why that matters outside the browser.
-   */
-  setMasterTrim: (value: number, time?: number) => void;
   /**
    * The control stream as this bus has been told it: the value `cc` holds at
    * `time`, or undefined if nothing has set it. A sampled instrument reads
@@ -68,8 +52,8 @@ export interface TrackBus {
 }
 
 /**
- * `setTargetAtTime`, but with the parameter's current value pinned at the
- * start of the move.
+ * `setTargetAtTime`, but with the parameter's value pinned at the start of
+ * the move.
  *
  * A bare `setTargetAtTime` leaves the curve's left edge undefined, and
  * node-web-audio-api extrapolates it *backwards* rather than holding: over
@@ -77,31 +61,32 @@ export interface TrackBus {
  * a hi-hat choke or an expression swell into a track rendered at 1e38.
  * Browsers hold the old value instead, so this only ever bit the offline
  * renders. Anchoring is correct on every implementation and costs one event.
+ *
+ * `from` defaults to the parameter's current value. A caller that schedules
+ * every move before anything has played (an offline render) must pass the
+ * value it last scheduled, since `param.value` still reads the initial one.
  */
-export function glideParam(param: AudioParam, value: number, time: number, smoothing: number): void {
-  param.setValueAtTime(param.value, time);
+export function glideParam(
+  param: AudioParam,
+  value: number,
+  time: number,
+  smoothing: number,
+  from: number = param.value,
+): void {
+  param.setValueAtTime(from, time);
   param.setTargetAtTime(value, time, smoothing);
 }
 
-/** Perceptual loudness curve for the expression gain. */
-function loudness(value: number): number {
+/** Perceptual loudness curve: a 0..127 value → gain. Shared by every built-in voice. */
+export function loudness(value: number): number {
   return Math.pow(Math.max(0, Math.min(127, value)) / 127, 1.85);
-}
-
-/**
- * Not every engine that renders a score has the whole node set — bus.ts runs
- * on four of them. A missing node means that effect is silently unavailable,
- * which is the same thing a synth does with a CC it has no circuit for.
- */
-function can(ctx: BaseAudioContext, method: string): boolean {
-  return typeof (ctx as unknown as Record<string, unknown>)[method] === 'function';
 }
 
 /**
  * Seeded PRNG for the reverb's impulse response.
  *
  * The IR is noise, but it must not be *random*: the golden digests and the
- * browser/server render-parity checks both compare renders of the same score,
+ * browser/CLI render-parity checks both compare renders of the same score,
  * and a fresh IR per process would make them differ every run. Same seed,
  * same room, every engine.
  */
@@ -151,14 +136,12 @@ function impulseResponse(ctx: BaseAudioContext): AudioBuffer {
  *
  * Tracks share a room — that is what a room *is*, and it is also the cheap
  * way round: a convolver per track would multiply the most expensive node in
- * the graph by the track count, and in segmented control mode by the number
- * of control changes. Keyed weakly on the destination so a finished render's
- * reverb goes away with it.
+ * the graph by the track count. Keyed weakly on the destination so a finished
+ * render's reverb goes away with it.
  */
 const sharedReverbs = new WeakMap<AudioNode, GainNode>();
 
-function sharedReverb(ctx: BaseAudioContext, destination: AudioNode): GainNode | null {
-  if (!can(ctx, 'createConvolver')) return null;
+function sharedReverb(ctx: BaseAudioContext, destination: AudioNode): GainNode {
   let input = sharedReverbs.get(destination);
   if (!input) {
     input = ctx.createGain();
@@ -184,15 +167,6 @@ export interface TrackBusOptions {
    * chain, and rerouting a live graph can click.
    */
   usesCC?: Iterable<number>;
-  /**
-   * Write control changes straight to `param.value` instead of scheduling
-   * them. Backends on engines without AudioParam automation (webaudio-node,
-   * which renders server-side playback and the CLI) need this — there, a
-   * scheduled ramp is silently discarded and the modifier never sounds. The
-   * scheduler compensates for the lost time dimension by giving each span of
-   * constant control values its own bus.
-   */
-  immediate?: boolean;
 }
 
 export function createTrackBus(
@@ -200,27 +174,13 @@ export function createTrackBus(
   destination: AudioNode,
   opts: TrackBusOptions,
 ): TrackBus {
-  /*
-   * Notes fan into exactly one GainNode and that gain carries all the level
-   * automation. Callers that want a master volume use setMasterTrim() rather
-   * than adding a gain of their own — a second gain in series would be a
-   * second place to look for a level.
-   *
-   * This shape used to be load-bearing for a different reason: webaudio-node,
-   * the engine that once rendered server-side playback and the CLI, dropped
-   * every note but the last if any GainNode sat downstream of the fan-in. That
-   * engine is gone — node-audio renders on node-web-audio-api now — and the
-   * bug does not reproduce there (measured: five overlapping notes, identical
-   * RMS with and without a downstream gain). The mix stages below therefore
-   * use gains freely.
-   */
   const input = ctx.createGain();
 
   // Bow position: a lowpass that opens toward the bridge plus a presence
   // peak that only appears sul ponticello (the nasal edge).
   const color = ctx.createBiquadFilter();
   color.type = 'lowpass';
-  color.frequency.value = 5200; // ordinario
+  color.frequency.value = 5200;
   color.Q.value = 0.4;
 
   const edge = ctx.createBiquadFilter();
@@ -229,7 +189,6 @@ export function createTrackBus(
   edge.Q.value = 1.2;
   edge.gain.value = 0;
 
-  // Sordino: a second lowpass, wide open until the mute goes on.
   const sordino = ctx.createBiquadFilter();
   sordino.type = 'lowpass';
   sordino.frequency.value = 16000;
@@ -245,20 +204,17 @@ export function createTrackBus(
    */
   const built = ctx.currentTime;
 
-  // Level lives on the fan-in gain: bow-speed loudness (CC11) times bow
-  // weight (CC71) times the channel fader (CC7) times the pan law's makeup
-  // times whatever master trim the backend asks for.
+  // Level lives on the fan-in gain: bow-speed loudness (expression) times
+  // bow weight (pressure) times the channel fader times the pan law's makeup.
   let expressionLevel = opts.hasExpression ? loudness(90) : 1;
   let pressureLevel = 1;
   let sordinoLevel = 1;
   let volumeLevel = 1;
   let panTrim = 1;
-  let masterTrim = 1;
-  const currentLevel = () =>
-    expressionLevel * pressureLevel * sordinoLevel * volumeLevel * panTrim * masterTrim;
+  const currentLevel = () => expressionLevel * pressureLevel * sordinoLevel * volumeLevel * panTrim;
   input.gain.value = currentLevel();
   const writeLevel = (time: number, smoothing = 0.06) => {
-    if (opts.immediate || time <= built) input.gain.value = currentLevel();
+    if (time <= built) input.gain.value = currentLevel();
     else glideParam(input.gain, currentLevel(), time, smoothing);
   };
 
@@ -309,7 +265,7 @@ export function createTrackBus(
    * stage changes nothing until CC93 asks for a value.
    */
   const ensureChorus = () => {
-    if (chorusIn || !can(ctx, 'createDelay')) return;
+    if (chorusIn) return;
     chorusIn = ctx.createGain();
     chorusOut = ctx.createGain();
     const dry = ctx.createGain();
@@ -329,7 +285,7 @@ export function createTrackBus(
       const lfo = ctx.createOscillator();
       lfo.frequency.value = rate;
       const depth = ctx.createGain();
-      depth.gain.value = 0; // seconds of sweep, driven by CC93
+      depth.gain.value = 0;
       lfo.connect(depth);
       depth.connect(delay.delayTime);
       lfo.start();
@@ -337,16 +293,10 @@ export function createTrackBus(
       wet.gain.value = 0;
       chorusIn.connect(delay);
       delay.connect(wet);
-      // Width is optional: an engine without a panner still gets the chorus,
-      // just centred.
-      if (can(ctx, 'createStereoPanner')) {
-        const spread = ctx.createStereoPanner();
-        spread.pan.value = pan;
-        wet.connect(spread);
-        spread.connect(chorusOut);
-      } else {
-        wet.connect(chorusOut);
-      }
+      const spread = ctx.createStereoPanner();
+      spread.pan.value = pan;
+      wet.connect(spread);
+      spread.connect(chorusOut);
       chorusWet.push(wet);
       chorusDepth.push(depth);
       chorusLfos.push(lfo);
@@ -373,9 +323,9 @@ export function createTrackBus(
   const panMakeup = (pan: number) => 1 / Math.sqrt(1 + Math.sin((Math.abs(pan) * Math.PI) / 2));
 
   // A fresh panner sits at centre, where the makeup is unity — so building one
-  // needs no level write. CC10 sets both together.
+  // needs no level write.
   const ensurePanner = () => {
-    if (panner || !can(ctx, 'createStereoPanner')) return;
+    if (panner) return;
     panner = ctx.createStereoPanner();
     panner.channelCount = 2;
     panner.channelCountMode = 'explicit';
@@ -384,31 +334,26 @@ export function createTrackBus(
 
   const ensureReverbSend = () => {
     if (reverbSend) return;
-    const room = sharedReverb(ctx, destination);
-    if (!room) return;
     reverbSend = ctx.createGain();
     reverbSend.gain.value = 0;
-    reverbSend.connect(room);
+    reverbSend.connect(sharedReverb(ctx, destination));
     relink();
   };
 
-  // Build up front whatever the score is going to ask for, so no stage has to
-  // be spliced into a graph that is already sounding.
-  for (const cc of opts.usesCC ?? []) {
-    if (cc === 10) ensurePanner();
-    else if (cc === 91) ensureReverbSend();
-    else if (cc === 93) ensureChorus();
-  }
+  /** The mix stage a CC drives, if any — built up front for the CCs the score uses. */
+  const ensureStage = (cc: number) => {
+    if (cc === CC.pan) ensurePanner();
+    else if (cc === CC.reverb) ensureReverbSend();
+    else if (cc === CC.chorus) ensureChorus();
+  };
+  for (const cc of opts.usesCC ?? []) ensureStage(cc);
 
-  // One vibrato LFO per track; notes connect `vibrato` to their detune.
   const lfo = ctx.createOscillator();
   lfo.frequency.value = 5.2;
   const vibrato = ctx.createGain();
-  vibrato.gain.value = 0; // depth in cents, driven by CC1
+  vibrato.gain.value = 0;
   lfo.connect(vibrato);
   lfo.start();
-
-  const state: TrackBus['state'] = { playmode: 'default', tremolo: false };
 
   // Every control change, per CC, in time order — what `ccAt`/`ccChanges`
   // answer from. Live playback appends; an offline render's carried-over
@@ -437,82 +382,69 @@ export function createTrackBus(
     (history.get(cc) ?? []).filter(([at]) => at > from && at <= to);
 
   /**
-   * Schedule a smooth move — or write it outright, when the engine has no
-   * automation to schedule onto, or when this is the state the bus starts in
-   * rather than a move away from it.
+   * Schedule a smooth move — or write it outright when this is the state the
+   * bus starts in rather than a move away from it.
    */
   const glide = (param: AudioParam, value: number, time: number, smoothing: number) => {
-    if (opts.immediate || time <= built) param.value = value;
+    if (time <= built) param.value = value;
     else glideParam(param, value, time, smoothing);
   };
 
   const applyCC = (cc: number, value: number, time: number) => {
     record(cc, value, time);
+    ensureStage(cc);
     const v = value / 127;
     switch (cc) {
-      case 11: // expression — smooth so staircase ramps become curves
+      case CC.expression:
         expressionLevel = loudness(value);
         writeLevel(time);
         break;
-      case 1: // vibrato depth → LFO cents
+      case CC.vibrato:
         glide(vibrato.gain, v * 22, time, 0.08);
         break;
-      case 76: // vibrato rate
+      case CC.vibratoRate:
         glide(lfo.frequency, 3.2 + v * 4.5, time, 0.08);
         break;
-      case 74: { // bow position: tasto (dark) → ponticello (open + nasal)
+      case CC.bow: { // tasto (dark) → ponticello (open + nasal)
         const cutoff = 1100 * Math.pow(9, v); // 1.1k → ~9.9k, exponential
         glide(color.frequency, cutoff, time, 0.1);
         glide(edge.gain, v > 0.55 ? ((v - 0.55) / 0.45) * 9 : 0, time, 0.1);
         break;
       }
-      case 71: // bow pressure: weight = a little level and a harder edge
+      case CC.pressure: // weight = a little level and a harder edge
         pressureLevel = 0.75 + v * 0.5;
         writeLevel(time);
         glide(edge.Q, 1.2 + v * 2.5, time, 0.1);
         break;
-      case 20: // play mode: arco / pizzicato / col legno (both plucked here)
-        state.playmode = value >= 32 ? 'pizz' : 'arco';
-        break;
-      case 21: // instrument tremolo
-        state.tremolo = value >= 32;
-        break;
-      case 7: // channel volume — the fader, not the playing
+      case CC.volume:
         // Curved like expression, and multiplied by it: on a real device the
         // fader and the player's dynamics are two independent things that both
         // scale what you hear, which is exactly what a product does.
         volumeLevel = loudness(value);
         writeLevel(time);
         break;
-      case 10: { // pan
-        ensurePanner();
+      case CC.pan: {
         // 64 is centre, and it has to land exactly there — a score that never
         // touches pan and one that writes "pan centre" must sound the same.
         const position = Math.max(-1, Math.min(1, (value - 64) / 63));
-        if (panner) {
-          glide(panner.pan, position, time, 0.05);
-          panTrim = panMakeup(position);
-          writeLevel(time, 0.05);
-        }
+        glide(panner!.pan, position, time, 0.05);
+        panTrim = panMakeup(position);
+        writeLevel(time, 0.05);
         break;
       }
-      case 91: { // reverb send
-        ensureReverbSend();
+      case CC.reverb:
         // Curved, because a linear send is unusable at the bottom: 20 already
         // sounds like a small room, and everything above 80 sounds the same.
-        if (reverbSend) glide(reverbSend.gain, Math.pow(v, 1.4) * 0.9, time, 0.12);
+        glide(reverbSend!.gain, Math.pow(v, 1.4) * 0.9, time, 0.12);
         break;
-      }
-      case 93: { // chorus depth
-        ensureChorus();
+      case CC.chorus:
         // Depth moves with the mix: a wide sweep at a low wet level is a
         // detuned smear, and a narrow one at full wet is a flanger. Real
         // chorus units open both together.
         for (const wet of chorusWet) glide(wet.gain, v * 0.7, time, 0.12);
         for (const depth of chorusDepth) glide(depth.gain, 0.0012 + v * 0.0038, time, 0.12);
         break;
-      }
-      case 22: {
+      case CC.sordino: {
         // Sordino. A mute is not a gentle tilt — it damps the bridge, so the
         // upper partials go and the whole thing quietens. 3.6 kHz measured as
         // barely a 2% brightness change on real string samples; this lands
@@ -524,9 +456,8 @@ export function createTrackBus(
         break;
       }
       default:
-        // portamento/bowlift/harmonics/fingering have no circuit here — the
-        // model-specific CCs pass silently, as on any synth. A sampled
-        // instrument still sees them through the history above.
+        // Playmode, tremolo, portamento, bowlift, fingering… have no circuit
+        // here; a sampled instrument reads them from the history above.
         break;
     }
     for (const listener of listeners) listener(cc, value, time);
@@ -537,13 +468,7 @@ export function createTrackBus(
     ctx,
     applyCC,
     vibrato,
-    state,
-    chokes: new Map(),
     hasExpression: opts.hasExpression,
-    setMasterTrim: (value: number, time = ctx.currentTime) => {
-      masterTrim = Math.max(0, value);
-      writeLevel(time, 0.02);
-    },
     ccAt,
     ccChanges,
     onCC: (listener) => {

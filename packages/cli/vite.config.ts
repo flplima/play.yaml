@@ -1,44 +1,14 @@
-import { defineConfig } from 'vite';
-import { resolve } from 'path';
+import { libConfig } from '../vite.lib';
 
-export default defineConfig({
-  build: {
-    lib: {
-      entry: {
-        index: resolve(__dirname, 'src/index.ts'),
-        cli: resolve(__dirname, 'src/cli.ts'),
-        export: resolve(__dirname, 'src/export.ts'),
-        fidelity: resolve(__dirname, 'src/fidelity.ts'),
-        'import-midi': resolve(__dirname, 'src/import-midi.ts'),
-      },
-      formats: ['cjs', 'es'],
-      fileName: (format, entryName) => {
-        if (format === 'es') {
-          return `${entryName}.js`;
-        }
-        return `${entryName}.cjs`;
-      },
-    },
-    rollupOptions: {
-      external: [
-        'fs',
-        'path',
-        'assert',
-        'url',
-        '@play.yaml/node-audio',
-        '@play.yaml/core',
-        'easymidi',
-      ],
-      output: {
-        banner: (chunk) => {
-          if (['cli', 'export', 'fidelity', 'import-midi'].includes(chunk.name)) {
-            return '#!/usr/bin/env node\n';
-          }
-          return '';
-        },
-      },
-    },
-    target: 'node16',
-    minify: false,
+export default libConfig({
+  root: __dirname,
+  entries: {
+    index: 'src/index.ts',
+    cli: 'src/cli.ts',
+    export: 'src/export.ts',
+    fidelity: 'src/fidelity.ts',
+    'import-midi': 'src/import-midi.ts',
   },
+  external: ['fs', 'path', '@play.yaml/node-audio', '@play.yaml/core', 'easymidi'],
+  executables: ['cli', 'export', 'fidelity', 'import-midi'],
 });

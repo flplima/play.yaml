@@ -1,9 +1,13 @@
 # Song workflow — from a song name to a play.yaml project
 
 A guide for AI agents (and humans) working in this repo. When the user says
-*"make Take Five"* / *"transcribe Song X into play.yaml"*, this is the
-workflow. It was distilled from building `examples/take-5.play.yaml`; follow
-it and you inherit the lessons instead of relearning them.
+*"make Tico-Tico"* / *"transcribe Song X into play.yaml"*, this is the
+workflow. It was distilled from building the first full-band arrangements in
+this repo; follow it and you inherit the lessons instead of relearning them.
+
+Before anything else, check the composition is in the public domain — see
+"copyright rule for songs" in `CONTRIBUTING.md`. If it is not, the project
+cannot be committed here, however the transcription is made.
 
 ## 0. The deliverable
 
@@ -49,7 +53,7 @@ notation (C4 = middle C = MIDI 60):
   midishow files can be downloaded to the scratchpad and read
   programmatically; cross-check against lead-sheet sites (jazzleadsheet,
   freejazzlessons, songsterr…). Simplified lead sheets lie: the record often
-  varies repeated bars (Take Five's bars 6–7 swap two turns).
+  varies repeated bars (a second chorus often swaps two turns).
   `play-yaml-import <file>.mid --verify` turns such a file straight into bar
   lines and proves no note moved — a starting point to *edit* into a score,
   not a substitute for deciding the form. See
@@ -65,8 +69,9 @@ notation (C4 = middle C = MIDI 60):
 
 ## 2. Write the score
 
-Read `README.md` (DSL reference) and study `examples/take-5.play.yaml` — it
-is the canonical arrangement style. Conventions that matter:
+Read `README.md` (DSL reference) and study
+`songs/tico-tico-no-fuba/tico-tico-no-fuba.play.yaml` — it is the canonical
+arrangement style. Conventions that matter:
 
 - **Structure with `sections:`** — form in declaration order, instruments
   declared prop-only under top-level `tracks:`, staggered entries via `wait:`

@@ -48,7 +48,7 @@ Measured on our own repertoire (export each example to `.mid`, import it back):
 twinkle            source   14 notes | missing 0 extra 0 | moved 0 | EXACT ✓
 bwv846             source  549 notes | missing 0 extra 0 | moved 0 | EXACT ✓
 fur-elise          source  901 notes | missing 0 extra 0 | moved 0 | EXACT ✓
-take-5             source  851 notes | missing 0 extra 0 | moved 0 | EXACT ✓   (with drums)
+drum-lab           source  (kit tracks)  | missing 0 extra 0 | moved 0 | EXACT ✓   (with drums)
 nocturne-op9-no2   source 1231 notes | missing 0 extra 0 | moved 0 | EXACT ✓   (12/8, tempo map)
 ```
 
@@ -147,7 +147,7 @@ That is what `--render <score> --score` does. Results at ±120 ms tolerance:
 | twinkle | **this script's defaults** | 100% | 100% | **100** |
 | BWV 846 (dense arpeggiated piano) | library defaults | 41.0% | 99.3% | 58.0 |
 | BWV 846 | onset 0.85 + partial filter | 100% | 99.3% | **99.7** |
-| Take Five sax line alone (174 bpm) | defaults, −56 ms latency | 100% | 77.5% | **87.3** |
+| a jazz sax line alone (174 bpm) | defaults, −56 ms latency | 100% | 77.5% | **87.3** |
 
 Three post-processing steps matter more than the choice of model, and all
 three ship in the script:
@@ -307,8 +307,8 @@ animé*, 98 bars — is recorded here so it does not have to be found again.
 ## Fixed on the way: renders at 10³⁶
 
 Any score with hi-hats — or with an expression/CC swell — came out of
-`renderSongToPcm()` about 10³⁶ times too loud. `take-5` peaked at 2.27e37 with
-86.6% of samples above 1.0; `sur-le-fil` at 3.4e38 with 14 non-finite samples.
+`renderSongToPcm()` about 10³⁶ times too loud: one example peaked at 2.27e37
+with 86.6% of samples above 1.0, another at 3.4e38 with 14 non-finite samples.
 
 The cause was a bare `setTargetAtTime`. Without an automation event at the
 curve's start, node-web-audio-api extrapolates it **backwards** instead of
@@ -318,7 +318,6 @@ Both sites (the hi-hat choke in `sampler.ts`, the CC glides in `bus.ts`) now go
 through `glideParam`, which pins the current value at the start of the move.
 That is correct on every implementation and costs one event.
 
-All 22 examples now render below or near full scale. Two still sum past 1.0 —
-`clair-de-lune` (1.12) and `sur-le-fil-cello-vst` (2.40) — but that is ordinary
-mix headroom, not the pathology, and it is a musical decision rather than a
-bug.
+Every example now renders below or near full scale. `clair-de-lune` still
+sums past 1.0 (1.12), but that is ordinary mix headroom, not the pathology,
+and it is a musical decision rather than a bug.

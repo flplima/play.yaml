@@ -3,16 +3,18 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "outDir": "./dist",
+    "lib": ["ES2022", "DOM"],
     "strict": true,
-    "esModuleInterop": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noEmit": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@play.yaml/core": ["../core/src/index.ts"],
+      "@play.yaml/node-audio": ["../node-audio/src/index.ts"]
+    }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src"]
 }

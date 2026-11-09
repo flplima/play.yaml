@@ -1,9 +1,9 @@
 /**
  * audio-probe.mjs — render play.yaml scores to PCM offline and measure them.
  *
- * Renders through the exact path the server engine uses (core's scheduleSong +
- * the track bus + the synth presets, on node-web-audio-api's
- * OfflineAudioContext), then reports objective measurements: level, spectral
+ * Renders through the exact path the CLI uses (core's scheduleSong + the
+ * track bus + the synth presets, on node-web-audio-api's OfflineAudioContext),
+ * then reports objective measurements: level, spectral
  * centroid, note onsets, and pitch wobble.
  *
  * The point is to answer "does this DSL modifier actually change the audio?"
@@ -24,14 +24,11 @@ const TAIL_SEC = 1.5;
 /** Compile a score and render it to a mono Float32Array. */
 export async function renderScore(source) {
   const song = compileDoc(parseYaml(source));
-  const segments = tempoSegments(song.bpm || 120, song.tempoMap);
+  const segments = tempoSegments(song.bpm, song.tempoMap);
   const endSec = beatsToSeconds(segments, songEndBeat(song)) + TAIL_SEC;
   const frames = Math.max(SAMPLE_RATE, Math.ceil(endSec * SAMPLE_RATE));
 
   const ctx = new OfflineAudioContext(1, frames, SAMPLE_RATE);
-  // Matches the server engine: node-web-audio-api honours AudioParam
-  // automation, so no segmentation workaround is needed here. (The CLI still
-  // renders on webaudio-node and does need `controlMode: 'segmented'`.)
   scheduleSong(ctx, ctx.destination, song, { originTime: 0 });
   const buffer = await ctx.startRendering();
   return { song, pcm: buffer.getChannelData(0), sampleRate: buffer.sampleRate };
@@ -363,13 +360,12 @@ const CASES = [
 ];
 
 async function runSuite() {
-  console.log('Rendering through core scheduleSong + track bus (the server engine path)\n');
+  console.log('Rendering through core scheduleSong + track bus (the CLI path)\n');
   const pad = (s, n) => String(s).padEnd(n);
   console.log(pad('modifier', 28) + pad('metric', 22) + pad('A', 12) + pad('B', 12) + 'verdict');
   console.log('─'.repeat(90));
 
   let failures = 0;
-  let limited = 0;
   for (const c of CASES) {
     const [aLabel, aScore] = c.a;
     const [bLabel, bScore] = c.b;
@@ -378,25 +374,18 @@ async function runSuite() {
     const va = c.measure(ra.pcm, ra.sampleRate);
     const vb = c.measure(rb.pcm, rb.sampleRate);
     const pass = Number.isFinite(va) && Number.isFinite(vb) && c.ok(va, vb);
-    if (!pass && !c.engineLimited) failures++;
-    if (!pass && c.engineLimited) limited++;
-    const verdict = pass
-      ? '✓ audible'
-      : c.engineLimited
-        ? '⚠ engine limit'
-        : `✗ NOT APPLIED (${c.expect})`;
+    if (!pass) failures++;
+    const verdict = pass ? '✓ audible' : `✗ NOT APPLIED (${c.expect})`;
     console.log(
       pad(c.name, 28) + pad(c.metric, 22) +
       pad(Number.isFinite(va) ? va.toFixed(1) : 'n/a', 12) +
       pad(Number.isFinite(vb) ? vb.toFixed(1) : 'n/a', 12) + verdict,
     );
     console.log(pad('', 28) + `A=${aLabel}  B=${bLabel}`);
-    if (!pass && c.engineLimited) console.log(pad('', 28) + `↳ ${c.engineLimited}`);
   }
   console.log('─'.repeat(90));
   console.log(
-    `${CASES.length - failures - limited}/${CASES.length} modifiers audible here` +
-    (limited ? `, ${limited} blocked by the engine (works in a browser)` : '') +
+    `${CASES.length - failures}/${CASES.length} modifiers audible here` +
     (failures ? `, ${failures} NOT APPLIED` : ''),
   );
   return failures;

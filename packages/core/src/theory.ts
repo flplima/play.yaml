@@ -6,7 +6,7 @@
  */
 
 export const DEFAULT_MEASURE = '4/4';
-export const DEFAULT_SCALE = 'c major';
+const DEFAULT_SCALE = 'c major';
 export const DEFAULT_OCTAVE = 4;
 
 const PITCH_CLASSES: Record<string, number> = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
@@ -126,8 +126,15 @@ export function parseScale(scale: string | undefined): ScaleInfo {
  * octave up), degrees at 0 or below step under the root (0 = one scale step
  * below 1), and trailing ^/+/- shift whole octaves.
  */
+const DEGREE = /^(-?\d+)(#|b)?([+^-]*)$/;
+
+/** Does this token read as a scale degree (`1`, `4#`, `-2`, `5^^`)? */
+export function isDegreeToken(token: string): boolean {
+  return DEGREE.test(token.trim());
+}
+
 export function degreeToMidi(token: string, scale: ScaleInfo, baseOctave: number): number | null {
-  const m = /^(-?\d+)(#|b)?([+^-]*)$/.exec(token.trim());
+  const m = DEGREE.exec(token.trim());
   if (!m) return null;
   const n = parseInt(m[1], 10) - 1;
   const len = scale.intervals.length;
@@ -144,7 +151,7 @@ export function degreeToMidi(token: string, scale: ScaleInfo, baseOctave: number
  * Trailing octave modifiers → net octave shift.
  * `^` and `+` each raise an octave, `-` lowers one; they stack (`^^` = +2).
  */
-export function octaveShift(modifiers: string): number {
+function octaveShift(modifiers: string): number {
   let shift = 0;
   for (const ch of modifiers) {
     if (ch === '^' || ch === '+') shift += 1;
@@ -163,20 +170,14 @@ export function noteToMidi(token: string, defaultOctave: number = DEFAULT_OCTAVE
   return (octave + 1) * 12 + pc + 12 * octaveShift(m[4]);
 }
 
-/** Back-compat helper: "C4" / "f#3" → MIDI number (octave required). */
-export function nameToMidi(name: string): number | null {
-  const m = /^([a-gA-G])(#|b)?(-?\d+)$/.exec(String(name).trim());
-  if (!m) return null;
-  let pc = PITCH_CLASSES[m[1].toLowerCase()];
-  if (m[2] === '#') pc += 1;
-  if (m[2] === 'b') pc -= 1;
-  return (parseInt(m[3], 10) + 1) * 12 + pc;
+/** Pitch class (any integer; wraps) → sharp name ("G#"). */
+export function pitchClassName(pc: number): string {
+  return NAMES_SHARP[((pc % 12) + 12) % 12];
 }
 
 /** MIDI number → canonical sharp name ("G3"). */
 export function midiToName(midi: number): string {
-  const pc = ((midi % 12) + 12) % 12;
-  return NAMES_SHARP[pc] + (Math.floor(midi / 12) - 1);
+  return pitchClassName(midi) + (Math.floor(midi / 12) - 1);
 }
 
 /** "4/4" | "3/4" | 5 → measure length in quarter-note beats. */

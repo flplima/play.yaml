@@ -136,7 +136,7 @@ step per frame. Included here as the second big AGPL web app in the scene.
 ## Tidal/Strudel mini-notation: the signature inventory
 
 These spellings, *in combination*, are what the community reads as "Tidal
-mini-notation" (verified against tidalcycles.org/docs/reference/mini_notation).
+mini-notation" (verified against https://tidalcycles.org/docs/reference/mini_notation).
 This is the do-not-imitate list for any new play.yaml syntax:
 
 | Element | Meaning | Example |

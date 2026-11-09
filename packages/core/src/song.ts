@@ -7,24 +7,25 @@
  */
 
 import {
-  DEFAULT_MEASURE, DEFAULT_OCTAVE, ScaleInfo, degreeToMidi, measureToBeats, notatedMeter,
-  midiToName, noteToMidi, parseScale,
+  DEFAULT_MEASURE, DEFAULT_OCTAVE, ScaleInfo, degreeToMidi, isDegreeToken, measureToBeats,
+  notatedMeter, midiToName, noteToMidi, parseScale,
 } from './theory';
 import {
-  ACCENT_STEP, ControlSpec, DEFAULT_GATE, DEFAULT_STRUM, PedalPattern, SAMPLE_PROGRAMS,
-  controlValue, drumName, resolveControl, resolveDrum,
+  ACCENT_STEP, ControlSpec, DEFAULT_GATE, DEFAULT_STRUM, DRUM_CHANNEL, PedalPattern,
+  SAMPLE_PROGRAMS, controlValue, drumName, resolveControl, resolveDrum,
 } from './vocabulary';
-import { SetPatch, parseSet } from './set';
+import { SetPatch, isDirectiveString, parseSet } from './set';
 import {
-  HOLD, isDirectiveString, isScaleToken, isSetToken, setTokenBody, splitTopLevel, tokenWeight,
+  HOLD, REST, divideByWeight, isMarkToken, isScaleToken, peelSuffix, setTokenBody, splitTopLevel,
 } from './tokens';
 import {
   ArpSpec, DEFAULT_SEED, HumanizeSpec, SpreadSpec, WalkSpec, WalkState,
   expandArp, expandSpread, expandWalk, hash01, normalizeHumanize,
 } from './generate';
 
+/** Every `time`, `duration` and `rampBeats` below is in quarter-note beats. */
 export interface TimelineEvent {
-  time: number; // in quarter-note beats
+  time: number;
   pitch: string;
   duration: number;
   velocity: number;
@@ -53,20 +54,11 @@ export interface TrackProps {
   transpose?: number;
   channel?: number;
   program?: number;
-  /**
-   * The rack patch this track's channel should be switched to before it plays:
-   * an index into jukebox's Program Change catalogue (`patches:` in its
-   * jukebox.yaml — 5 is SWAM VariFlute, 6 the bassoon voicing of it), sent as
-   * a Program Change on the wire. Distinct from `program`, which is the
-   * General MIDI number a `.mid` export carries: the same message, but the
-   * two catalogues have nothing to do with each other.
-   */
-  patch?: number;
   velocity?: number;
   /**
    * Fraction of its slot a note sounds. Below 1 the note releases before the
-   * next begins (detached); above 1 they overlap, which is how physical
-   * models such as SWAM are told to play a slur rather than re-attack.
+   * next begins (detached); above 1 they overlap, which is how a physical
+   * model is told to play a slur rather than re-attack.
    */
   gate?: number;
   /**
@@ -80,7 +72,7 @@ export interface TrackProps {
    * How many notes of a rolled chord keep sounding. A bow can sustain two
    * strings, so `voices: 2` makes `[1 5 12]~` bow the bass into the roll and
    * release it as the top pair lands — the way a cellist breaks a triple
-   * stop, and what physical models (SWAM) need to voice every note.
+   * stop, and what a physical model needs to voice every note.
    * Unset = all notes sustain (piano, guitar, samplers).
    */
   voices?: number;
@@ -185,32 +177,30 @@ export interface TrackProps {
   humanize?: number | { time?: number; velocity?: number };
 }
 
-/**
- * A preset or sound change at a point in the timeline, named rather than
- * numbered. Not a control change and not a program change: the racks this
- * targets select presets by name over a control port, which is the only route
- * that reaches plugins exposing no MIDI-addressable programs — and the only
- * one that can name more than 128 of them.
- */
-export interface PatchEvent {
-  time: number; // in quarter-note beats
-  kind: 'preset' | 'sound';
-  name: string;
-}
-
 /** A control-change emitted at a point in the timeline. */
 export interface ControlEvent {
-  time: number; // in quarter-note beats
+  time: number;
   cc: number;
   value: number;
 }
 
 /** A tempo change; `rampBeats` > 0 makes it a gradual rit./accel. */
 export interface TempoEvent {
-  time: number; // in quarter-note beats
+  time: number;
   bpm: number;
   rampBeats: number;
 }
+
+/**
+ * The track props a play-list directive item (or a section track) may change
+ * mid-score. Everything else — the instrument, its channel, its controls —
+ * is declared once on the track.
+ */
+export const DIRECTIVE_PROPS = [
+  'scale', 'octave', 'velocity', 'gate', 'rubato', 'tempo', 'measure', 'strum', 'voices',
+  'seed', 'chance', 'humanize',
+] as const;
+export type DirectiveProp = (typeof DIRECTIVE_PROPS)[number];
 
 /**
  * A mapping item inside a `play` list. Named keys change the running note
@@ -219,11 +209,7 @@ export interface TempoEvent {
  * states the 1-based measure the string occupies (`- 5: "1 2 3 4"`), so
  * measures can be labeled explicitly and gaps become silence.
  */
-export type PlayDirective = Pick<
-  TrackProps,
-  'scale' | 'octave' | 'velocity' | 'gate' | 'rubato' | 'tempo' | 'measure' | 'strum' | 'voices'
-  | 'seed' | 'chance' | 'humanize'
-> & {
+export type PlayDirective = Pick<TrackProps, DirectiveProp> & {
   set?: string | string[];
   [measure: number]: string | undefined;
 };
@@ -284,11 +270,7 @@ export interface TrackNode extends TrackProps {
  * directive-expressible props (velocity, gate, scale, octave, …) to override
  * for this section's span.
  */
-export interface SectionTrack extends Pick<
-  TrackProps,
-  'scale' | 'octave' | 'velocity' | 'gate' | 'rubato' | 'tempo' | 'measure' | 'strum' | 'voices'
-  | 'seed' | 'chance' | 'humanize'
-> {
+export interface SectionTrack extends Pick<TrackProps, DirectiveProp> {
   /** Measures to rest before entering the section. Applies once, never on loops. */
   wait?: number;
   set?: string | string[];
@@ -313,17 +295,13 @@ export type SongDoc = TrackNode & { sections?: Record<string, SectionNode> };
 export interface CompiledTrack {
   name: string;
   channel: number;
-  sample?: string;
+  sample: string;
   /** The drum kit this track plays, when it is a `kit:` track. */
   kit?: string;
   program?: number;
-  /** Rack patch to select on the channel before playing — see TrackProps. */
-  patch?: number;
   timeline: TimelineEvent[];
   /** CC changes declared mid-song, in beat order. */
   controls: ControlEvent[];
-  /** Preset/sound changes declared mid-song, in beat order. */
-  patches: PatchEvent[];
 }
 
 export interface CompiledSong {
@@ -399,9 +377,9 @@ interface EmitCtx {
   /** The notes a `_` would prolong, and how much time they cover so far. */
   held?: { events: TimelineEvent[]; span: number } | null;
   /** Tokens that read as nothing, collected rather than thrown. */
-  warnings?: string[];
+  warnings: string[];
   /** 1-based measure being compiled, so a warning can name it. */
-  measureNumber?: number;
+  measureNumber: number;
   /** Seed for chance/humanize — same seed, same compiled song. */
   seed: number;
   /** Probability each struck note sounds (1 = always). */
@@ -452,7 +430,7 @@ const RUBATO_DEPTH = 0.08;
  * It is a pure function of the bar number — no randomness — so a score compiles
  * to the same timeline every time.
  */
-export function rubatoWarp(u: number, amount: number, measureIndex = 0): number {
+function rubatoWarp(u: number, amount: number, measureIndex = 0): number {
   if (!amount) return u;
   const arch = 0.75 + 0.25 * Math.cos((Math.PI * measureIndex) / 4);
   return u + amount * RUBATO_DEPTH * arch * Math.sin(2 * Math.PI * u);
@@ -468,11 +446,6 @@ function velocityAt(ctx: EmitCtx, beat: number): number {
 }
 
 /**
- * Recursively place one token in [start, start+span):
- * rests emit nothing, chords stack, groups subdivide equally.
- * `boost` carries an accent's extra velocity into chord members.
- */
-/**
  * A token that reads as neither a note nor a mark stays a rest — deliberately,
  * so a half-written score still plays. The cost is that a mistyped expression
  * mark ("sostenuto" before it was vocabulary, "ritardadno") silently swallows a
@@ -482,36 +455,31 @@ function velocityAt(ctx: EmitCtx, beat: number): number {
  */
 function noteUnknownToken(ctx: EmitCtx, token: string, kind: 'pitch' | 'drum' = 'pitch'): void {
   const tok = token.trim();
-  if (!tok || !ctx.warnings) return;
+  if (!tok) return;
   const what = kind === 'drum' ? 'no such drum name or GM key' : 'not a note, degree, chord or rest';
-  const where = `bar ${ctx.measureNumber ?? 1}`;
+  const where = `bar ${ctx.measureNumber}`;
   const message = `${where}: unknown token "${tok}" (${what}) — silent`;
   if (!ctx.warnings.includes(message)) ctx.warnings.push(message);
 }
 
+/**
+ * Recursively place one token in [start, start+span): rests emit nothing,
+ * chords stack, groups share the span by weight. `boost` carries an accent's
+ * extra velocity into chord members.
+ */
 function placeToken(token: string, start: number, span: number, ctx: EmitCtx, boost = 0): void {
-  let tok = token.trim();
-  if (!tok) return;
-
-  // Suffix marks: `>` accents, `<` softens (both stackable), `~` rolls a
-  // chord (arpeggiando) — `[1 5 12]~` — and `.`/`:` weight the duration
-  // (consumed by the caller's division; ignored here). The bare `~` rest
-  // stays untouched because a suffix needs something to sit on.
+  if (!token.trim()) return;
+  const { core: tok, marks } = peelSuffix(token.trim());
+  // Duration marks (`.` `:`) were consumed by the caller's division.
   let strumMarks = 0;
-  // A weighted rest (`~:`) is all suffix characters — peel it to a bare rest.
-  if (/^~[<>:.]+$/.test(tok)) tok = '~';
-  const suffix = /([<>~:.]+)$/.exec(tok);
-  if (suffix && suffix[1].length < tok.length) {
-    for (const ch of suffix[1]) {
-      if (ch === '~') strumMarks += 1;
-      else if (ch === '>') boost += ACCENT_STEP;
-      else if (ch === '<') boost -= ACCENT_STEP;
-    }
-    tok = tok.slice(0, -suffix[1].length);
+  for (const ch of marks) {
+    if (ch === '~') strumMarks += 1;
+    else if (ch === '>') boost += ACCENT_STEP;
+    else if (ch === '<') boost -= ACCENT_STEP;
   }
 
   // A rest cuts the sound off, so nothing can be prolonged across it.
-  if (tok === '~') {
+  if (tok === REST) {
     ctx.held = null;
     return;
   }
@@ -546,7 +514,7 @@ function placeToken(token: string, start: number, span: number, ctx: EmitCtx, bo
     // it: each earlier note releases after the roll moves past the
     // instrument's polyphony. The release tail overlaps the displacing note
     // generously — that overlap is what tells a string-crossing model
-    // (SWAM) the next note lives on another string, and it is how long a
+    // that the next note lives on another string, and it is how long a
     // broken bass genuinely rings under the top of the chord.
     let sustained = chord;
     if (strumMarks && ctx.voices > 0 && chord.length > ctx.voices) {
@@ -560,23 +528,14 @@ function placeToken(token: string, start: number, span: number, ctx: EmitCtx, bo
       }
       sustained = chord.slice(cut);
     }
-    // The (sustaining part of the) chord is prolonged together.
     ctx.held = sustained.length ? { events: sustained, span } : null;
     return;
   }
 
   if (tok[0] === '{' && tok[tok.length - 1] === '}') {
     const parts = splitTopLevel(tok.slice(1, -1));
-    if (parts.length === 0) return;
-    // The group's span is shared proportionally to the parts' duration
-    // weights (`.` ×1.5, `:` ×2) — equal division when no weights appear.
-    const weights = parts.map(tokenWeight);
-    const total = weights.reduce((a, b) => a + b, 0) || 1;
-    let offset = 0;
-    parts.forEach((part, i) => {
-      const sub = (span * weights[i]) / total;
-      placeToken(part, start + offset, sub, ctx, boost);
-      offset += sub;
+    divideByWeight(parts, span).forEach((slot, i) => {
+      placeToken(parts[i], start + slot.offset, slot.span, ctx, boost);
     });
     return;
   }
@@ -586,9 +545,8 @@ function placeToken(token: string, start: number, span: number, ctx: EmitCtx, bo
     const spec = resolveDrum(tok);
     if (!spec) {
       noteUnknownToken(ctx, token, 'drum');
-      return; // unknown token → rest, same policy as pitches
+      return;
     }
-    // A `chance`-dropped hit stays silent but keeps its slot.
     if (dropByChance(ctx, start, spec.note)) {
       ctx.held = null;
       return;
@@ -635,15 +593,14 @@ function placeToken(token: string, start: number, span: number, ctx: EmitCtx, bo
   const core = under ? tok.slice(under[1].length) : tok;
   const octavesDown = under ? under[1].length : 0;
 
-  const raw = /^-?\d/.test(core)
+  const raw = isDegreeToken(core)
     ? degreeToMidi(core, ctx.scale, ctx.octave)
     : noteToMidi(core, ctx.octave);
   const midi = raw === null ? null : raw - 12 * octavesDown + ctx.transpose;
   if (midi === null) {
     noteUnknownToken(ctx, token);
-    return; // unknown token → treat as a rest, stay robust
+    return;
   }
-  // A `chance`-dropped note stays silent but keeps its slot.
   if (dropByChance(ctx, start, midi)) {
     ctx.held = null;
     return;
@@ -760,6 +717,12 @@ function playItems(play: PlayInput, pass = 0, gen?: GenState): (string | PlayDir
   return out;
 }
 
+/** Does this measure string occupy a bar slot (vs a directive that takes none)? */
+export function occupiesBar(text: string): boolean {
+  return text.trim() !== '' && !isDirectiveString(text) &&
+    splitTopLevel(text).some((t) => !isMarkToken(t));
+}
+
 export interface PlayMeasureEntry {
   text: string;
   /** 0-based measure slot this string occupies. */
@@ -779,7 +742,7 @@ export function playMeasureEntries(play: PlayInput | undefined): PlayMeasureEntr
     const text = raw.trim();
     if (!text || isDirectiveString(text)) return; // expression marks take no time
     out.push({ text, index: m });
-    if (splitTopLevel(text).some((t) => !isSetToken(t) && !isScaleToken(t))) m++;
+    if (occupiesBar(text)) m++;
   };
   for (const item of playItems(play)) {
     if (item && typeof item === 'object') {
@@ -797,15 +760,9 @@ export function playMeasureEntries(play: PlayInput | undefined): PlayMeasureEntr
   return out;
 }
 
-/** `play` value → list of measure strings (directive items don't count). */
-export function playToMeasures(play: PlayInput | undefined): string[] {
-  return playMeasureEntries(play).map((e) => e.text);
-}
-
 export interface PlayResult {
   timeline: TimelineEvent[];
   controls: ControlEvent[];
-  patches: PatchEvent[];
   tempos: TempoEvent[];
   /** Where the last sounding measure ends, in beats — honours meter changes. */
   lengthBeats: number;
@@ -835,7 +792,6 @@ export function parsePlayFull(
   const controlAliases = props.controls ?? {};
   const baseTempo = props.tempo ?? DEFAULT_TEMPO;
   let runningTempo = baseTempo;
-  // `dynamic:` and `articulation:` are the worded forms of velocity and gate.
   const worded = parseSet(
     [props.dynamic, props.articulation].filter(Boolean).join(', ') || [],
   );
@@ -852,17 +808,17 @@ export function parsePlayFull(
     strumTail: props.strumTail,
     rubato: props.rubato ?? worded.rubato ?? 0,
     warnings: [],
+    measureNumber: 1,
     seed: props.seed ?? DEFAULT_SEED,
     chance: Math.max(0, Math.min(1, props.chance ?? 1)),
     humanize: normalizeHumanize(props.humanize),
   };
   const controls: ControlEvent[] = [];
-  const patches: PatchEvent[] = [];
   const tempos: TempoEvent[] = [];
   /** Last value emitted per CC, so a drift knows where it starts. */
   const lastCc = new Map<number, number>(opening.map((c) => [c.cc, c.value]));
 
-  // Physical models (SWAM and friends) take their loudness from a continuous
+  // Physical-model instruments take their loudness from a continuous
   // expression controller, not from note velocity. When a track declares an
   // `expression` control, dynamic marks also drive it: immediate changes emit
   // one CC, hairpins a ramp of CCs at eighth-note resolution.
@@ -874,13 +830,16 @@ export function parsePlayFull(
   const emitExpression = (at: number, velocity: number) => {
     if (exprSpec) controls.push({ time: round(at), cc: exprSpec.cc, value: exprValue(velocity) });
   };
+  /** A glide as a staircase, one step per eighth note: [beat, progress 0..1]. */
+  const rampSteps = (fromBeat: number, toBeat: number): [number, number][] => {
+    const steps = Math.max(1, Math.ceil((toBeat - fromBeat) * 2));
+    const out: [number, number][] = [];
+    for (let s = 1; s <= steps; s++) out.push([fromBeat + (toBeat - fromBeat) * (s / steps), s / steps]);
+    return out;
+  };
   const emitExpressionRamp = (fromBeat: number, toBeat: number, from: number, to: number) => {
     if (!exprSpec || toBeat <= fromBeat) return;
-    const steps = Math.max(1, Math.ceil((toBeat - fromBeat) * 2)); // one per eighth
-    for (let s = 1; s <= steps; s++) {
-      const t = s / steps;
-      emitExpression(fromBeat + (toBeat - fromBeat) * t, from + (to - from) * t);
-    }
+    for (const [beat, t] of rampSteps(fromBeat, toBeat)) emitExpression(beat, from + (to - from) * t);
   };
 
   /*
@@ -980,25 +939,15 @@ export function parsePlayFull(
       setTempo(target, patch.tempo.overMeasures, at);
     }
 
-    for (const p of patch.patches ?? []) {
-      patches.push({ time: round(at), kind: p.kind, name: p.name });
-    }
     for (const c of patch.ccs ?? []) {
       controls.push({ time: round(at), cc: c.cc, value: c.value });
       lastCc.set(c.cc, c.value);
     }
-    // Drifts glide from wherever the control last sat, one step per eighth.
+    // Drifts glide from wherever the control last sat.
     for (const r of patch.ccRamps ?? []) {
       const from = lastCc.get(r.cc) ?? r.to;
-      const toBeat = at + r.overMeasures * measureBeats;
-      const steps = Math.max(1, Math.ceil((toBeat - at) * 2));
-      for (let s = 1; s <= steps; s++) {
-        const t = s / steps;
-        controls.push({
-          time: round(at + (toBeat - at) * t),
-          cc: r.cc,
-          value: Math.round(from + (r.to - from) * t),
-        });
+      for (const [beat, t] of rampSteps(at, at + r.overMeasures * measureBeats)) {
+        controls.push({ time: round(beat), cc: r.cc, value: Math.round(from + (r.to - from) * t) });
       }
       lastCc.set(r.cc, r.to);
     }
@@ -1024,8 +973,7 @@ export function parsePlayFull(
       return;
     }
     const tokens = splitTopLevel(measure);
-    const isMark = (t: string) => isSetToken(t) || isScaleToken(t);
-    const noteTokens = tokens.filter((t) => !isMark(t));
+    const noteTokens = tokens.filter((t) => !isMarkToken(t));
     if (noteTokens.length === 0) {
       // A directive-only line changes state but is not a measure.
       for (const tok of tokens) {
@@ -1034,23 +982,19 @@ export function parsePlayFull(
       }
       return;
     }
-    // The measure divides proportionally to the tokens' duration weights
-    // (`.` ×1.5, `:` ×2, stackable) — plain equal division when unweighted.
-    const totalWeight = noteTokens.reduce((sum, t) => sum + tokenWeight(t), 0) || 1;
-    const unit = measureBeats / totalWeight;
+    const slots = divideByWeight(noteTokens, measureBeats);
     const firstEvent = ctx.events.length; // where this measure's notes begin
     let pos = 0; // beats consumed within the measure
+    let slot = 0;
     for (const tok of tokens) {
       const at = beat + pos;
       if (isScaleToken(tok)) {
-        // `==Dm7==` / `==C mixolydian==` — re-key the degrees that follow.
         ctx.scale = parseScale(setTokenBody(tok));
-      } else if (isSetToken(tok)) {
+      } else if (isMarkToken(tok)) {
         applySet(setTokenBody(tok), at);
       } else {
-        const span = unit * tokenWeight(tok);
-        placeToken(tok, at, span, ctx);
-        pos += span;
+        placeToken(tok, at, slots[slot].span, ctx);
+        pos += slots[slot++].span;
       }
     }
     // Let the bar breathe. Onset and release are warped by the same curve, so
@@ -1081,22 +1025,7 @@ export function parsePlayFull(
 
   for (const item of playItems(play)) {
     if (item && typeof item === 'object') {
-      // A directive item is the mapping form of a `set` patch — route both
-      // through applyPatch so tempo/velocity bookkeeping stays in one place.
-      applyPatch({
-        scale: item.scale,
-        octave: item.octave,
-        velocity: item.velocity,
-        gate: item.gate,
-        rubato: item.rubato,
-        strum: item.strum,
-        voices: item.voices,
-        measure: item.measure,
-        seed: item.seed,
-        chance: item.chance,
-        humanize: item.humanize !== undefined ? normalizeHumanize(item.humanize) ?? null : undefined,
-        tempo: item.tempo !== undefined ? { bpm: item.tempo, overMeasures: 0 } : undefined,
-      }, beat);
+      applyPatch(directivePatch(item), beat);
       if (item.set !== undefined) applySet(item.set, beat);
       for (const [key, value] of Object.entries(item)) {
         if (/^\d+$/.test(key) && typeof value === 'string') {
@@ -1193,7 +1122,6 @@ export function parsePlayFull(
   }
 
   controls.sort((a, b) => a.time - b.time);
-  patches.sort((a, b) => a.time - b.time);
   tempos.sort((a, b) => a.time - b.time);
   // A track-level velocity band. Applied last, over the finished timeline, so
   // it catches every velocity the compiler produced — dynamic marks, hairpin
@@ -1206,12 +1134,24 @@ export function parsePlayFull(
     }
   }
 
-  return { timeline: ctx.events, controls, patches, tempos, lengthBeats: endBeat, warnings: ctx.warnings ?? [] };
+  return { timeline: ctx.events, controls, tempos, lengthBeats: endBeat, warnings: ctx.warnings };
 }
 
-/** Compile one track's measures to its note timeline. */
-export function parsePlay(play: PlayInput, props: TrackProps = {}): TimelineEvent[] {
-  return parsePlayFull(play, props).timeline;
+/**
+ * A directive item is the mapping form of a `set` patch, so it goes through
+ * the same applier and the tempo/velocity bookkeeping stays in one place.
+ */
+function directivePatch(item: PlayDirective): SetPatch {
+  const patch: SetPatch = {};
+  for (const key of DIRECTIVE_PROPS) {
+    const value = item[key];
+    if (value === undefined) continue;
+    if (key === 'tempo') patch.tempo = { bpm: value as number, overMeasures: 0 };
+    else if (key === 'humanize') patch.humanize = normalizeHumanize(value as TrackProps['humanize']) ?? null;
+    else if (key === 'measure') patch.measure = String(value);
+    else (patch as Record<string, unknown>)[key] = value;
+  }
+  return patch;
 }
 
 // ---------------------------------------------------------------------------
@@ -1221,19 +1161,7 @@ export function parsePlay(play: PlayInput, props: TrackProps = {}): TimelineEven
 /** Keys of a section mapping that are NOT instrument tracks. */
 const SECTION_KEYS = new Set(['loop', 'wait']);
 
-/** Section-track props that compile into play directives. */
-const SECTION_DIRECTIVE_PROPS = [
-  'scale', 'octave', 'velocity', 'gate', 'rubato', 'tempo', 'measure', 'strum', 'voices',
-  'seed', 'chance', 'humanize',
-] as const;
-
-const SECTION_TRACK_KEYS = new Set(['wait', 'set', 'play', ...SECTION_DIRECTIVE_PROPS]);
-
-/** Does this measure string occupy a bar slot (vs a directive that takes none)? */
-function occupiesBar(text: string): boolean {
-  return text.trim() !== '' && !isDirectiveString(text) &&
-    splitTopLevel(text).some((t) => !isSetToken(t) && !isScaleToken(t));
-}
+const SECTION_TRACK_KEYS = new Set(['wait', 'set', 'play', ...DIRECTIVE_PROPS]);
 
 /** Bars a play list spans (numbered keys included). */
 function measureSpan(play: PlayInput | undefined): number {
@@ -1316,7 +1244,7 @@ export function expandSections(doc: SongDoc): { doc: SongDoc; loopStartBar: numb
       // leading directives (tempo words, prop overrides) land at the right time.
       list.push({ [startBar + 1]: '' });
       const overrides: PlayDirective = {};
-      for (const key of SECTION_DIRECTIVE_PROPS) {
+      for (const key of DIRECTIVE_PROPS) {
         if (node[key] !== undefined) (overrides as Record<string, unknown>)[key] = node[key];
       }
       if (node.set !== undefined) overrides.set = node.set;
@@ -1390,36 +1318,62 @@ export function expandSections(doc: SongDoc): { doc: SongDoc; loopStartBar: numb
 // Document compilation (recursive tracks with inheritance)
 // ---------------------------------------------------------------------------
 
-const INHERITED: (keyof TrackProps)[] = [
-  'tempo', 'measure', 'sample', 'scale', 'octave', 'transpose', 'channel', 'program', 'patch', 'velocity',
+/** Every TrackProps key: a child track inherits all of them. */
+const INHERITED = [
+  'tempo', 'measure', 'sample', 'scale', 'octave', 'transpose', 'channel', 'program', 'velocity',
   'gate', 'rubato', 'dynamic', 'articulation', 'release', 'controls', 'strum', 'voices', 'strumTail', 'kit',
   'pedal', 'seed', 'chance', 'humanize', 'velocityRange',
-];
+] as const satisfies readonly (keyof TrackProps)[];
+// A new TrackProps key must be listed above, or it would silently not inherit.
+const _everyPropInherits: Exclude<keyof TrackProps, (typeof INHERITED)[number]> extends never ? true : never = true;
+void _everyPropInherits;
 
-function effectiveProps(node: TrackNode, inherited: TrackProps): TrackProps {
-  const props: TrackProps = { ...inherited };
+/**
+ * The static half of a `set` patch applied to a track's props: what a track
+ * opens on. Hairpins, tempo ramps and control drifts are motions, so they
+ * belong in a play list and are ignored here.
+ */
+function patchProps(props: TrackProps, patch: SetPatch): TrackProps {
+  const out: TrackProps = { ...props };
+  if (patch.scale) out.scale = patch.scale;
+  if (patch.octave !== undefined) out.octave = patch.octave;
+  if (patch.octaveDelta) out.octave = (out.octave ?? DEFAULT_OCTAVE) + patch.octaveDelta;
+  if (patch.velocity !== undefined) out.velocity = patch.velocity;
+  if (patch.velocityDelta) out.velocity = (out.velocity ?? DEFAULT_VELOCITY) + patch.velocityDelta;
+  if (patch.tempo?.bpm !== undefined) out.tempo = patch.tempo.bpm;
+  else if (patch.tempo?.scale !== undefined) out.tempo = (out.tempo ?? DEFAULT_TEMPO) * patch.tempo.scale;
+  if (patch.measure !== undefined) out.measure = patch.measure;
+  if (patch.gate !== undefined) out.gate = patch.gate;
+  if (patch.strum !== undefined) out.strum = patch.strum;
+  if (patch.voices !== undefined) out.voices = patch.voices;
+  if (patch.strumTail !== undefined) out.strumTail = patch.strumTail;
+  if (patch.rubato !== undefined) out.rubato = patch.rubato;
+  if (patch.pedal !== undefined) out.pedal = patch.pedal;
+  if (patch.seed !== undefined) out.seed = patch.seed;
+  if (patch.chance !== undefined) out.chance = patch.chance;
+  if (patch.humanize !== undefined) out.humanize = patch.humanize ?? undefined;
+  return out;
+}
+
+/**
+ * A node's props: its parent's, its own, then its `set:`. The controls the
+ * `set:` declares are the track's opening state, emitted at beat 0.
+ */
+function effectiveProps(
+  node: TrackNode,
+  inherited: TrackProps,
+): { props: TrackProps; opening: ControlEvent[] } {
+  let props: TrackProps = { ...inherited };
   for (const key of INHERITED) {
-    if (node[key] !== undefined) (props as any)[key] = node[key];
+    if (node[key] !== undefined) (props as Record<string, unknown>)[key] = node[key];
   }
+  let opening: ControlEvent[] = [];
   if (node.set !== undefined) {
     const patch = parseSet(node.set, props.controls);
-    if (patch.scale) props.scale = patch.scale;
-    if (patch.octave !== undefined) props.octave = patch.octave;
-    if (patch.octaveDelta) props.octave = (props.octave ?? DEFAULT_OCTAVE) + patch.octaveDelta;
-    if (patch.velocity !== undefined) props.velocity = patch.velocity;
-    if (patch.gate !== undefined) props.gate = patch.gate;
-    if (patch.strum !== undefined) props.strum = patch.strum;
-    if (patch.voices !== undefined) props.voices = patch.voices;
-    if (patch.strumTail !== undefined) props.strumTail = patch.strumTail;
-    if (patch.rubato !== undefined) props.rubato = patch.rubato;
-    if (patch.pedal !== undefined) props.pedal = patch.pedal;
-    if (patch.seed !== undefined) props.seed = patch.seed;
-    if (patch.chance !== undefined) props.chance = patch.chance;
-    if (patch.humanize !== undefined) props.humanize = patch.humanize ?? undefined;
-    // Any control changes it declares are emitted at the start of the track,
-    // in compileDoc — see the `set` handling in walk().
+    props = patchProps(props, patch);
+    opening = (patch.ccs ?? []).map((c) => ({ time: 0, cc: c.cc, value: c.value }));
   }
-  return props;
+  return { props, opening };
 }
 
 /**
@@ -1435,12 +1389,13 @@ export function compileDoc(doc: SongDoc): CompiledSong {
 
   // velocity and gate are deliberately left unset here so that their worded
   // forms (`dynamic:` / `articulation:`) can supply them.
-  const rootProps = effectiveProps(doc, {
+  const root = effectiveProps(doc, {
     tempo: DEFAULT_TEMPO,
     measure: DEFAULT_MEASURE,
     sample: DEFAULT_SAMPLE,
     octave: DEFAULT_OCTAVE,
   });
+  const rootProps = root.props;
 
   const tracks: CompiledTrack[] = [];
   const warnings: string[] = [];
@@ -1449,20 +1404,11 @@ export function compileDoc(doc: SongDoc): CompiledSong {
   let nextChannel = 1;
 
   const walk = (node: TrackNode, name: string, inherited: TrackProps) => {
-    const props = node === doc ? rootProps : effectiveProps(node, inherited);
+    const { props, opening } = node === doc ? root : effectiveProps(node, inherited);
 
     if (node.play != null) {
-      // A `set:` on the track itself opens the instrument at beat 0 — and is
-      // where any drift later in the track starts from, so it is resolved
-      // before the play list is walked.
-      const opening = (node.set !== undefined ? parseSet(node.set, props.controls).ccs ?? [] : [])
-        .map((c) => ({ time: 0, cc: c.cc, value: c.value }));
-      const { timeline, controls, patches, tempos, lengthBeats: trackBeats, warnings: trackWarnings } =
+      const { timeline, controls, tempos, lengthBeats: trackBeats, warnings: trackWarnings } =
         parsePlayFull(node.play, props, opening);
-      // A `set:` on the track can name a preset too — that lands at beat 0.
-      const openingPatches: PatchEvent[] = (node.set !== undefined
-        ? parseSet(node.set, props.controls).patches ?? []
-        : []).map((p) => ({ time: 0, kind: p.kind, name: p.name }));
       for (const w of trackWarnings) {
         const tagged = `${name}: ${w}`;
         if (!warnings.includes(tagged)) warnings.push(tagged);
@@ -1471,22 +1417,20 @@ export function compileDoc(doc: SongDoc): CompiledSong {
       const sample = props.sample ?? DEFAULT_SAMPLE;
       // Tempo belongs to the song, not a voice — merge every track's changes.
       tempoMap.push(...tempos);
-      // Kit tracks live on GM percussion channel 10 (all of them — that is
-      // the channel's job) and take no program change; melodic auto-assign
-      // skips 10 so a large score never leaks notes onto the drum channel.
-      if (nextChannel === 10) nextChannel++;
+      // Kit tracks live on the GM percussion channel and take no program
+      // change; melodic auto-assign skips it so a large score never leaks
+      // notes onto the drums.
+      if (nextChannel === DRUM_CHANNEL) nextChannel++;
       tracks.push({
         name,
-        channel: props.channel ?? (props.kit != null ? 10 : nextChannel++),
+        channel: props.channel ?? (props.kit != null ? DRUM_CHANNEL : nextChannel++),
         sample,
         // `kit: 808` reads as a YAML number — normalize so consumers compare strings.
         kit: props.kit != null ? String(props.kit) : undefined,
         program: props.kit != null ? undefined
           : props.program ?? SAMPLE_PROGRAMS[sample.toLowerCase()],
-        patch: props.patch,
         timeline,
         controls: [...opening, ...controls],
-        patches: [...openingPatches, ...patches],
       });
     }
 
@@ -1503,7 +1447,7 @@ export function compileDoc(doc: SongDoc): CompiledSong {
     throw new Error('Score has nothing to play — add a "play:" or "tracks:" key.');
   }
 
-  // One change per beat position; a later track's declaration wins.
+  // One tempo change per beat position; a later track's declaration wins.
   const byTime = new Map<number, TempoEvent>();
   for (const t of tempoMap) byTime.set(t.time, t);
 

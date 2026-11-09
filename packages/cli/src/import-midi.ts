@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * play-yaml-import — a Standard MIDI File → a play.yaml score, verifiably.
  *
@@ -24,9 +22,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import {
-  DRUMS, NOTATE_TICKS, SAMPLE_PROGRAMS, compileDoc, decodeMidi, notateMeasures,
+  NOTATE_TICKS, SAMPLE_PROGRAMS, compileDoc, decodeMidi, drumName, notateMeasures,
   parseYaml, separateVoices, MidiNote, NotateNote, ParsedMidi,
 } from '@play.yaml/core';
+import { parseFlags, run, usage } from './shared';
 
 /**
  * The emitter's grid has to be a multiple of the file's own resolution, or a
@@ -38,10 +37,9 @@ function lcm(a: number, b: number): number {
   return (a / gcd(a, b)) * b;
 }
 
-interface CliArgs {
-  input?: string;
-  output?: string;
-  title?: string;
+/** What an import is asked to do. */
+interface ImportOptions {
+  title: string;
   bpm?: number;
   measure?: string;
   bars?: string;
@@ -50,9 +48,6 @@ interface CliArgs {
   snap: number;
   voices: number;
   legato: boolean;
-  verify: boolean;
-  json: boolean;
-  help?: boolean;
 }
 
 const HELP = `Standard MIDI File → play.yaml score
@@ -85,47 +80,6 @@ Flags:
       --json            print the verification report as JSON
   -h, --help            this help`;
 
-export function parseArgs(argv: string[]): CliArgs {
-  const args: CliArgs = { snap: 0, voices: 4, legato: false, verify: false, json: false };
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    const next = () => argv[++i];
-    switch (a) {
-      case '--input': case '-i': args.input = next(); break;
-      case '--output': case '-o': args.output = next(); break;
-      case '--title': args.title = next(); break;
-      case '--bpm': case '-b': args.bpm = Number(next()); break;
-      case '--measure': args.measure = next(); break;
-      case '--bars': args.bars = next(); break;
-      case '--tracks': args.tracks = next(); break;
-      case '--flats': args.flats = true; break;
-      case '--sharps': args.flats = false; break;
-      case '--snap': args.snap = Number(next()); break;
-      case '--voices': args.voices = Number(next()); break;
-      case '--legato': args.legato = true; break;
-      case '--verify': args.verify = true; break;
-      case '--json': args.json = true; break;
-      case '--help': case '-h': args.help = true; break;
-      default:
-        if (!args.input && !a.startsWith('-')) args.input = a;
-        else console.error(`Unknown argument: ${a}`);
-    }
-  }
-  return args;
-}
-
-/** GM drum note → the DSL's drum token ("bd", "sd", …), for channel-10 tracks. */
-const DRUM_TOKENS: Record<number, string> = (() => {
-  const map: Record<number, string> = {};
-  for (const [token, spec] of Object.entries(DRUMS)) {
-    const note = (spec as { note?: number }).note;
-    // First spelling wins: DRUMS lists canonical tokens before their aliases.
-    if (typeof note === 'number' && map[note] === undefined) map[note] = token;
-  }
-  return map;
-})();
-
-/** GM program → the closest built-in sample name. */
 const PROGRAM_SAMPLES: Record<number, string> = (() => {
   const map: Record<number, string> = {};
   for (const [sample, program] of Object.entries(SAMPLE_PROGRAMS)) {
@@ -156,7 +110,6 @@ function sampleForProgram(program: number | undefined): string {
   return 'keys';
 }
 
-/** A YAML-safe track key: letters, digits and dashes, never starting a digit. */
 function slugify(name: string, fallback: string): string {
   const s = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   return s && !/^\d/.test(s) ? s : fallback;
@@ -245,7 +198,7 @@ interface BuiltTrack {
   placed: { start: number; midi: number }[];
 }
 
-export interface ImportResult {
+interface ImportResult {
   yaml: string;
   /** Beat window of the source that was imported (for --verify). */
   window: { fromBeat: number; toBeat: number };
@@ -257,7 +210,8 @@ export interface ImportResult {
   noteCount: number;
 }
 
-export function importMidi(bytes: Uint8Array, args: CliArgs, title: string): ImportResult {
+function importMidi(bytes: Uint8Array, args: ImportOptions): ImportResult {
+  const { title } = args;
   const midi = decodeMidi(bytes);
   const bpm = args.bpm || Math.round(midi.tempoMap[0].bpm * 100) / 100;
   const override = args.measure ? /^(\d+)\s*\/\s*(\d+)$/.exec(args.measure) : null;
@@ -281,7 +235,6 @@ export function importMidi(bytes: Uint8Array, args: CliArgs, title: string): Imp
     : buildSpans(midi, lastBeat);
 
   // --bars a-b, counted in measures across the spans as the file bars them.
-  let barOffset = 0;
   if (args.bars) {
     const m = /^(\d+)\s*-\s*(\d+)$/.exec(args.bars);
     if (!m) throw new Error(`--bars expects "a-b", got "${args.bars}"`);
@@ -303,7 +256,6 @@ export function importMidi(bytes: Uint8Array, args: CliArgs, title: string): Imp
       bar += s.measures;
     }
     if (!kept.length) throw new Error(`--bars ${args.bars} selects nothing (file has ${bar - 1} bars)`);
-    barOffset = kept[0].startBeat;
     spans = kept;
   }
   const origin = spans[0].startBeat;
@@ -345,7 +297,7 @@ export function importMidi(bytes: Uint8Array, args: CliArgs, title: string): Imp
           legato: args.legato,
           preferFlat,
           spell: group.drums
-            ? (m) => DRUM_TOKENS[m] ?? `x${m}` // unmapped percussion stays visible
+            ? (m) => drumName(m) ?? `x${m}` // unmapped percussion stays visible
             : undefined,
         });
         if (si > 0) lines.push(`${span.numerator}/${span.denominator}`);
@@ -353,19 +305,10 @@ export function importMidi(bytes: Uint8Array, args: CliArgs, title: string): Imp
         placed = placed.concat(res.placed.map((p) => ({ ...p, start: p.start + span.startBeat - origin })));
         shift = Math.max(shift, res.maxShift);
       });
-      const res = { lines, placed, maxShift: shift };
-      // A part that is silent for the whole excerpt is not a part of it.
-      if (!res.placed.length) { used.delete(key); return; }
-      maxShift = Math.max(maxShift, res.maxShift);
-      noteCount += res.placed.length;
-      tracks.push({
-        key,
-        drums: group.drums,
-        sample: sampleForProgram(group.program),
-        lines: res.lines,
-        maxShift: res.maxShift,
-        placed: res.placed,
-      });
+      if (!placed.length) { used.delete(key); return; }
+      maxShift = Math.max(maxShift, shift);
+      noteCount += placed.length;
+      tracks.push({ key, drums: group.drums, sample: sampleForProgram(group.program), lines, maxShift: shift, placed });
     });
   }
 
@@ -399,7 +342,7 @@ export function importMidi(bytes: Uint8Array, args: CliArgs, title: string): Imp
   };
 }
 
-export interface VerifyReport {
+interface VerifyReport {
   sourceNotes: number;
   scoreNotes: number;
   /** Source notes with no counterpart in the score — notes genuinely lost. */
@@ -428,7 +371,7 @@ export interface VerifyReport {
  * Drum tracks are compared by count only: our kits deliberately fold several
  * GM numbers onto one token, so their pitches are not expected to survive.
  */
-export function verify(
+function verify(
   bytes: Uint8Array,
   yamlText: string,
   drumKeys: Set<string>,
@@ -462,8 +405,7 @@ export function verify(
   const src = byPitch(midi.notes.filter((n) => n.channel !== 9)
     .map((n) => ({ start: n.startBeat, midi: n.pitch })));
   const got = byPitch(song.tracks.filter((t) => !drumKeys.has(t.name))
-    .flatMap((t) => t.timeline.filter((e) => e.midi != null)
-      .map((e) => ({ start: e.time, midi: e.midi as number }))));
+    .flatMap((t) => t.timeline.map((e) => ({ start: e.time, midi: e.midi }))));
 
   let missing = 0;
   let extra = 0;
@@ -504,13 +446,13 @@ export function verify(
 
   const drumSource = midi.notes.filter((n) => n.channel === 9).length;
   const drumScore = song.tracks.filter((t) => drumKeys.has(t.name))
-    .reduce((n, t) => n + t.timeline.filter((e) => e.midi != null).length, 0);
+    .reduce((n, t) => n + t.timeline.length, 0);
   missing += Math.max(0, drumSource - drumScore);
   extra += Math.max(0, drumScore - drumSource);
 
   const sourceNotes = midi.notes.length;
   const scoreNotes = song.tracks.reduce(
-    (n, t) => n + t.timeline.filter((e) => e.midi != null).length, 0);
+    (n, t) => n + t.timeline.length, 0);
 
   return {
     sourceNotes,
@@ -524,36 +466,59 @@ export function verify(
   };
 }
 
-function main(): void {
-  const args = parseArgs(process.argv.slice(2));
-  if (args.help || !args.input) {
-    console.log(HELP);
-    process.exit(args.input ? 0 : 1);
-  }
+run(() => {
+  const { flags, positional } = parseFlags(process.argv.slice(2), {
+    input: { names: ['--input', '-i'], value: true },
+    output: { names: ['--output', '-o'], value: true },
+    title: { names: ['--title'], value: true },
+    bpm: { names: ['--bpm', '-b'], value: true },
+    measure: { names: ['--measure'], value: true },
+    bars: { names: ['--bars'], value: true },
+    tracks: { names: ['--tracks'], value: true },
+    spelling: { names: ['--flats', '--sharps'], spelling: true },
+    snap: { names: ['--snap'], value: true },
+    voices: { names: ['--voices'], value: true },
+    legato: { names: ['--legato'] },
+    verify: { names: ['--verify'] },
+    json: { names: ['--json'] },
+    help: { names: ['--help', '-h'] },
+  });
+  const input = (flags.input as string | undefined) ?? positional[0];
+  if (flags.help || !input) usage(HELP, flags.help);
 
-  const inputPath = path.resolve(process.cwd(), args.input as string);
+  const inputPath = path.resolve(process.cwd(), input);
   const bytes = new Uint8Array(fs.readFileSync(inputPath));
-  const title = args.title || path.basename(inputPath).replace(/\.[^.]+$/, '');
-  const result = importMidi(bytes, args, title);
+  const opts: ImportOptions = {
+    title: (flags.title as string | undefined) ?? path.basename(inputPath).replace(/\.[^.]+$/, ''),
+    bpm: Number(flags.bpm) || undefined,
+    measure: flags.measure as string | undefined,
+    bars: flags.bars as string | undefined,
+    tracks: flags.tracks as string | undefined,
+    flats: flags.spelling === undefined ? undefined : flags.spelling === '--flats',
+    snap: flags.snap ? Number(flags.snap) : 0,
+    voices: flags.voices ? Number(flags.voices) : 4,
+    legato: Boolean(flags.legato),
+  };
+  const result = importMidi(bytes, opts);
 
-  const output = args.output === '-'
+  const output = flags.output === '-'
     ? null
-    : args.output || inputPath.replace(/\.[^.]+$/, '') + '.play.yaml';
+    : (flags.output as string | undefined) ?? inputPath.replace(/\.[^.]+$/, '') + '.play.yaml';
   if (output) fs.writeFileSync(output, result.yaml);
   else process.stdout.write(result.yaml);
 
-  if (!args.verify) {
+  if (!flags.verify) {
     console.error(
       `# ${result.noteCount} notes, ${result.tracks.length} track(s), ${result.measure} at ${result.bpm} bpm` +
-      (args.snap ? `, max onset shift ${result.maxShift.toFixed(4)} beat` : '') +
+      (opts.snap ? `, max onset shift ${result.maxShift.toFixed(4)} beat` : '') +
       (output ? ` → ${path.relative(process.cwd(), output)}` : ''),
     );
     return;
   }
 
   const drumKeys = new Set(result.tracks.filter((t) => t.drums).map((t) => t.key));
-  const report = verify(bytes, result.yaml, drumKeys, result.window, args.tracks);
-  if (args.json) {
+  const report = verify(bytes, result.yaml, drumKeys, result.window, opts.tracks);
+  if (flags.json) {
     process.stderr.write(JSON.stringify(report, null, 2) + '\n');
   } else {
     console.error(
@@ -565,7 +530,4 @@ function main(): void {
   }
   // Moving notes is what --snap is for; losing them never is.
   if (!report.complete) process.exit(1);
-}
-
-// Only run when invoked as a program, so the functions above stay importable.
-if (process.argv[1] && /import-midi\.(ts|js|cjs|mjs)$/.test(process.argv[1])) main();
+});

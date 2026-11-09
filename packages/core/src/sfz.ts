@@ -11,7 +11,7 @@
  * This is the parser only. It knows nothing about audio: it turns text into a
  * flat list of regions with every opcode resolved, and the sampler decides
  * which of those opcodes it can honour. Environment-free on purpose — the
- * file reader is injected, so the browser fetches over HTTP and the server
+ * file reader is injected, so the browser fetches over HTTP and the CLI
  * reads the same library off disk.
  */
 
@@ -40,7 +40,7 @@ const HEADER = /<(\w+)>/g;
 const OPCODE_START = /(?:^|\s)([A-Za-z_][\w$]*)=/g;
 
 /** Normalize a path the way SFZ expects: backslashes, `./` and `..` folded. */
-export function normalizeSfzPath(path: string): string {
+function normalizeSfzPath(path: string): string {
   const parts: string[] = [];
   for (const part of path.replace(/\\/g, '/').split('/')) {
     if (part === '' || part === '.') continue;
@@ -56,7 +56,7 @@ function dirname(path: string): string {
 }
 
 /** Resolve `relative` against the directory of `from`. */
-export function resolveSfzPath(from: string, relative: string): string {
+function resolveSfzPath(from: string, relative: string): string {
   const clean = relative.replace(/\\/g, '/');
   return normalizeSfzPath(clean.startsWith('/') ? clean : `${dirname(from)}/${clean}`);
 }

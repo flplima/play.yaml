@@ -2,7 +2,7 @@ import { ReactElement, useCallback, useEffect, useMemo, useRef, useState } from 
 import CodeMirror from '@uiw/react-codemirror';
 import { yaml } from '@codemirror/lang-yaml';
 import type { EditorView } from '@codemirror/view';
-import { parseYaml, compileDoc, CompiledSong, encodeMidi, suggestRackChannel } from '@play.yaml/core';
+import { parseYaml, compileDoc, CompiledSong, encodeMidi } from '@play.yaml/core';
 import {
   CircleCheck,
   CircleX,
@@ -12,51 +12,31 @@ import {
   PanelRight,
   Play,
   Save,
-  SlidersHorizontal,
   Square,
   TriangleAlert,
 } from 'lucide-react';
 import { EXAMPLES } from './examples';
 import SongPicker from './SongPicker';
 import PianoRoll from './PianoRoll';
+import OutputPanel, { OutputMode } from './OutputPanel';
+import RoutingPanel, { SampleEntry } from './RoutingPanel';
+import TrackMonitor from './TrackMonitor';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { playSong, routeKey, PlaybackHandle, RouteMap, MidiRoute } from './player';
+import { playSong, PlaybackHandle } from './player';
+import { loadRoutes, routeKey, saveRoutes, MidiRoute, RouteMap } from './routes';
 import { encodeMp3, renderSong } from './render';
 import { buildNoteSpans, NoteSpan } from './noteSpans';
 import { playingNoteExtension, setPlayingNotes } from './highlight';
 import { useMidi } from './useMidi';
-import { useRack, useRackReadiness, type RackSnapshot } from './useRack';
-import { isRackOutput } from './rack';
-import MidiPanel, { SampleEntry } from './MidiPanel';
-import InstrumentPanel from './InstrumentPanel';
 import { clearShareHash, decodeShareHash, encodeShareHash, isShareHash } from './share';
+import { usePersisted } from './storage';
 
 type Source =
   | { kind: 'example'; name: string }
   | { kind: 'file'; name: string; handle: FileSystemFileHandle }
   | { kind: 'shared' };
-
-const ROUTES_STORAGE_KEY = 'play.yaml:midi-routes';
-const OUTPUT_STORAGE_KEY = 'play.yaml:output-mode';
-const EXAMPLE_STORAGE_KEY = 'play.yaml:example';
-const MASTER_VOLUME_STORAGE_KEY = 'play.yaml:master-volume';
-
-/** Where playback goes: the bundled sampler/synth, or the WebMIDI routes. */
-type OutputMode = 'builtin' | 'midi';
-
-function loadRoutes(): RouteMap {
-  try {
-    return JSON.parse(localStorage.getItem(ROUTES_STORAGE_KEY) || '{}');
-  } catch {
-    return {};
-  }
-}
-
-function loadOutputMode(): OutputMode {
-  return localStorage.getItem(OUTPUT_STORAGE_KEY) === 'midi' ? 'midi' : 'builtin';
-}
 
 function compile(text: string): { song: CompiledSong | null; error: string | null } {
   try {
@@ -64,6 +44,16 @@ function compile(text: string): { song: CompiledSong | null; error: string | nul
   } catch (err) {
     return { song: null, error: err instanceof Error ? err.message : String(err) };
   }
+}
+
+/** Offer a blob as a download. */
+function download(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 const canOpenFiles = 'showOpenFilePicker' in window;
@@ -85,8 +75,8 @@ function Hint({ label, children }: { label: string; children: ReactElement }) {
 export default function App() {
   // The last selected example survives reloads. (Opened files can't — the
   // File System Access handle doesn't fit in localStorage.)
-  const firstExample =
-    EXAMPLES.find((e) => e.name === localStorage.getItem(EXAMPLE_STORAGE_KEY)) ?? EXAMPLES[0];
+  const [exampleName, setExampleName] = usePersisted('example', EXAMPLES[0]?.name ?? '', String);
+  const firstExample = EXAMPLES.find((e) => e.name === exampleName) ?? EXAMPLES[0];
   const [source, setSource] = useState<Source>({ kind: 'example', name: firstExample?.name ?? '' });
   const [text, setText] = useState(firstExample?.content ?? '');
   const [dirty, setDirty] = useState(false);
@@ -97,10 +87,7 @@ export default function App() {
   const [metronome, setMetronome] = useState(false);
   const [showPanel, setShowPanel] = useState(true);
   const [mainTab, setMainTab] = useState<'editor' | 'roll'>('editor');
-  const [showInstruments, setShowInstruments] = useState(false);
   const [currentBeat, setCurrentBeat] = useState(0);
-  /** Rack channels Play is waiting on before the transport starts. */
-  const [warmingChannels, setWarmingChannels] = useState<number[]>([]);
   // The player polls this ref every beat, so toggling works mid-playback.
   const metronomeRef = useRef(false);
 
@@ -113,81 +100,36 @@ export default function App() {
   const highlightRaf = useRef(0);
 
   const midi = useMidi();
-  // The rack as this browser sees it: the published channel map, and the
-  // readiness reports arriving on this browser's own MIDI input.
-  const rack = useRack();
-  const readiness = useRackReadiness(midi, rack.through);
   const [routes, setRoutes] = useState<RouteMap>(loadRoutes);
-  const [outputMode, setOutputMode] = useState<OutputMode>(loadOutputMode);
-
-  // Master volume state (0 - 100)
-  const [masterVolume, setMasterVolume] = useState<number>(() => {
-    const saved = localStorage.getItem(MASTER_VOLUME_STORAGE_KEY);
-    return saved != null ? Number(saved) : 80;
-  });
+  const [outputMode, setOutputMode] = usePersisted<OutputMode>('output-mode', 'builtin', (raw) =>
+    raw === 'midi' ? 'midi' : 'builtin',
+  );
+  const [masterVolume, setMasterVolume] = usePersisted('master-volume', 80, Number);
 
   const handleVolumeChange = (vol: number) => {
     const clamped = Math.max(0, Math.min(100, vol));
     setMasterVolume(clamped);
-    localStorage.setItem(MASTER_VOLUME_STORAGE_KEY, String(clamped));
     playback.current?.setVolume(clamped / 100);
   };
 
-  const selectOutputMode = (mode: OutputMode) => {
-    setOutputMode(mode);
-    localStorage.setItem(OUTPUT_STORAGE_KEY, mode);
-  };
-
   const { song, error } = useMemo(() => compile(text), [text]);
+  // The side panel keeps showing the last score that compiled while an edit is mid-way.
   const [lastGoodSong, setLastGoodSong] = useState<CompiledSong | null>(null);
   useEffect(() => {
     if (song) setLastGoodSong(song);
   }, [song]);
 
-  // Routing is per sample (the DSL's instrument name), not per track — several
-  // tracks can share one instrument, and that is what a MIDI device stands in for.
   const samples = useMemo<SampleEntry[]>(() => {
     const byName = new Map<string, SampleEntry>();
     for (const track of lastGoodSong?.tracks ?? []) {
       const name = routeKey(track);
-      if (!byName.has(name)) {
-        byName.set(name, {
-          name,
-          defaultChannel: track.channel || 1,
-          rackChannel: suggestRackChannel(track, rack.channels),
-        });
-      }
+      if (!byName.has(name)) byName.set(name, { name, defaultChannel: track.channel });
     }
     return [...byName.values()];
-  }, [lastGoodSong, rack.channels]);
+  }, [lastGoodSong]);
 
-  const rackView = useMemo<RackSnapshot>(() => {
-    return {
-      available: Boolean(rack.rack),
-      through: rack.through,
-      warming: warmingChannels,
-      channels: [...rack.channels.entries()]
-        .sort((a, b) => a[0] - b[0])
-        .map(([channel, instrument]) => ({
-          channel,
-          name: instrument.name,
-          format: instrument.format,
-          loaded: instrument.loaded,
-          ready: readiness.ready.get(channel) ?? (instrument.loaded ? null : false),
-        })),
-    };
-  }, [rack.rack, rack.through, rack.channels, readiness.ready, readiness.version, warmingChannels]);
-
-  const isRackPort = useCallback(
-    (outputId: string) => {
-      const output = midi.outputs.find((o) => o.id === outputId);
-      return Boolean(output && isRackOutput(output, rack.through));
-    },
-    [midi.outputs, rack.through],
-  );
-
-  const stop = useCallback(() => {
-    playback.current?.stop();
+  /** Forget a playback: whether it ended on its own or was stopped. */
+  const releasePlayback = useCallback(() => {
     playback.current = null;
     cancelAnimationFrame(highlightRaf.current);
     editorView.current?.dispatch({ effects: setPlayingNotes.of([]) });
@@ -195,6 +137,12 @@ export default function App() {
     setCurrentBeat(0);
   }, []);
 
+  const stop = useCallback(() => {
+    playback.current?.stop();
+    releasePlayback();
+  }, [releasePlayback]);
+
+  // A remount (Fast Refresh) must not leave the transport running with no handle.
   useEffect(() => () => playback.current?.stop(), []);
 
   const handleEdit = (value: string) => {
@@ -228,7 +176,7 @@ export default function App() {
     const example = EXAMPLES.find((e) => e.name === name);
     if (!example) return;
     clearShareHash();
-    localStorage.setItem(EXAMPLE_STORAGE_KEY, name);
+    setExampleName(name);
     setSource({ kind: 'example', name });
     setText(exampleEdits.current.get(name) ?? example.content);
     setDirty(false);
@@ -273,12 +221,7 @@ export default function App() {
   const openFile = async () => {
     try {
       const [handle] = await window.showOpenFilePicker({
-        types: [
-          {
-            description: 'play.yaml score',
-            accept: { 'application/yaml': ['.yaml', '.yml'] },
-          },
-        ],
+        types: [{ description: 'play.yaml score', accept: { 'application/yaml': ['.yaml', '.yml'] } }],
       });
       const file = await handle.getFile();
       const content = await file.text();
@@ -328,21 +271,17 @@ export default function App() {
     try {
       handle = await playSong(song, outputMode === 'midi' ? routes : {}, outputById, {
         loop,
+        volume: masterVolume / 100,
         metronome: () => metronomeRef.current,
-        rack: outputMode === 'midi' && rack.through
-          ? {
-              through: rack.through,
-              inputs: midi.inputs,
-              ready: readiness.ready,
-              onWarming: ({ pending }) => {
-                setWarmingChannels(pending);
-                setStatus(pending.length ? `Warming rack channel${pending.length > 1 ? 's' : ''} ${pending.join(', ')}…` : null);
-              },
-            }
-          : undefined,
+        onOrchestraFallback: (names) =>
+          setStatus(
+            `Orchestra samples not found — ${names.join(', ')} on synth presets. ` +
+              'Install the Virtual Playing Orchestra to hear them sampled (see README).',
+          ),
       });
-    } finally {
-      setWarmingChannels([]);
+    } catch (err) {
+      setStatus(`Could not start playback: ${err instanceof Error ? err.message : String(err)}`);
+      return;
     }
     playback.current = handle;
     setPlaying(true);
@@ -355,6 +294,7 @@ export default function App() {
     const tick = () => {
       if (playback.current !== handle) return;
       const beat = handle.getPositionBeats();
+      // Re-render the beat readouts only when the change is visible.
       if (Math.abs(beat - lastBeatValue) > 0.02) {
         lastBeatValue = beat;
         setCurrentBeat(beat);
@@ -372,13 +312,7 @@ export default function App() {
     highlightRaf.current = requestAnimationFrame(tick);
 
     void handle.done.then(() => {
-      if (playback.current === handle) {
-        playback.current = null;
-        cancelAnimationFrame(highlightRaf.current);
-        editorView.current?.dispatch({ effects: setPlayingNotes.of([]) });
-        setPlaying(false);
-        setCurrentBeat(0);
-      }
+      if (playback.current === handle) releasePlayback();
     });
   };
 
@@ -393,38 +327,25 @@ export default function App() {
     return raw.replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '') || 'song';
   };
 
-  // Encode the compiled score into a Standard MIDI File (.mid) and download it.
   const downloadMid = () => {
     if (!song) return;
     try {
       const bytes = encodeMidi(song);
-      const blob = new Blob([bytes as BlobPart], { type: 'audio/midi' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${downloadSlug()}.mid`;
-      a.click();
-      URL.revokeObjectURL(url);
-      setStatus(`Downloaded ${a.download} (${(bytes.byteLength / 1024).toFixed(1)} KB)`);
+      const name = `${downloadSlug()}.mid`;
+      download(new Blob([bytes as BlobPart], { type: 'audio/midi' }), name);
+      setStatus(`Downloaded ${name} (${(bytes.byteLength / 1024).toFixed(1)} KB)`);
     } catch (err) {
       setStatus(`MIDI export failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
-  // Offline-render the song with the built-in sounds and download it as MP3.
   const downloadMp3 = async () => {
     if (!song || rendering) return;
     setRendering(true);
     setStatus('Rendering MP3…');
     try {
-      const buffer = await renderSong(song);
-      const blob = await encodeMp3(buffer);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${downloadSlug()}.mp3`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const blob = await encodeMp3(await renderSong(song));
+      download(blob, `${downloadSlug()}.mp3`);
       setStatus(`Rendered ${(blob.size / 1e6).toFixed(1)} MB MP3`);
     } catch (err) {
       setStatus(`Render failed: ${err instanceof Error ? err.message : String(err)}`);
@@ -438,7 +359,7 @@ export default function App() {
       const next = { ...prev };
       if (route) next[sample] = route;
       else delete next[sample];
-      localStorage.setItem(ROUTES_STORAGE_KEY, JSON.stringify(next));
+      saveRoutes(next);
       return next;
     });
   };
@@ -517,7 +438,7 @@ export default function App() {
           </Button>
         </Hint>
 
-        <Hint label={showPanel ? 'Hide the MIDI panel' : 'Show the MIDI panel'}>
+        <Hint label={showPanel ? 'Hide the side panel' : 'Show the side panel'}>
           <Button
             size="icon"
             variant={showPanel ? 'secondary' : 'ghost'}
@@ -528,18 +449,6 @@ export default function App() {
           </Button>
         </Hint>
 
-        {/* The VST rack's own options — a separate panel because it describes
-            the instruments at the other end of the cable, not the routing. */}
-        <Hint label={showInstruments ? 'Hide the instrument panel' : 'Tweak the VST rack’s instruments'}>
-          <Button
-            size="icon"
-            variant={showInstruments ? 'secondary' : 'ghost'}
-            aria-pressed={showInstruments}
-            onClick={() => setShowInstruments((v) => !v)}
-          >
-            <SlidersHorizontal />
-          </Button>
-        </Hint>
       </header>
 
       <main className="flex min-h-0 flex-1">
@@ -581,37 +490,32 @@ export default function App() {
             />
           </div>
           <div className={`min-h-0 flex-1 ${mainTab === 'roll' ? '' : 'hidden'}`}>
-            <PianoRoll song={song} currentBeat={currentBeat} playing={playing} />
+            <PianoRoll song={song} currentBeat={currentBeat} />
           </div>
         </div>
         {showPanel && (
-          <MidiPanel
-            samples={samples}
-            midi={midi}
-            routes={routes}
-            onRouteChange={handleRouteChange}
-            disabled={outputMode === 'builtin'}
-            song={lastGoodSong}
-            currentBeat={currentBeat}
-            playing={playing}
-            masterVolume={masterVolume}
-            onVolumeChange={handleVolumeChange}
-            outputMode={outputMode}
-            onOutputModeChange={selectOutputMode}
-            loop={loop}
-            onLoopChange={(v) => setLoop(v)}
-            metronome={metronome}
-            onMetronomeChange={(v) => {
-              metronomeRef.current = v;
-              setMetronome(v);
-            }}
-            rack={rackView}
-            isRackPort={isRackPort}
-          />
-        )}
-        {showInstruments && (
           <aside className="flex w-80 shrink-0 flex-col overflow-y-auto border-l border-border bg-card">
-            <InstrumentPanel midi={midi} />
+            <OutputPanel
+              outputMode={outputMode}
+              onOutputModeChange={setOutputMode}
+              masterVolume={masterVolume}
+              onVolumeChange={handleVolumeChange}
+              loop={loop}
+              onLoopChange={setLoop}
+              metronome={metronome}
+              onMetronomeChange={(v) => {
+                metronomeRef.current = v;
+                setMetronome(v);
+              }}
+            />
+            <RoutingPanel
+              samples={samples}
+              midi={midi}
+              routes={routes}
+              onRouteChange={handleRouteChange}
+              disabled={outputMode === 'builtin'}
+            />
+            <TrackMonitor song={lastGoodSong} currentBeat={currentBeat} playing={playing} />
           </aside>
         )}
       </main>

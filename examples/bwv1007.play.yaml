@@ -33,7 +33,7 @@ title: "Prelude — Cello Suite No. 1, BWV 1007"
 tempo: 77
 sample: cello
 articulation: tenuto  # a connected détaché — the default bowing here
-dynamic: mezzoforte   # on SWAM this drives the expression, i.e. the bow speed
+dynamic: mezzoforte   # on a physical model this drives the expression, i.e. the bow speed
 controls: { bow: 74, vibrato: 1 }   # only if your instrument's MIDI map differs
 set: g major, octave 2
 play:

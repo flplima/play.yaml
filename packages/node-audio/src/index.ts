@@ -1,10 +1,6 @@
 /**
  * @play.yaml/node-audio — rendering a score to audio on Node, and getting it
- * out of the speakers.
- *
- * Shared by the studio's dev-server plugin (server-side playback) and the CLI
- * player: both want the browser's sound out of this machine's speakers, and
- * both hit the same engine constraints, so neither grows its own copy.
+ * out of the speakers. The CLI player is built on it.
  *
  * ── Why it is built this way ──────────────────────────────────────────────
  *
@@ -36,30 +32,23 @@
  *   • A note that began more than one pre-roll before a chunk boundary is not
  *     re-attacked into that chunk. The pre-roll is sized from the score's own
  *     longest note, so this only bites on held notes longer than PRE_ROLL_MAX.
- *   • The rendered audio is fixed. Master volume still works live (it scales
- *     samples on their way to the sink), but anything that would change the
- *     *rendering* — editing the score, changing an instrument — needs a new
- *     render, so there is no hot-swap on the server the way there is in the
- *     browser's live transport.
- *   • Seeking is limited to what the caller asks for at render time.
+ *   • The rendered audio is fixed: there is no hot-swap the way there is in
+ *     the browser's live transport.
  *   • Output goes to whatever `aplay` picks; there is no per-track routing to
  *     separate audio devices the way MIDI has per-track ports.
- *   • The orchestra is read off disk from the VPO library (`vpoRoot()`), the
- *     same files jukebox plays; a machine without it renders every track on
- *     the synth presets.
+ *   • The orchestra is read off disk from the VPO library (vpoDisk.ts); a
+ *     machine without it renders every track on the synth presets.
  *
  * Verified parity against the browser's own render, measured over an identical
  * 4 s window: cello centroid 1313 Hz both sides, piano 674 vs 673 Hz, RMS
  * within 0.4%, violin bit-identical.
  */
 import { spawn, spawnSync, type ChildProcess } from 'child_process';
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
 import {
   scheduleSong, songEndBeat, tempoSegments, beatsToSeconds, secondsToBeats, prepareVpo,
 } from '@play.yaml/core';
-import type { CompiledSong, CompiledTrack, SfzAssets } from '@play.yaml/core';
+import type { CompiledSong, Orchestra } from '@play.yaml/core';
+import { diskAssets, vpoInstalled, vpoRoot } from './vpoDisk';
 
 let offlineCtor: any = null;
 let enginePromise: Promise<any> | null = null;
@@ -67,92 +56,22 @@ let enginePromise: Promise<any> | null = null;
 /**
  * Load the render engine on first use. Lazy on purpose: it is a ~40 MB native
  * module, and the commands that only export MIDI or score fidelity should not
- * pay for it.
+ * pay for it. Rejects with the import error when the module is unusable.
  */
 function engine(): Promise<any> {
-  if (!enginePromise) {
-    enginePromise = import('node-web-audio-api')
-      .then((mod: any) => {
-        offlineCtor = mod.OfflineAudioContext ?? mod.default?.OfflineAudioContext;
-        return offlineCtor;
-      })
-      .catch(() => null); // Rendering unavailable; MIDI output still works.
-  }
+  enginePromise ??= import('node-web-audio-api').then((mod: any) => {
+    offlineCtor = mod.OfflineAudioContext ?? mod.default?.OfflineAudioContext;
+    return offlineCtor;
+  });
   return enginePromise;
 }
 
-export const SAMPLE_RATE = 44100;
+const SAMPLE_RATE = 44100;
 const CHANNELS = 2;
 /** Ring-out kept after the last note, matching the browser's MP3 render. */
 const TAIL_SEC = 1.5;
 
-export async function audioRenderingAvailable(): Promise<boolean> {
-  return Boolean(await engine());
-}
-
 // ───────────────────────────────── render ─────────────────────────────────
-
-/**
- * Where the Virtual Playing Orchestra lives on this machine.
- *
- * The same directory jukebox's `jukebox.yaml` points its VPO channels at, so
- * the server's own renders and the rack play identical recordings. Override
- * with PLAY_YAML_VPO for a library kept elsewhere.
- */
-export function vpoRoot(): string {
-  return path.resolve(
-    process.env.PLAY_YAML_VPO ?? path.join(os.homedir(), 'samples/VPO/Virtual-Playing-Orchestra3'),
-  );
-}
-
-/**
- * A library path → the file on disk, or null if there is none.
- *
- * Case-insensitive on purpose: two dozen of VPO's programs spell a directory
- * `samples/` that the library ships as `Samples/`, which a Windows sampler
- * never notices and a Linux one turns into silence. Each segment is matched
- * exactly first and by case-folded name second, so the exact library never
- * pays for the fix. Anything that escapes the root resolves to null.
- */
-export function resolveVpoFile(root: string, relative: string): string | null {
-  const parts = relative.replace(/\\/g, '/').split('/').filter((p) => p && p !== '.');
-  if (parts.some((p) => p === '..')) return null;
-  let current = root;
-  for (const part of parts) {
-    const exact = path.join(current, part);
-    if (fs.existsSync(exact)) {
-      current = exact;
-      continue;
-    }
-    let entries: string[];
-    try {
-      entries = fs.readdirSync(current);
-    } catch {
-      return null;
-    }
-    const folded = part.toLowerCase();
-    const match = entries.find((e) => e.toLowerCase() === folded);
-    if (!match) return null;
-    current = path.join(current, match);
-  }
-  return current;
-}
-
-/** The library as the sampler reads it: text and bytes by library path. */
-function diskAssets(root: string): SfzAssets {
-  const file = (relative: string) => {
-    const resolved = resolveVpoFile(root, relative);
-    if (!resolved) throw new Error(`${relative} is not in the VPO library at ${root}`);
-    return resolved;
-  };
-  return {
-    text: (relative) => fs.promises.readFile(file(relative), 'utf8'),
-    audio: async (relative) => {
-      const buf = await fs.promises.readFile(file(relative));
-      return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
-    },
-  };
-}
 
 export interface RenderResult {
   /** Interleaved stereo float samples. */
@@ -199,11 +118,15 @@ function longestNoteSec(song: CompiledSong, segments: ReturnType<typeof tempoSeg
  */
 export async function createChunkedRender(
   song: CompiledSong,
-  opts: { onlyTracks?: string[]; fromBeat?: number } = {},
+  opts: { fromBeat?: number } = {},
 ): Promise<ChunkedRender> {
-  if (!(await engine())) throw new Error('node-web-audio-api is not available on this machine');
+  try {
+    await engine();
+  } catch (err) {
+    throw new Error(`node-web-audio-api is not available on this machine: ${err instanceof Error ? err.message : err}`);
+  }
 
-  const segments = tempoSegments(song.bpm || 120, song.tempoMap);
+  const segments = tempoSegments(song.bpm, song.tempoMap);
   const fromBeat = opts.fromBeat ?? 0;
   const startSec = beatsToSeconds(segments, fromBeat);
   const durationSec =
@@ -213,8 +136,8 @@ export async function createChunkedRender(
   // A machine without the library renders on the synth presets, as the
   // browser does when a fetch fails; a track the orchestra cannot load says
   // so in the log rather than failing the render.
-  const orchestra = fs.existsSync(vpoRoot())
-    ? await prepareVpo(scratch, diskAssets(vpoRoot()), song, { onlyTracks: opts.onlyTracks })
+  const orchestra: Orchestra = vpoInstalled()
+    ? await prepareVpo(scratch, diskAssets(vpoRoot()), song)
     : new Map();
 
   const preRollSec = Math.min(PRE_ROLL_MAX, longestNoteSec(song, segments) + TAIL_SEC);
@@ -243,8 +166,7 @@ export async function createChunkedRender(
       originTime: 0,
       fromBeat: windowFromBeat,
       maxBeats: windowToBeat,
-      onlyTracks: opts.onlyTracks,
-      instrumentFor: (track: CompiledTrack) => orchestra.get(track.name) ?? null,
+      orchestra,
     });
 
     const buffer = await ctx.startRendering();
@@ -263,13 +185,13 @@ export async function createChunkedRender(
 }
 
 /**
- * Render a whole score in one pass. Fine for short things (the Test button);
- * use createChunkedRender for anything score-length — see the note about
+ * Render a whole score in one pass. Fine for short things; use
+ * createChunkedRender for anything score-length — see the note about
  * quadratic cost at the top of this file.
  */
 export async function renderSongToPcm(
   song: CompiledSong,
-  opts: { onlyTracks?: string[]; fromBeat?: number } = {},
+  opts: { fromBeat?: number } = {},
 ): Promise<RenderResult> {
   const chunked = await createChunkedRender(song, opts);
   const parts: Float32Array[] = [];
@@ -311,23 +233,13 @@ const SINKS: Sink[] = [
   },
 ];
 
-let cachedSink: Sink | null | undefined;
-
-export function detectSink(): Sink | null {
-  if (cachedSink !== undefined) return cachedSink;
-  cachedSink = SINKS.find((s) => spawnSync('which', [s.command]).status === 0) ?? null;
-  if (!cachedSink) {
-    console.warn('[server-audio] no PCM sink found (looked for: ' + SINKS.map((s) => s.command).join(', ') + ')');
-  }
-  return cachedSink;
+function detectSink(): Sink | null {
+  return SINKS.find((s) => spawnSync('which', [s.command]).status === 0) ?? null;
 }
 
 export interface PcmPlayback {
   stop: () => void;
-  setVolume: (volume: number) => void;
-  /** Seconds of audio handed to the sink so far — the playhead. */
-  positionSec: () => number;
-  /** Resolves when playback finishes on its own (never, while looping). */
+  /** Resolves when playback finishes on its own. */
   done: Promise<void>;
 }
 
@@ -336,54 +248,23 @@ const LEAD_SEC = 0.25;
 const TICK_MS = 50;
 
 /**
- * Stream rendered PCM to the audio sink, paced against the wall clock.
- *
- * Pacing rather than dumping the whole buffer is what keeps stop and volume
- * responsive: only a quarter second of audio is ever committed, so a change
- * takes effect almost immediately instead of after everything already queued.
- * It also means the playhead this reports stays in step with the MIDI stepper,
- * which is driven by the same wall clock.
- */
-export function playPcm(
-  render: RenderResult,
-  opts: { volume?: number; loop?: boolean; startAtMs?: number },
-): PcmPlayback {
-  let index = 0;
-  return playChunks(
-    {
-      sampleRate: render.sampleRate,
-      durationSec: render.durationSec,
-      chunkCount: 1,
-      chunkSec: render.durationSec,
-      renderChunk: async () => (index++ === 0 ? render.pcm : new Float32Array(0)),
-    },
-    opts,
-  );
-}
-
-/**
  * Stream a chunked render to the audio sink, paced against the wall clock.
  *
- * Pacing rather than dumping everything is what keeps stop and volume
- * responsive: only a quarter second of audio is ever committed, so a change
- * takes effect almost immediately instead of after a queue drains. It also
- * keeps the playhead this reports in step with the MIDI stepper, which runs
- * off the same wall clock.
+ * Pacing rather than dumping everything is what keeps stop responsive: only a
+ * quarter second of audio is ever committed, so a stop silences the speakers
+ * almost immediately instead of after a queue drains.
  *
- * Chunks are rendered one ahead of what is being written. Rendering runs far
+ * Chunks are rendered ahead of what is being written. Rendering runs far
  * faster than realtime, so the writer never catches up — but if it ever did,
- * the pump simply waits rather than emitting a gap.
+ * the pump waits rather than emitting a gap.
  */
-export function playChunks(
-  render: ChunkedRender,
-  opts: { volume?: number; loop?: boolean; startAtMs?: number },
-): PcmPlayback {
+export function playChunks(render: ChunkedRender, opts: { startAtMs?: number } = {}): PcmPlayback {
   const sink = detectSink();
-  if (!sink) throw new Error('No audio sink available on this server (install alsa-utils or ffmpeg)');
+  if (!sink) {
+    throw new Error(`No audio sink available (looked for ${SINKS.map((s) => s.command).join(', ')}; install alsa-utils or ffmpeg)`);
+  }
 
   const { sampleRate } = render;
-  let volume = Math.max(0, Math.min(1, opts.volume ?? 1));
-  const loop = Boolean(opts.loop);
   const startAtMs = opts.startAtMs ?? Date.now();
 
   const child: ChildProcess = spawn(sink.command, sink.args(sampleRate, CHANNELS), {
@@ -392,8 +273,8 @@ export function playChunks(
 
   const ready = new Map<number, Float32Array>();
   const inflight = new Set<number>();
-  let nextChunk = 0; // chunk the writer wants next
-  let current: Float32Array | null = null; // chunk being written out
+  let nextChunk = 0;
+  let current: Float32Array | null = null;
   let currentFrame = 0;
   let framesWritten = 0;
   let stopped = false;
@@ -410,11 +291,11 @@ export function playChunks(
   };
 
   // The sink dying (device grabbed, user killed it) must not wedge the transport.
-  child.on('error', finish);
+  child.on('error', (err) => { console.warn(`play-yaml: audio sink failed: ${err.message}`); finish(); });
   child.on('exit', finish);
   child.stdin?.on('error', () => { /* EPIPE when the sink goes away first */ });
 
-  /** Keep one chunk rendered ahead of the writer. */
+  /** Keep two chunks rendered ahead of the writer. */
   const prefetch = (from: number) => {
     for (let i = from; i < Math.min(from + 2, render.chunkCount); i++) {
       if (ready.has(i) || inflight.has(i)) continue;
@@ -422,7 +303,7 @@ export function playChunks(
       void render
         .renderChunk(i)
         .then((pcm) => { ready.set(i, pcm); })
-        .catch((err) => { console.warn('[server-audio] chunk render failed:', err); ready.set(i, new Float32Array(0)); })
+        .catch((err) => { console.warn('play-yaml: chunk render failed:', err); ready.set(i, new Float32Array(0)); })
         .finally(() => { inflight.delete(i); });
     }
   };
@@ -436,19 +317,13 @@ export function playChunks(
 
     while (framesWritten < wantFrames) {
       if (nextChunk >= render.chunkCount) {
-        if (!loop) {
-          const remainingMs = (framesWritten / sampleRate - elapsedSec) * 1000;
-          timer = setTimeout(finish, Math.max(0, remainingMs) + 250);
-          return;
-        }
-        nextChunk = 0;
-        ready.clear();
-        prefetch(0);
+        const remainingMs = (framesWritten / sampleRate - elapsedSec) * 1000;
+        timer = setTimeout(finish, Math.max(0, remainingMs) + 250);
+        return;
       }
       if (!current) {
         const pcm = ready.get(nextChunk);
         if (!pcm) {
-          // Render has not caught up. Wait rather than write silence.
           prefetch(nextChunk);
           timer = setTimeout(pump, TICK_MS);
           return;
@@ -461,16 +336,15 @@ export function playChunks(
         currentFrame = 0;
       }
 
-      // Write only as far as the lead window reaches, not the whole chunk:
-      // everything committed to the sink is already fixed at the volume it was
-      // converted with, so a large write would make the master slider lag.
+      // Write only as far as the lead window reaches, not the whole chunk, so
+      // a stop never has more than the lead already committed to the sink.
       const chunkFrames = current.length / CHANNELS;
       const take = Math.min(chunkFrames - currentFrame, wantFrames - framesWritten);
       const from = currentFrame * CHANNELS;
       const to = (currentFrame + take) * CHANNELS;
       const out = Buffer.allocUnsafe((to - from) * 2);
       for (let i = from; i < to; i++) {
-        const v = current[i] * volume;
+        const v = current[i];
         const clamped = v > 1 ? 1 : v < -1 ? -1 : v;
         out.writeInt16LE(Math.round(clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff), (i - from) * 2);
       }
@@ -499,8 +373,6 @@ export function playChunks(
       try { child.kill('SIGKILL'); } catch { /* already gone */ }
       resolveDone();
     },
-    setVolume: (v: number) => { volume = Math.max(0, Math.min(1, v)); },
-    positionSec: () => Math.max(0, (Date.now() - startAtMs) / 1000),
     done,
   };
 }

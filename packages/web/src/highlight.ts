@@ -8,7 +8,6 @@ export interface PlayingRange {
   kind: 'beat' | 'note';
 }
 
-/** Replace the set of currently-sounding ranges. An empty array clears them. */
 export const setPlayingNotes = StateEffect.define<PlayingRange[]>();
 
 const beatMark = Decoration.mark({ class: 'cm-playing-note' });
@@ -35,15 +34,16 @@ const playingNoteField = StateField.define<DecorationSet>({
   provide: (field) => EditorView.decorations.from(field),
 });
 
+// The studio's accent, from index.css, so a theme change reaches the editor too.
 const playingNoteTheme = EditorView.baseTheme({
   '.cm-playing-note': {
-    backgroundColor: 'rgba(16, 185, 129, 0.25)',
-    outline: '1px solid rgba(16, 185, 129, 0.5)',
+    backgroundColor: 'color-mix(in oklch, var(--primary) 25%, transparent)',
+    outline: '1px solid color-mix(in oklch, var(--primary) 50%, transparent)',
     borderRadius: '3px',
   },
   '.cm-playing-subnote': {
-    backgroundColor: 'rgba(16, 185, 129, 0.6)',
-    outline: '1px solid rgba(52, 211, 153, 0.9)',
+    backgroundColor: 'color-mix(in oklch, var(--primary) 60%, transparent)',
+    outline: '1px solid color-mix(in oklch, var(--primary) 90%, transparent)',
     borderRadius: '3px',
   },
 });

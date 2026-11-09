@@ -123,7 +123,7 @@ function gcdAll(values: number[]): number {
 }
 
 /** MIDI number → a token the parser reads back as the same pitch. */
-export function midiToToken(midi: number, preferFlat = false): string {
+function midiToToken(midi: number, preferFlat = false): string {
   if (!preferFlat) return midiToName(midi).toLowerCase();
   const pc = ((midi % 12) + 12) % 12;
   return NAMES_FLAT[pc] + (Math.floor(midi / 12) - 1);

@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * play-yaml-fidelity — compile a .play.yaml score to MIDI, compare it against a
  * reference .mid ("the original song we found on the internet"), and print a
@@ -10,43 +8,8 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { compileDoc, encodeMidi, parseYaml, compareMidi, CompareOptions } from '@play.yaml/core';
-
-interface CliArgs {
-  score?: string;
-  original?: string;
-  bpm?: number;
-  window: number;
-  transposeRange: number;
-  worst: number;
-  out?: string;
-  json: boolean;
-  help?: boolean;
-}
-
-function parseArgs(argv: string[]): CliArgs {
-  const args: CliArgs = { window: 4, transposeRange: 7, worst: 12, json: false };
-  const positional: string[] = [];
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    const next = () => argv[++i];
-    switch (a) {
-      case '--bpm': case '-b': args.bpm = Number(next()); break;
-      case '--window': case '-w': args.window = Number(next()); break;
-      case '--transpose-range': args.transposeRange = Number(next()); break;
-      case '--worst': args.worst = Number(next()); break;
-      case '--out': case '-o': args.out = next(); break;
-      case '--json': args.json = true; break;
-      case '--help': case '-h': args.help = true; break;
-      default:
-        if (!a.startsWith('-')) positional.push(a);
-        else console.error(`Unknown argument: ${a}`);
-    }
-  }
-  args.score = positional[0];
-  args.original = positional[1];
-  return args;
-}
+import { encodeMidi, compareMidi, pitchClassName } from '@play.yaml/core';
+import { loadScore, parseFlags, run, usage } from './shared';
 
 const HELP = `play.yaml fidelity — score a score against a reference MIDI
 
@@ -72,54 +35,49 @@ function mmss(sec: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-/** a 0..1 value as a 20-cell bar plus a percentage. */
 function bar(v: number): string {
   const n = Math.max(0, Math.min(20, Math.round(v * 20)));
   return `${'█'.repeat(n)}${'░'.repeat(20 - n)} ${(v * 100).toFixed(0)}%`;
 }
 
-function main() {
-  const args = parseArgs(process.argv.slice(2));
-  if (args.help || !args.score || !args.original) {
-    console.log(HELP);
-    process.exit(args.score && args.original ? 0 : 1);
-  }
+run(() => {
+  const { flags, positional } = parseFlags(process.argv.slice(2), {
+    bpm: { names: ['--bpm', '-b'], value: true },
+    window: { names: ['--window', '-w'], value: true },
+    transposeRange: { names: ['--transpose-range'], value: true },
+    worst: { names: ['--worst'], value: true },
+    out: { names: ['--out', '-o'], value: true },
+    json: { names: ['--json'] },
+    help: { names: ['--help', '-h'] },
+  });
+  const [score, original] = positional;
+  if (flags.help || !score || !original) usage(HELP, flags.help);
 
-  const scorePath = path.resolve(process.cwd(), args.score);
-  const origPath = path.resolve(process.cwd(), args.original);
-  const doc = parseYaml(fs.readFileSync(scorePath, 'utf8'));
-  if (!doc || typeof doc !== 'object' || (doc.play == null && doc.tracks == null)) {
-    throw new Error(`Score "${args.score}" must define a "play:" or "tracks:" key.`);
-  }
-  const compiled = compileDoc(doc);
-  const bpm = args.bpm || compiled.bpm;
+  const compiled = loadScore(score);
+  const bpm = Number(flags.bpm) || compiled.bpm;
   const genBytes = encodeMidi(compiled, { bpm });
-  if (args.out) {
-    fs.writeFileSync(path.resolve(process.cwd(), args.out), genBytes);
-  }
-  const origBytes = new Uint8Array(fs.readFileSync(origPath));
+  if (flags.out) fs.writeFileSync(path.resolve(process.cwd(), flags.out as string), genBytes);
+  const origBytes = new Uint8Array(fs.readFileSync(path.resolve(process.cwd(), original)));
 
-  const opts: CompareOptions = {
-    windowBeats: args.window,
-    transposeRange: args.transposeRange,
-    worstCount: args.worst,
-  };
-  const r = compareMidi(genBytes, origBytes, opts);
+  const r = compareMidi(genBytes, origBytes, {
+    windowBeats: flags.window ? Number(flags.window) : 4,
+    transposeRange: flags.transposeRange ? Number(flags.transposeRange) : 7,
+    worstCount: flags.worst ? Number(flags.worst) : 12,
+  });
 
-  if (args.json) {
+  if (flags.json) {
     process.stdout.write(JSON.stringify(r, null, 2) + '\n');
     return;
   }
 
-  const title = compiled.title || path.basename(args.score);
-  const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const title = compiled.title || path.basename(score);
   const t = r.transpose;
-  const keyNote = t === 0 ? 'same key' : `${t > 0 ? '+' : ''}${t} st (${NOTE_NAMES[((t % 12) + 12) % 12]})`;
+  const keyNote = t === 0 ? 'same key' : `${t > 0 ? '+' : ''}${t} st (${pitchClassName(t)})`;
 
   console.log('');
   console.log(`  play.yaml fidelity — ${title}`);
-  console.log(`  score:    ${path.basename(args.score)}`);
-  console.log(`  original: ${path.basename(args.original)}`);
+  console.log(`  score:    ${path.basename(score)}`);
+  console.log(`  original: ${path.basename(original)}`);
   console.log('  ' + '─'.repeat(52));
   console.log(`  FIDELITY   ${r.score.toFixed(1)} / 100`);
   console.log('  ' + '─'.repeat(52));
@@ -153,11 +111,4 @@ function main() {
     }
   }
   console.log('');
-}
-
-try {
-  main();
-} catch (err: any) {
-  console.error(`✗ ${err.message}`);
-  process.exit(1);
-}
+});

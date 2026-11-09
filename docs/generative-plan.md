@@ -99,6 +99,6 @@ measure strings before compilation.
 - [x] Phase 3 — README "Generators" section, similar-projects.md items 3/4/5
       marked shipped; noteSpans needed no code change (generated bars are
       skipped gracefully — no source text to highlight)
-- [x] Phase 4 — 23 new test checks (223 total), examples/generative-lab
+- [x] Phase 4 — 23 new test checks (223 total), examples/generative-lab.play.yaml
       .play.yaml, golden regenerated (only the new entry; all 24 existing
       digests bit-identical)

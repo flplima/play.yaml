@@ -1,3 +1,5 @@
+import { parseYaml } from '@play.yaml/core';
+
 // Bundle every score from the repo-root examples/ directory — and every song
 // project under songs/<slug>/ (see docs/song-workflow.md) — as raw text.
 const exampleModules = import.meta.glob('../../../examples/*.play.yaml', {
@@ -21,11 +23,13 @@ export interface Example {
   title?: string;
 }
 
-/** Read the document's `title:` without paying for a full YAML parse. */
 function readTitle(content: string): string | undefined {
-  const m = /^title:\s*(?:"([^"]*)"|'([^']*)'|(.+?))\s*$/m.exec(content);
-  const title = m?.[1] ?? m?.[2] ?? m?.[3];
-  return title || undefined;
+  try {
+    const title = parseYaml(content)?.title;
+    return typeof title === 'string' && title ? title : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function toExamples(modules: Record<string, string>, group: Example['group']): Example[] {
