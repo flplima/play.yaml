@@ -6,14 +6,20 @@ export interface MidiState {
   outputs: MIDIOutput[];
 }
 
-/** Request WebMIDI access and keep the device lists in sync with hot-plugs. */
-export function useMidi(): MidiState {
+/**
+ * Request WebMIDI access and keep the device lists in sync with hot-plugs.
+ *
+ * The browser asks the user for permission the moment access is requested, so
+ * it is only requested once `enabled` is true: a visitor who just presses
+ * Play on the built-in sounds never sees the prompt.
+ */
+export function useMidi(enabled: boolean): MidiState {
   const supported = 'requestMIDIAccess' in navigator;
   const [error, setError] = useState<string | null>(null);
   const [outputs, setOutputs] = useState<MIDIOutput[]>([]);
 
   useEffect(() => {
-    if (!supported) return;
+    if (!supported || !enabled) return;
     let access: MIDIAccess | null = null;
     let cancelled = false;
 
@@ -38,7 +44,7 @@ export function useMidi(): MidiState {
       cancelled = true;
       if (access) access.onstatechange = null;
     };
-  }, [supported]);
+  }, [supported, enabled]);
 
   return { supported, error, outputs };
 }

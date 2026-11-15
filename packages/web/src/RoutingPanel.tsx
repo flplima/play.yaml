@@ -37,7 +37,7 @@ export default function RoutingPanel({ samples, midi, routes, onRouteChange, dis
         <p className="mt-1 text-xs text-muted-foreground">
           Send each instrument to a MIDI in. Unrouted ones play on the built-in orchestra.
         </p>
-        {status && <p className="mt-2 text-xs text-warning">{status}</p>}
+        {status && !disabled && <p className="mt-2 text-xs text-warning">{status}</p>}
         {disabled && (
           <p className="mt-2 rounded-md border border-primary/40 bg-primary/10 px-2 py-1.5 text-xs text-primary">
             Output is set to Built-in — everything plays on the bundled sampler

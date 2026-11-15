@@ -99,11 +99,11 @@ export default function App() {
   const noteSpans = useRef<NoteSpan[]>([]);
   const highlightRaf = useRef(0);
 
-  const midi = useMidi();
   const [routes, setRoutes] = useState<RouteMap>(loadRoutes);
   const [outputMode, setOutputMode] = usePersisted<OutputMode>('output-mode', 'builtin', (raw) =>
     raw === 'midi' ? 'midi' : 'builtin',
   );
+  const midi = useMidi(outputMode === 'midi');
   const [masterVolume, setMasterVolume] = usePersisted('master-volume', 80, Number);
 
   const handleVolumeChange = (vol: number) => {
