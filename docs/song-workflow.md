@@ -69,7 +69,7 @@ notation (C4 = middle C = MIDI 60):
 
 ## 2. Write the score
 
-Read `README.md` (DSL reference) and study
+Read `docs/reference.md` (DSL reference) and study
 `songs/tico-tico-no-fuba/tico-tico-no-fuba.play.yaml` — it is the canonical
 arrangement style. Conventions that matter:
 

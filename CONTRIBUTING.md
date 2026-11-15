@@ -16,7 +16,7 @@ You do not need to hide that an agent wrote your code or your song transcription
 If you want to point your agent at an issue right now, give it this prompt:
 
 ```text
-Read README.md, CONTRIBUTING.md, and docs/syntax-differentiation.md.
+Read README.md, docs/reference.md, CONTRIBUTING.md, and docs/syntax-differentiation.md.
 Then implement the change and run `npm run build && npm test` to verify.
 ```
 
@@ -51,7 +51,7 @@ You do not need to learn the whole compiler to ship something cool. These four a
 Please make sure both you and your agent follow these rules:
 
 - **Zero dependencies in `@play.yaml/core`**: the core engine runs identically in Node and in the browser. Do not add npm packages or Node/DOM APIs to `packages/core`.
-- **Keep the syntax distinct from Tidal/Strudel mini-notation**: read [docs/syntax-differentiation.md](docs/syntax-differentiation.md) before touching the grammar. We use readable YAML keys and score words (`dolce, crescendo to f over 2`), never in-string operator soup (`*n`, `/n`, `< >`, `(3,8)`, `?`).
+- **Keep the syntax distinct from Tidal/Strudel mini-notation**: read [docs/syntax-differentiation.md](docs/syntax-differentiation.md) before touching the grammar. We use readable YAML keys and score words (`dolce, crescendo to forte over 2`), never in-string operator soup (`*n`, `/n`, `< >`, `(3,8)`, `?`).
 - **Determinism**: every random choice in `generate.ts` or `humanize` must come from the seeded hash function (`seed:`). The same `.play.yaml` file must always compile to the exact same MIDI bytes.
 - **Update the golden digest when adding or editing a bundled score**: run `UPDATE_GOLDEN=1 npm test -w @play.yaml/core` and check `git diff packages/core/examples.golden.json` to confirm only your song changed.
 
