@@ -98,21 +98,49 @@ npm run dev:vite -w @play.yaml/web
 
 Out of the box, everything plays on synth presets. To hear the sampled orchestra, install the free [Virtual Playing Orchestra](http://virtualplaying.com). [The reference](docs/reference.md#the-built-in-orchestra) says where to put it.
 
-## similar projects
+## how it compares
 
-play.yaml borrows from the tools that came before it. Live editing on the bar line comes from Sonic Pi, and share links from Strudel. Here is what each one is best at:
+play.yaml borrows from the tools that came before it. Live editing on the bar line comes from Sonic Pi, and share links from Strudel.
 
-| project | best at | how play.yaml differs |
-|---|---|---|
-| [Alda](https://github.com/alda-lang/alda) | scores as plain text, from the command line | The closest cousin. play.yaml adds a browser studio, scale degrees and named sections. |
-| [Strudel](https://strudel.cc) and [TidalCycles](https://tidalcycles.org) | improvising patterns live | They think in cycles. play.yaml thinks in measures and song form. |
-| [Sonic Pi](https://sonic-pi.net) | live coding and teaching | It is code (`play`, `sleep`). play.yaml is data. |
-| [LilyPond](https://lilypond.org) and [ABC](https://abcnotation.com) | printed sheet music | play.yaml draws no notation. It plays and exports MIDI. |
-| MusicXML | exchanging scores between apps | It is not meant to be written by hand. |
+### score and live coding tools
+
+| | play.yaml | [Alda](https://github.com/alda-lang/alda) | [Strudel](https://strudel.cc) | [Sonic Pi](https://sonic-pi.net) | [LilyPond](https://lilypond.org) |
+|---|---|---|---|---|---|
+| you write | a YAML score | a text score | patterns in JavaScript | Ruby code | a text score |
+| runs in the browser | ✓ | ✗ | ✓ | ✗ | ✗ |
+| edit while it plays | ✓ | a REPL | ✓ | ✓ | ✗ |
+| scale degrees | ✓ | ✗ | ✓ | ✓ | ✗ |
+| plays on | synths, a sampled orchestra, your MIDI gear | General MIDI sounds | synths, samples, your MIDI gear | synths, samples, your MIDI gear | nothing, it writes files |
+| exports a MIDI file | ✓ | ✓ | ✗ | ✗ | ✓ |
+| imports a MIDI file | ✓ | ✗ (MusicXML) | ✗ | ✗ | ✓ |
+| prints sheet music | ✗ | ✗ | ✗ | ✗ | ✓ |
+| license | MIT | EPL-2.0 | AGPL-3.0 | MIT | GPL-3.0 |
 
 So, if you want to print a score, use LilyPond. If you want to improvise on stage, use Strudel. If you want a whole piece in a text file that plays back with expression, try play.yaml.
 
-The long version is in [docs/similar-projects.md](docs/similar-projects.md).
+### AI music tools
+
+play.yaml has no model inside. It gives your coding agent a format it can write, and tools to check its own work.
+
+| | play.yaml | [Suno](https://suno.com) | [text2midi](https://github.com/AMAAI-Lab/Text2midi) | [ableton-mcp](https://github.com/ahujasid/ableton-mcp) |
+|---|---|---|---|---|
+| what it is | a score format an agent can write | a text-to-song service | a text-to-MIDI model | an agent's remote control for Ableton Live |
+| who writes the notes | you, or your coding agent | its model | its model | your agent, through tool calls |
+| you get | a text score and a MIDI file | audio (MIDI from stems on the Premier plan) | a MIDI file | clips in a Live set |
+| source you can read and diff | ✓ | ✗ | ✗ | ✗ |
+| checks the result against a reference | ✓ | ✗ | ✗ | ✗ |
+| needs | Node.js or a browser | an account | Python and a model download | Ableton Live |
+| license | MIT | proprietary | Apache-2.0 | MIT |
+
+What play.yaml has for agents:
+
+- **One measure per string**: The tokens share the measure equally, so a bar can't run over. An agent can fix bar 12 without breaking bar 13.
+- **`play-yaml-import --verify`**: Turns a `.mid` into a score and proves that no note was lost.
+- **`play-yaml-fidelity`**: Grades a score from 0 to 100 against a reference MIDI and lists the weakest bars, so an agent can fix them in a loop.
+- **Same file, same MIDI bytes**: Every bundled song is pinned by a test, so a change that alters the music shows up.
+- **A workflow written for agents**: [docs/song-workflow.md](docs/song-workflow.md) goes from a song name to a checked transcription.
+
+Both tables were checked against each project's docs in November 2026. If a cell is wrong, please open an issue. The long version is in [docs/similar-projects.md](docs/similar-projects.md).
 
 ## songs
 
