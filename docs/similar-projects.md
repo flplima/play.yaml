@@ -85,6 +85,24 @@ W3C group) — the formalized version of what we do informally.
 | Orca | 2-D operator grid | MIDI/OSC events | desktop/web | generative | maintenance |
 | MusicXML/MNX | XML / JSON interchange | interchange | spec | standards | MNX drafting |
 
+## AI music tools
+
+Checked 2026-11-15. play.yaml has no model inside, so these are neighbours more than rivals: each one answers "who writes the notes?" in a different way.
+
+**Suno** is a text-to-song service. You get audio. Its Studio, on the Premier plan, also exports MIDI that it converts from the stems.
+
+**text2midi** (AMAAI Lab, Apache-2.0) is a model that turns a text caption into a MIDI file. **MIDI-LLM** is a newer model of the same kind. The output is a `.mid`, so there is no source to read or diff.
+
+**ableton-mcp** (MIT) lets an agent drive Ableton Live through MCP: it creates tracks and clips and adds notes. It needs Ableton Live running, and the result lives in the Live set.
+
+**Where play.yaml fits**: the agent writes a text score, one measure per string, and two tools check it. `play-yaml-import --verify` proves a MIDI import lost no note, and `play-yaml-fidelity` grades a score against a reference MIDI. The steps are in [song-workflow.md](song-workflow.md).
+
+Sources: [Suno Studio export](https://help.suno.com/en/articles/13925249) ·
+[Suno Studio 2.0 and MIDI](https://musicbusinessworldwide.com/suno-launches-studio-2-0-with-midi-support) ·
+[text2midi](https://github.com/AMAAI-Lab/Text2midi) ·
+[text2midi paper](https://arxiv.org/abs/2412.16526) ·
+[ableton-mcp](https://github.com/ahujasid/ableton-mcp)
+
 ## Where play.yaml stands
 
 **What we do that nobody else combines:** YAML as the *structural* layer
