@@ -45,3 +45,10 @@ export const EXAMPLES: Example[] = [
   ...toExamples(exampleModules, 'example'),
   ...toExamples(songModules, 'song'),
 ].sort((a, b) => a.name.localeCompare(b.name));
+
+/**
+ * The score a first visit opens on. The Ave Maria plays on the synth presets
+ * alone, so it sounds the same on a static host with no sample library.
+ */
+export const DEFAULT_EXAMPLE: Example | undefined =
+  EXAMPLES.find((e) => e.name === 'ave-maria-bach-gounod') ?? EXAMPLES[0];

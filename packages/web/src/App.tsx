@@ -15,7 +15,7 @@ import {
   Square,
   TriangleAlert,
 } from 'lucide-react';
-import { EXAMPLES } from './examples';
+import { DEFAULT_EXAMPLE, EXAMPLES } from './examples';
 import SongPicker from './SongPicker';
 import PianoRoll from './PianoRoll';
 import OutputPanel, { OutputMode } from './OutputPanel';
@@ -75,8 +75,8 @@ function Hint({ label, children }: { label: string; children: ReactElement }) {
 export default function App() {
   // The last selected example survives reloads. (Opened files can't — the
   // File System Access handle doesn't fit in localStorage.)
-  const [exampleName, setExampleName] = usePersisted('example', EXAMPLES[0]?.name ?? '', String);
-  const firstExample = EXAMPLES.find((e) => e.name === exampleName) ?? EXAMPLES[0];
+  const [exampleName, setExampleName] = usePersisted('example', DEFAULT_EXAMPLE?.name ?? '', String);
+  const firstExample = EXAMPLES.find((e) => e.name === exampleName) ?? DEFAULT_EXAMPLE;
   const [source, setSource] = useState<Source>({ kind: 'example', name: firstExample?.name ?? '' });
   const [text, setText] = useState(firstExample?.content ?? '');
   const [dirty, setDirty] = useState(false);
@@ -435,6 +435,14 @@ export default function App() {
           <Button onClick={() => void shareLink()} disabled={!text}>
             <Link2 />
             Share
+          </Button>
+        </Hint>
+
+        <Hint label="The source, the docs and the format reference">
+          <Button asChild variant="ghost">
+            <a href="https://github.com/flplima/play.yaml" target="_blank" rel="noreferrer">
+              GitHub
+            </a>
           </Button>
         </Hint>
 
