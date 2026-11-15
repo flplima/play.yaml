@@ -68,7 +68,7 @@ features in [generative-design.md](generative-design.md):
    into one expression string; we spell things out as data.
 4. **Words over sigils.** Where a construct must appear inline, use readable
    names (`every 2`, `rotate 3`) not punctuation. Our precedent is the `set:`
-   mini-language (`"crescendo to f over 2"`), which reads as score directions,
+   mini-language (`"crescendo to forte over 2"`), which reads as score directions,
    not operators.
 5. **Determinism.** Any randomness is seeded from score content (explicit
    `seed:` prop with a stable default) so a document always compiles to the
