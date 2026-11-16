@@ -237,8 +237,11 @@ function writeEvent(w: Writer, part: Part, voice: NotationVoice, event: Notation
       w.leaf('normal-type', event.tuplet.normalType);
       w.close('time-modification');
     }
+    if (note && event.stem) w.leaf('stem', event.stem);
     if (note?.drum && note.drum.notehead !== 'normal') w.leaf('notehead', note.drum.notehead);
     if (part.staves > 1) w.leaf('staff', voice.staff);
+    // Beams ride on the chord's first note, like its tuplet bracket.
+    if (i === 0) event.beams?.forEach((value, level) => w.leaf('beam', value, ` number="${level + 1}"`));
 
     // Notations: ties, the tuplet bracket (on the chord's first note only)
     // and a roll's tremolo strokes.
