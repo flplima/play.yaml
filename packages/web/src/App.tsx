@@ -28,6 +28,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { playSong, PlaybackHandle } from './player';
 import { loadRoutes, routeKey, saveRoutes, MidiRoute, RouteMap } from './routes';
 import { encodeMp3, renderSong } from './render';
+import { renderScore, scoreXml } from './score';
 import { buildNoteSpans, NoteSpan } from './noteSpans';
 import { playingNoteExtension, setPlayingNotes } from './highlight';
 import { useMidi } from './useMidi';
@@ -54,7 +55,8 @@ function download(blob: Blob, filename: string): void {
   a.href = url;
   a.download = filename;
   a.click();
-  URL.revokeObjectURL(url);
+  // A large file (a PDF of a long score) is still being read when click() returns.
+  setTimeout(() => URL.revokeObjectURL(url), 30_000);
 }
 
 const canOpenFiles = 'showOpenFilePicker' in window;
@@ -84,6 +86,7 @@ export default function App() {
   const [status, setStatus] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
   const [rendering, setRendering] = useState(false);
+  const [makingPdf, setMakingPdf] = useState(false);
   const [loop, setLoop] = useState(true);
   const [metronome, setMetronome] = useState(false);
   const [showPanel, setShowPanel] = useState(true);
@@ -355,6 +358,26 @@ export default function App() {
     }
   };
 
+  const downloadPdf = async () => {
+    if (!song || makingPdf) return;
+    setMakingPdf(true);
+    setStatus('Engraving PDF…');
+    try {
+      // Engraved afresh rather than read from the Score tab, so this works
+      // when that tab was never opened. Both libraries load on first use.
+      const { xml } = scoreXml(text);
+      const { pages } = await renderScore(xml);
+      const { scorePdf } = await import('./pdf');
+      const blob = await scorePdf(pages, song.title);
+      download(blob, `${downloadSlug()}.pdf`);
+      setStatus(`Engraved a ${pages.length}-page PDF (${(blob.size / 1024).toFixed(0)} KB)`);
+    } catch (err) {
+      setStatus(`PDF export failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setMakingPdf(false);
+    }
+  };
+
   const handleRouteChange = (sample: string, route: MidiRoute | undefined) => {
     setRoutes((prev) => {
       const next = { ...prev };
@@ -429,6 +452,13 @@ export default function App() {
           <Button onClick={() => void downloadMp3()} disabled={!song || rendering}>
             <Download />
             {rendering ? 'Rendering…' : 'MP3'}
+          </Button>
+        </Hint>
+
+        <Hint label="Engrave the score as sheet music and download it as a PDF">
+          <Button onClick={() => void downloadPdf()} disabled={!song || makingPdf}>
+            <Download />
+            {makingPdf ? 'Engraving…' : 'PDF'}
           </Button>
         </Hint>
 
