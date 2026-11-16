@@ -18,6 +18,7 @@ import {
 import { DEFAULT_EXAMPLE, EXAMPLES } from './examples';
 import SongPicker from './SongPicker';
 import PianoRoll from './PianoRoll';
+import ScoreView from './ScoreView';
 import OutputPanel, { OutputMode } from './OutputPanel';
 import RoutingPanel, { SampleEntry } from './RoutingPanel';
 import TrackMonitor from './TrackMonitor';
@@ -86,7 +87,7 @@ export default function App() {
   const [loop, setLoop] = useState(true);
   const [metronome, setMetronome] = useState(false);
   const [showPanel, setShowPanel] = useState(true);
-  const [mainTab, setMainTab] = useState<'editor' | 'roll'>('editor');
+  const [mainTab, setMainTab] = useState<'editor' | 'roll' | 'score'>('editor');
   const [currentBeat, setCurrentBeat] = useState(0);
   // The player polls this ref every beat, so toggling works mid-playback.
   const metronomeRef = useRef(false);
@@ -462,14 +463,14 @@ export default function App() {
       <main className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           {/*
-            Two views of the same score. The editor is what it says; the roll
-            is what it does. Both stay mounted — CodeMirror is expensive to
+            Three views of the same score. The editor is what it says; the roll
+            is what it does; the score is how a musician would read it. All stay mounted — CodeMirror is expensive to
             rebuild and would lose its scroll and selection, and the roll's
             canvas is cheap to leave sitting there — so the hidden one is
             hidden with CSS rather than unmounted.
           */}
           <div role="tablist" aria-label="Main view" className="flex shrink-0 border-b border-border bg-card">
-            {([['editor', 'Editor'], ['roll', 'Piano roll']] as const).map(([id, label]) => (
+            {([['editor', 'Editor'], ['roll', 'Piano roll'], ['score', 'Score']] as const).map(([id, label]) => (
               <button
                 key={id}
                 role="tab"
@@ -499,6 +500,9 @@ export default function App() {
           </div>
           <div className={`min-h-0 flex-1 ${mainTab === 'roll' ? '' : 'hidden'}`}>
             <PianoRoll song={song} currentBeat={currentBeat} />
+          </div>
+          <div className={`min-h-0 flex-1 ${mainTab === 'score' ? '' : 'hidden'}`}>
+            <ScoreView text={text} visible={mainTab === 'score'} playing={playing} currentBeat={currentBeat} />
           </div>
         </div>
         {showPanel && (
