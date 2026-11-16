@@ -19,7 +19,7 @@ import { parseYaml } from './src/yaml';
 import { tempoSegments, beatsToSeconds, secondsToBeats, TempoSegment } from './src/time';
 import { panicMessages } from './src/midiPanic';
 import { DEFAULT_CONTROLS, DEFAULT_GATE, controlValue } from './src/vocabulary';
-import { NotationEvent, Score, keyFromScale, scoreFromDoc, scoreNotes } from './src/notation';
+import { NotationEvent, Score, handOf, keyFromScale, scoreFromDoc, scoreNotes } from './src/notation';
 import { encodeMusicXml } from './src/musicxml';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -2230,6 +2230,13 @@ check('overlapping lines in one track become two voices, each filling the bar', 
   assert.deepStrictEqual(shape(voices[0].events), ['72:half', '71:quarter', '72:quarter']);
   assert.deepStrictEqual(shape(voices[1].events), ['64:eighth', '65:eighth', '67:eighth', '69:eighth', 'r:half']);
   assert.deepStrictEqual(voices.map((v) => v.voice), [1, 2]);
+  assert.deepStrictEqual(voices.map((v) => v.events.filter((e) => e.kind === 'rest').map((e) => !!e.hidden)), [[], [true]],
+    'a second voice pads with rests that are not printed');
+  assert.ok(/<forward>\s*<duration>5040<\/duration>\s*<voice>2<\/voice>/.test(encodeMusicXml(score)), 'written as a forward');
+  assert.deepStrictEqual(voices.map((v) => [...new Set(v.events.filter((e) => e.kind === 'note').map((e) => e.stem))]), [['up'], ['down']],
+    'with two voices on a staff, the first stems up and the second down');
+  assert.strictEqual(firstVoice(scoreFromDoc({ sample: 'flute', play: ['c5 d5 e5 f5'] }), 0)[0].stem, undefined,
+    'a single voice leaves stems to the renderer');
   const after = scoreFromDoc({ sample: 'flute', play: ['[c5 {e4 f4 g4 a4}]: b4 c5', 'c4 d4 e4 f4'] });
   assert.deepStrictEqual(after.parts[0].measures[1].voices.map((v) => [v.voice, shape(v.events).length]), [[1, 4]],
     'once the lines stop overlapping, a lower line moves back into voice 1');
@@ -2333,6 +2340,63 @@ check('the MusicXML encoder is deterministic', () => {
   const b = encodeMusicXml(scoreFromDoc(parseYaml(text)));
   assert.strictEqual(a, b);
 });
+check('keyboard tracks with the same sample are one part on one grand staff', () => {
+  const score = scoreFromDoc({ tracks: { rh: { sample: 'piano', play: 'e5 d5 c5 b4' }, lh: { sample: 'piano', play: 'c3 g3 c3 g3' } } });
+  assert.strictEqual(score.parts.length, 1);
+  const part = score.parts[0];
+  assert.deepStrictEqual([part.name, part.staves, part.tracks], ['Piano', 2, [0, 1]]);
+  const staffOf = (midi: number) => part.measures[0].voices.find((v) => v.events.some((e) => e.notes.some((n) => n.midi === midi)))!.staff;
+  assert.deepStrictEqual([76, 74, 72, 71, 48, 55].map(staffOf), [1, 1, 1, 1, 2, 2]);
+  const nested = scoreFromDoc({ tracks: { organ: { sample: 'organ', tracks: { manual: { play: 'c5 d5 e5 f5' }, pedal: { play: 'c2 g2 c2 g2' } } } } });
+  assert.deepStrictEqual(nested.parts.map((p) => p.name), ['organ'], 'tracks under one parent take its name');
+  assert.deepStrictEqual(['rh', 'RH2', 'right hand', 'Left-Hand', 'upper_1', 'pedal', 'lower 3', 'melody'].map(handOf),
+    [0, 0, 0, 1, 0, 1, 1, undefined]);
+  assert.deepStrictEqual(['manual', 'manual1', 'manual2', 'Manual II'].map(handOf), [0, 0, 1, 1],
+    'an organ trio plays the second manual with the left hand');
+});
+check('a left hand above middle C stays on the lower staff, under a treble clef', () => {
+  const score = scoreFromDoc({ tracks: { rh: { sample: 'piano', play: 'c6 d6 e6 f6' }, lh: { sample: 'piano', play: 'e4 g4 c5 g4' } } });
+  const part = score.parts[0];
+  for (const v of part.measures[0].voices) {
+    const midis = v.events.flatMap((e) => e.notes.map((n) => n.midi));
+    if (midis.includes(64)) assert.strictEqual(v.staff, 2);
+  }
+  assert.deepStrictEqual(part.clefs, [{ sign: 'G', line: 2 }, { sign: 'G', line: 2 }]);
+});
+check('a grand staff changes clef where a hand settles in another register', () => {
+  const score = scoreFromDoc({ tracks: {
+    rh: { sample: 'piano', play: ['c5 d5 e5 f5', 'c5 d5 e5 f5', 'c5 d5 e5 f5', 'c5 d5 e5 f5'] },
+    lh: { sample: 'piano', play: ['c3 g3 c3 g3', 'e4 g4 c5 g4', 'e4 g4 c5 g4', 'c3 g3 c3 g3'] },
+  } });
+  const part = score.parts[0];
+  assert.deepStrictEqual(part.clefs.map((c) => c.sign), ['G', 'F']);
+  assert.deepStrictEqual(part.measures.map((m) => m.clefs?.map((c) => c?.sign)), [undefined, [undefined, 'G'], undefined, [undefined, 'F']]);
+  const xml = encodeMusicXml(score);
+  assert.strictEqual((xml.match(/<clef number="2">/g) ?? []).length, 3, 'the opening clef and two changes');
+  const blip = scoreFromDoc({ tracks: {
+    rh: { sample: 'piano', play: ['c5 d5 e5 f5', 'c5 d5 e5 f5', 'c5 d5 e5 f5'] },
+    lh: { sample: 'piano', play: ['c3 g3 c3 g3', 'e4 g4 c5 g4', 'c3 g3 c3 g3'] },
+  } });
+  assert.ok(blip.parts[0].measures.every((m) => !m.clefs), 'one high measure is not worth two clef changes');
+});
+check('two keyboard tracks striking together with equal lengths form one chord; a unison is one note', () => {
+  const score = scoreFromDoc({ tracks: { rh1: { sample: 'piano', play: 'e5 f5 g5 a5' }, rh2: { sample: 'piano', play: 'c5 d5 g5 f5' } } });
+  const events = score.parts[0].measures[0].voices.filter((v) => v.staff === 1);
+  assert.strictEqual(events.length, 1, 'one voice on the upper staff');
+  assert.deepStrictEqual(events[0].events.map((e) => e.notes.map((n) => n.midi)), [[72, 76], [74, 77], [79], [77, 81]]);
+  assert.strictEqual(scoreNotes(score).length, 7, 'the unison g5 is one note');
+  const held = scoreFromDoc({ tracks: { lh1: { sample: 'piano', play: '[f3 ab3] ~ ~ ~' }, lh2: { sample: 'piano', play: '[f3 ab3] _ _ ~' } } });
+  assert.deepStrictEqual(scoreNotes(held).map((n) => [n.midi, (n.end - n.start) / held.divisions]), [[53, 3], [56, 3]],
+    'the same key struck together by two tracks is one note, as long as the longest');
+  assert.strictEqual(held.parts[0].measures[0].voices.filter((v) => v.staff === 2).length, 1);
+});
+check('a piano and a cello stay two parts; so do two different keyboards', () => {
+  const mixed = scoreFromDoc({ tracks: { rh: { sample: 'piano', play: 'c5 d5 e5 f5' }, cello: { sample: 'cello', play: 'c3 d3 e3 f3' }, lh: { sample: 'piano', play: 'c3 g3 c3 g3' } } });
+  assert.deepStrictEqual(mixed.parts.map((p) => [p.name, p.tracks]), [['Piano', [0, 2]], ['cello', [1]]],
+    'the piano sits where its first track does');
+  const keyboards = scoreFromDoc({ tracks: { a: { sample: 'piano', play: 'c5 d5 e5 f5' }, b: { sample: 'organ', play: 'c3 d3 e3 f3' } } });
+  assert.deepStrictEqual(keyboards.parts.map((p) => p.name), ['a', 'b']);
+});
 check('every bundled score: the model gives back the written timeline, and every voice fills its bar', () => {
   const root = path.join(__dirname, '../..');
   const files = fs.readdirSync(path.join(root, 'examples')).filter((f) => f.endsWith('.play.yaml')).map((f) => `examples/${f}`);
@@ -2345,10 +2409,26 @@ check('every bundled score: the model gives back the written timeline, and every
     const doc = parseYaml(fs.readFileSync(path.join(root, file), 'utf8'));
     const score = scoreFromDoc(doc);
     const T = score.divisions;
-    const want = new Set<string>();
-    compileDoc(doc, { written: true }).tracks.forEach((t, i) => {
-      for (const e of t.timeline) want.add(`P${i + 1} ${Math.round(e.time * T)} ${Math.round((e.time + e.duration) * T)} ${e.midi}`);
-    });
+    // Per part: the union of its tracks' written notes, where the same
+    // pitch struck at the same tick (by one track or several) is one note
+    // lasting as long as the longest.
+    const tracks = compileDoc(doc, { written: true }).tracks;
+    const ends = new Map<string, number>();
+    for (const part of score.parts) {
+      for (const i of part.tracks) {
+        for (const e of tracks[i].timeline) {
+          const key = `${part.id} ${Math.round(e.time * T)}`;
+          const end = Math.round((e.time + e.duration) * T);
+          ends.set(`${key} ${e.midi}`, Math.max(end, ends.get(`${key} ${e.midi}`) ?? 0));
+        }
+      }
+    }
+    const want = new Set([...ends].map(([key, end]) => {
+      const [part, start, midi] = key.split(' ');
+      return `${part} ${start} ${end} ${midi}`;
+    }));
+    assert.deepStrictEqual(score.parts.flatMap((p) => p.tracks).sort((a, b) => a - b), tracks.map((_, i) => i),
+      `${file}: every track is in exactly one part`);
     const got = scoreNotes(score).map((n) => `${n.part} ${n.start} ${n.end} ${n.midi}`);
     assert.strictEqual(new Set(got).size, got.length, `${file}: a note is written twice`);
     assert.deepStrictEqual([...got].sort(), [...want].sort(), `${file}: the score's notes differ from the written timeline`);

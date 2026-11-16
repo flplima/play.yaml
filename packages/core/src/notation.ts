@@ -105,6 +105,13 @@ export interface NotationEvent {
   dots: number;
   /** A rest filling the whole measure, whatever its meter. */
   measureRest?: boolean;
+  /**
+   * A rest that keeps its voice's count but is not printed. Rests in a
+   * staff's second, third and fourth voices are padding: voice 1 already
+   * shows where the staff is silent, and printed they pile up around the
+   * notes of the other voices.
+   */
+  hidden?: boolean;
   /** Chord members, low to high; empty for a rest. */
   notes: NotationNote[];
   /** Tied from the previous event of this voice (maybe in the previous measure). */
@@ -120,10 +127,12 @@ export interface NotationEvent {
    */
   beams?: BeamValue[];
   /**
-   * A fixed stem direction. Only percussion sets it: a drum part reads with
+   * A fixed stem direction. Percussion always sets it: a drum part reads with
    * every stem up (feet down when a second voice holds them), while a
    * renderer left to itself flips stems by staff position, kick up and snare
-   * down in the same groove.
+   * down in the same groove. Pitched staves set it in measures where they
+   * hold two or more voices: the first voice up, the others down, so a voice
+   * that starts or stops mid-beam does not flip the stems under the beam.
    */
   stem?: 'up' | 'down';
 }
@@ -154,6 +163,12 @@ export interface PartMeasure {
   key?: NotationKey;
   /** Voice 1 of every staff is always present; other voices only where they have notes. */
   voices: NotationVoice[];
+  /**
+   * Clef changes at the start of this measure, by staff index (0 = staff 1);
+   * empty slots keep the clef in force. Never set on the first measure,
+   * whose clefs are `Part.clefs`.
+   */
+  clefs?: (Clef | undefined)[];
 }
 
 /** A drum the part plays, for the MusicXML instrument list. */
@@ -165,9 +180,15 @@ export interface PartInstrument {
 }
 
 export interface Part {
-  /** "P1", "P2"... in track order. */
+  /** "P1", "P2"... in the order parts first appear among the tracks. */
   id: string;
   name: string;
+  /**
+   * The compiled tracks this part is drawn from, as indices into
+   * `compileDoc(doc, { written: true }).tracks`. One, except for a keyboard
+   * played by several tracks (see `groupParts`).
+   */
+  tracks: number[];
   sample: string;
   kit?: string;
   /** 1-based MIDI channel. */
@@ -410,6 +431,57 @@ function drumDisplay(key: number): [Step, number, Notehead] {
 /** Samples played from a keyboard (or written like one): they get a grand staff. */
 const GRAND_STAFF = /^(piano|epiano|keys|organ|harp|celesta|harpsichord|clavinet|marimba)/i;
 const ALTO_CLEF = /^violas?$/i;
+
+/**
+ * Which staff of a grand staff a track's name asks for: 0 is the upper staff,
+ * 1 the lower. A name matches when it is one of these words, optionally
+ * followed by "hand" and a number, with or without a space, `-` or `_`:
+ * `rh`, `RH2`, `right hand`, `left-hand`, `upper_1`, `pedal`. A hinted track
+ * stays on its staff whatever its range; the staff's clef follows its notes.
+ */
+const HAND_HINTS: [RegExp, 0 | 1][] = [
+  // Organ trios play the second manual with the left hand: `manual2` (and
+  // `manual II`) sit on the lower staff, any other manual on the upper.
+  [/^manual[\s_-]*(2|ii)$/i, 1],
+  [/^(rh|right|upper|treble|manual|soprano|alto|mezzo)([\s_-]*hand)?[\s_-]*\d*$/i, 0],
+  [/^(lh|left|lower|bass|pedal|tenor)([\s_-]*hand)?[\s_-]*\d*$/i, 1],
+];
+
+/** The staff a track's name asks for, or undefined to split by pitch. */
+export function handOf(name: string): 0 | 1 | undefined {
+  return HAND_HINTS.find(([re]) => re.test(name.trim()))?.[1];
+}
+
+/**
+ * Tracks → parts. Every track is its own part, except keyboards: all tracks
+ * playing the same keyboard sample (same `sample:`, case aside) are one part
+ * on one grand staff, placed where the first of them sits in track order.
+ * That is how keyboard music is written in play.yaml, one track per hand or
+ * per line, and how it is printed, one instrument.
+ *
+ * A piano duet (two players, two pianos' worth of tracks with the same
+ * sample) would need a way to say which tracks belong to which player, such
+ * as a per-track `part:` name; until then it prints as one crowded piano.
+ */
+function groupParts(tracks: CompiledTrack[]): number[][] {
+  const groups: number[][] = [];
+  const bySample = new Map<string, number[]>();
+  tracks.forEach((track, i) => {
+    if (track.kit == null && GRAND_STAFF.test(track.sample)) {
+      const key = track.sample.toLowerCase();
+      const group = bySample.get(key);
+      if (group) {
+        group.push(i);
+        return;
+      }
+      bySample.set(key, [i]);
+      groups.push(bySample.get(key)!);
+      return;
+    }
+    groups.push([i]);
+  });
+  return groups;
+}
 
 /** "piano" → "Piano", "tubular-bells" → "Tubular Bells". */
 function displayName(sample: string): string {
@@ -849,9 +921,11 @@ function compactVoices(voices: TickNote[][]): TickNote[][] {
     // A voice is free when nothing in it overlaps, or what does is this very
     // chord's span (a chord split by register across voices joins up again).
     const free = (v: TickNote[]) => v.every((n) => n.end <= start || n.start >= end || (n.start === start && n.end === end));
-    const target = out.findIndex((v, i) => i <= vi && free(v));
-    // Its own voice can be taken by a chord moved down earlier; then the
-    // original separation stands, rather than a voice that overlaps itself.
+    // Its own voice can be taken by a chord moved down earlier; then any free
+    // voice will do, and only when none is free does the original separation
+    // stand, rather than a voice that overlaps itself.
+    let target = out.findIndex((v, i) => i <= vi && free(v));
+    if (target === -1) target = out.findIndex(free);
     if (target === -1) return voices;
     out[target].push(...notes);
   }
@@ -929,7 +1003,17 @@ function scoreFromWritten(song: CompiledSong, doc: SongDoc): Score {
   // ── Parts ──
   const rootTrack = doc && doc.play != null ? song.tracks[0] : undefined;
   const env: PartEnv = { measures, T, tick, warn, measureAt };
-  const parts = song.tracks.map((track, index) => buildPart(track, index, track === rootTrack, env));
+  const parts = groupParts(song.tracks).map((indices, index) => {
+    const tracks = indices.map((i) => song.tracks[i]);
+    // One track keeps its own name (the instrument's, for the document's
+    // own `play:`); several are named for the parent they share, or else
+    // for the instrument.
+    const parents = new Set(tracks.map((t) => t.parent));
+    const name = tracks.length === 1
+      ? (tracks[0] === rootTrack ? displayName(tracks[0].sample) : tracks[0].name)
+      : parents.size === 1 && tracks[0].parent !== undefined ? tracks[0].parent : displayName(tracks[0].sample);
+    return buildPart(tracks, indices, index, name, env);
+  });
 
   const composer = (doc as { composer?: unknown } | undefined)?.composer;
   return {
@@ -1000,6 +1084,39 @@ function spellStaff(voices: NotationVoice[], key: NotationKey, table: [Step, num
   }
 }
 
+const TREBLE: Clef = { sign: 'G', line: 2 };
+const BASS: Clef = { sign: 'F', line: 4 };
+
+/**
+ * The clef of one grand-staff staff, measure by measure. Each measure votes
+ * by the mean pitch of the notes it starts: treble from E-flat 4 up, bass from
+ * G-sharp 3 down, and in between the clef in force stays (hysteresis, so a
+ * line hovering around middle C does not flip). A vote that holds for a
+ * single measure is ignored, and so are measures with no notes: a clef change
+ * is worth printing only when the music settles in the new register.
+ */
+function clefPlan(notes: TickNote[], measures: MeasureInfo[], home: 'G' | 'F'): Clef[] {
+  const means = measures.map((m) => {
+    const inBar = notes.filter((n) => n.start >= m.start && n.start < m.start + m.length);
+    return inBar.length ? inBar.reduce((sum, n) => sum + n.midi, 0) / inBar.length : undefined;
+  });
+  const vote: ('G' | 'F' | undefined)[] = means.map((mean) =>
+    mean === undefined ? undefined : mean >= 63 ? 'G' : mean <= 56 ? 'F' : undefined);
+  const first = vote.find((v) => v !== undefined) ?? home;
+  const plan: ('G' | 'F')[] = [];
+  let current: 'G' | 'F' = first;
+  for (let i = 0; i < measures.length; i++) {
+    const v = vote[i];
+    if (v && v !== current) {
+      // Settled means the next measure with notes does not vote back.
+      const next = vote.slice(i + 1).find((x, k) => x !== undefined || means[i + 1 + k] !== undefined);
+      if (next !== (v === 'G' ? 'F' : 'G')) current = v;
+    }
+    plan.push(current);
+  }
+  return plan.map((sign) => (sign === 'G' ? TREBLE : BASS));
+}
+
 /** What every part is laid out against. */
 interface PartEnv {
   measures: MeasureInfo[];
@@ -1011,40 +1128,69 @@ interface PartEnv {
   measureAt: (t: number) => number;
 }
 
-/** One compiled track → one part: staves, voices, measures, spelling. */
-function buildPart(track: CompiledTrack, index: number, isRoot: boolean, env: PartEnv): Part {
+/** One or more compiled tracks → one part: staves, voices, measures, spelling. */
+function buildPart(tracks: CompiledTrack[], indices: number[], index: number, name: string, env: PartEnv): Part {
   const { measures, T, tick, warn, measureAt } = env;
+  const first = tracks[0];
   const id = `P${index + 1}`;
-  const percussion = track.kit != null;
-  const grand = !percussion && GRAND_STAFF.test(track.sample);
-  const name = isRoot ? displayName(track.sample) : track.name;
-  const partWarn = (bar: number, message: string) => warn(`${track.name}: bar ${bar + 1}: ${message}`);
+  const percussion = first.kit != null;
+  const grand = !percussion && GRAND_STAFF.test(first.sample);
+  const label = tracks.length === 1 ? first.name : name;
+  const partWarn = (bar: number, message: string) => warn(`${label}: bar ${bar + 1}: ${message}`);
 
-  // Notes in ticks; a chord cannot hold the same note twice.
-  const seen = new Set<string>();
-  const notes: TickNote[] = [];
-  for (const e of track.timeline) {
-    const start = tick(e.time);
-    const end = tick(e.time + e.duration);
-    if (end <= start) continue;
-    const key = `${start}:${end}:${e.midi}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    notes.push({ start, end, midi: e.midi, roll: e.roll });
+  // Notes in ticks, pooled across the part's tracks. One key cannot be
+  // struck twice at once: the same pitch starting at the same tick is one
+  // note, as long as the longest of them, kept by the first track in order
+  // (and so on that track's staff). Written as two, they would be two voices
+  // sharing a notehead, each padded with rests that collide.
+  const struck = new Map<string, TickNote>();
+  const hinted: TickNote[][] = [[], []];
+  const unhinted: TickNote[] = [];
+  for (const track of tracks) {
+    const hand = grand ? handOf(track.name) : undefined;
+    for (const e of track.timeline) {
+      const start = tick(e.time);
+      const end = tick(e.time + e.duration);
+      if (end <= start) continue;
+      const key = `${start}:${e.midi}`;
+      const already = struck.get(key);
+      if (already) {
+        already.end = Math.max(already.end, end);
+        continue;
+      }
+      const note: TickNote = { start, end, midi: e.midi, roll: e.roll };
+      struck.set(key, note);
+      (hand === undefined ? unhinted : hinted[hand]).push(note);
+    }
   }
-  notes.sort((a, b) => a.start - b.start || a.midi - b.midi);
+  const byNote = (a: TickNote, b: TickNote) => a.start - b.start || a.midi - b.midi;
+  unhinted.sort(byNote);
 
   // ── Staves ──
   const staves = grand ? 2 : 1;
-  const byStaff = grand ? splitGrandStaff(notes) : [notes];
+  let byStaff: TickNote[][];
+  if (grand) {
+    const split = splitGrandStaff(unhinted);
+    byStaff = [[...hinted[0], ...split[0]].sort(byNote), [...hinted[1], ...split[1]].sort(byNote)];
+  } else {
+    byStaff = [unhinted];
+  }
+  const notes = byStaff.flat();
 
   // ── Clefs ──
+  // A grand staff's clefs follow the notes measure by measure (see
+  // `clefPlan`): a left hand written high reads in treble on the lower
+  // staff. Other parts keep one clef, from their whole range.
+  const meanOf = (list: TickNote[], fallback: number) =>
+    list.length ? list.reduce((sum, n) => sum + n.midi, 0) / list.length : fallback;
   const clefs: Clef[] = [];
+  const plans = grand ? [clefPlan(byStaff[0], measures, 'G'), clefPlan(byStaff[1], measures, 'F')] : [];
   if (percussion) clefs.push({ sign: 'percussion', line: 2 });
-  else if (grand) clefs.push({ sign: 'G', line: 2 }, { sign: 'F', line: 4 });
-  else {
-    const mean = notes.length ? notes.reduce((s, n) => s + n.midi, 0) / notes.length : 67;
-    if (ALTO_CLEF.test(track.sample) && mean >= 50 && mean < 70) clefs.push({ sign: 'C', line: 3 });
+  else if (grand) {
+    clefs.push(plans[0][0], plans[1][0]);
+  } else {
+    const mean = meanOf(notes, 67);
+    if (ALTO_CLEF.test(first.sample) && mean >= 50 && mean < 70) clefs.push({ sign: 'C', line: 3 });
     else if (mean < 55) clefs.push({ sign: 'F', line: 4 });
     else clefs.push({ sign: 'G', line: 2 });
   }
@@ -1084,7 +1230,12 @@ function buildPart(track: CompiledTrack, index: number, isRoot: boolean, env: Pa
         if (vi > 0 && inBar.length === 0) return;
         const voice: NotationVoice = { voice: s * 4 + vi + 1, staff: s + 1, events: [] };
         if (inBar.length === 0) {
-          voice.events.push({ kind: 'rest', offset: 0, duration: measure.length, dots: 0, measureRest: true, notes: [] });
+          // Voice 1 silent under another voice's notes: its rest is padding too.
+          const othersSound = staffVoices.some((other, oi) => oi !== vi && other.some((n) => n.start < m1 && n.end > m0));
+          voice.events.push({
+            kind: 'rest', offset: 0, duration: measure.length, dots: 0, measureRest: true, notes: [],
+            ...(othersSound ? { hidden: true } : {}),
+          });
         } else {
           // Chords: one segment per onset (a voice never overlaps itself).
           const segments: Segment[] = [];
@@ -1106,16 +1257,35 @@ function buildPart(track: CompiledTrack, index: number, isRoot: boolean, env: Pa
           }
           for (const seg of segments) seg.midis.sort((a, b) => a - b);
           voice.events = buildVoiceEvents(segments, measure.length, levels, measure.time, T, (msg) => partWarn(mi, msg));
+          if (vi > 0) for (const e of voice.events) if (e.kind === 'rest') e.hidden = true;
         }
         voices.push(voice);
       });
     }
 
     // ── Key, spelling, accidentals ──
-    const scale = track.bars?.[mi]?.scale ?? lastScale;
+    // The key in force: the first track with this bar says; the others should
+    // agree, and a part that disagrees with itself is worth a warning.
+    const scales = [...new Set(tracks.map((t) => t.bars?.[mi]?.scale).filter((x): x is string => x !== undefined))];
+    if (scales.length > 1 && keyFromScale(scales[0]).fifths !== keyFromScale(scales[1]).fifths) {
+      partWarn(mi, `its tracks are in different keys (${scales.join(', ')}); written in ${scales[0]}`);
+    }
+    const scale = scales[0] ?? lastScale;
     lastScale = scale;
     const key = percussion ? { fifths: 0, mode: 'none' } : keyFromScale(scale);
     const pm: PartMeasure = { voices };
+    if (!percussion) {
+      for (let st = 1; st <= staves; st++) {
+        const onStaff = voices.filter((v) => v.staff === st);
+        if (onStaff.length < 2) continue;
+        onStaff.forEach((v, i) => {
+          for (const e of v.events) if (e.kind === 'note') e.stem = i === 0 ? 'up' : 'down';
+        });
+      }
+    }
+    if (mi > 0 && plans.some((plan) => plan[mi] !== plan[mi - 1])) {
+      pm.clefs = plans.map((plan) => (plan[mi] !== plan[mi - 1] ? plan[mi] : undefined));
+    }
     if (!lastKey || lastKey.fifths !== key.fifths || lastKey.mode !== key.mode) pm.key = key;
     lastKey = key;
 
@@ -1139,10 +1309,11 @@ function buildPart(track: CompiledTrack, index: number, isRoot: boolean, env: Pa
   return {
     id,
     name,
-    sample: track.sample,
-    kit: track.kit,
-    channel: track.channel,
-    program: track.program,
+    tracks: indices,
+    sample: first.sample,
+    kit: first.kit,
+    channel: first.channel,
+    program: first.program,
     percussion,
     staves,
     clefs,
