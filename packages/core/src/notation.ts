@@ -436,7 +436,7 @@ const ALTO_CLEF = /^violas?$/i;
  * Which staff of a grand staff a track's name asks for: 0 is the upper staff,
  * 1 the lower. A name matches when it is one of these words, optionally
  * followed by "hand" and a number, with or without a space, `-` or `_`:
- * `rh`, `RH2`, `right hand`, `left-hand`, `upper_1`, `pedal`. A hinted track
+ * `rh`, `RH2`, `right hand`, `left-hand`, `upper_1`. A hinted track
  * stays on its staff whatever its range; the staff's clef follows its notes.
  */
 const HAND_HINTS: [RegExp, 0 | 1][] = [
@@ -444,8 +444,15 @@ const HAND_HINTS: [RegExp, 0 | 1][] = [
   // `manual II`) sit on the lower staff, any other manual on the upper.
   [/^manual[\s_-]*(2|ii)$/i, 1],
   [/^(rh|right|upper|treble|manual|soprano|alto|mezzo)([\s_-]*hand)?[\s_-]*\d*$/i, 0],
-  [/^(lh|left|lower|bass|pedal|tenor)([\s_-]*hand)?[\s_-]*\d*$/i, 1],
+  [/^(lh|left|lower|bass|tenor)([\s_-]*hand)?[\s_-]*\d*$/i, 1],
 ];
+
+/**
+ * An organ's pedal line is printed on a staff of its own, below the manuals.
+ * Sharing the left hand's staff, it lands on deep ledger lines whenever that
+ * staff moves to the treble clef.
+ */
+const PEDAL = /^pedals?[\s_-]*\d*$/i;
 
 /** The staff a track's name asks for, or undefined to split by pitch. */
 export function handOf(name: string): 0 | 1 | undefined {
@@ -457,7 +464,8 @@ export function handOf(name: string): 0 | 1 | undefined {
  * playing the same keyboard sample (same `sample:`, case aside) are one part
  * on one grand staff, placed where the first of them sits in track order.
  * That is how keyboard music is written in play.yaml, one track per hand or
- * per line, and how it is printed, one instrument.
+ * per line, and how it is printed, one instrument. A track named `pedal`
+ * stays out of the group and keeps a staff to itself (see `PEDAL`).
  *
  * A piano duet (two players, two pianos' worth of tracks with the same
  * sample) would need a way to say which tracks belong to which player, such
@@ -467,7 +475,7 @@ function groupParts(tracks: CompiledTrack[]): number[][] {
   const groups: number[][] = [];
   const bySample = new Map<string, number[]>();
   tracks.forEach((track, i) => {
-    if (track.kit == null && GRAND_STAFF.test(track.sample)) {
+    if (track.kit == null && GRAND_STAFF.test(track.sample) && !PEDAL.test(track.name.trim())) {
       const key = track.sample.toLowerCase();
       const group = bySample.get(key);
       if (group) {
@@ -1134,7 +1142,7 @@ function buildPart(tracks: CompiledTrack[], indices: number[], index: number, na
   const first = tracks[0];
   const id = `P${index + 1}`;
   const percussion = first.kit != null;
-  const grand = !percussion && GRAND_STAFF.test(first.sample);
+  const grand = !percussion && GRAND_STAFF.test(first.sample) && !PEDAL.test(first.name.trim());
   const label = tracks.length === 1 ? first.name : name;
   const partWarn = (bar: number, message: string) => warn(`${label}: bar ${bar + 1}: ${message}`);
 

@@ -2347,10 +2347,13 @@ check('keyboard tracks with the same sample are one part on one grand staff', ()
   assert.deepStrictEqual([part.name, part.staves, part.tracks], ['Piano', 2, [0, 1]]);
   const staffOf = (midi: number) => part.measures[0].voices.find((v) => v.events.some((e) => e.notes.some((n) => n.midi === midi)))!.staff;
   assert.deepStrictEqual([76, 74, 72, 71, 48, 55].map(staffOf), [1, 1, 1, 1, 2, 2]);
-  const nested = scoreFromDoc({ tracks: { organ: { sample: 'organ', tracks: { manual: { play: 'c5 d5 e5 f5' }, pedal: { play: 'c2 g2 c2 g2' } } } } });
-  assert.deepStrictEqual(nested.parts.map((p) => p.name), ['organ'], 'tracks under one parent take its name');
+  const nested = scoreFromDoc({ tracks: { organ: { sample: 'organ', tracks: {
+    manual1: { play: 'c5 d5 e5 f5' }, manual2: { play: 'e4 f4 g4 a4' }, pedal: { play: 'c2 g2 c2 g2' },
+  } } } });
+  assert.deepStrictEqual(nested.parts.map((p) => [p.name, p.staves, p.tracks]), [['organ', 2, [0, 1]], ['pedal', 1, [2]]],
+    'tracks under one parent take its name, and the pedal keeps a staff to itself');
   assert.deepStrictEqual(['rh', 'RH2', 'right hand', 'Left-Hand', 'upper_1', 'pedal', 'lower 3', 'melody'].map(handOf),
-    [0, 0, 0, 1, 0, 1, 1, undefined]);
+    [0, 0, 0, 1, 0, undefined, 1, undefined]);
   assert.deepStrictEqual(['manual', 'manual1', 'manual2', 'Manual II'].map(handOf), [0, 0, 1, 1],
     'an organ trio plays the second manual with the left hand');
 });
