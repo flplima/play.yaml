@@ -105,3 +105,24 @@
     animation: pop-in 110ms ease-out;
   }
 }
+
+/*
+ * Sheet music pages are white paper on the dark app. OSMD draws black on
+ * its own page, so the card only needs to scale the SVG to its width; the
+ * sounding notes then override the colour. A VexFlow note is a group of
+ * paths (heads, stem, flag) and, for beamed notes, no beam: the beam is
+ * its own element and stays black.
+ */
+.score-paper {
+  background: #fff;
+  color: #000;
+}
+.score-paper svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.score-paper .vf-stavenote.playing :is(path, rect, text) {
+  fill: #e11d48;
+  stroke: #e11d48;
+}
