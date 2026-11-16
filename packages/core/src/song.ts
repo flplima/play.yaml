@@ -348,6 +348,12 @@ export interface CompiledTrack {
   controls: ControlEvent[];
   /** Written compile only: one entry per measure, numbered measures' gaps included. */
   bars?: BarInfo[];
+  /**
+   * Written compile only: the name of the track this one is nested in, when
+   * it sits under another track rather than directly under the document.
+   * Notation names a merged keyboard part after it.
+   */
+  parent?: string;
 }
 
 export interface CompiledSong {
@@ -1500,7 +1506,7 @@ export function compileDoc(doc: SongDoc, options: CompileOptions = {}): Compiled
   let lengthBeats = 0;
   let nextChannel = 1;
 
-  const walk = (node: TrackNode, name: string, inherited: TrackProps) => {
+  const walk = (node: TrackNode, name: string, inherited: TrackProps, parent?: string) => {
     const { props, opening } = node === doc ? root : effectiveProps(node, inherited);
 
     if (node.play != null) {
@@ -1530,11 +1536,12 @@ export function compileDoc(doc: SongDoc, options: CompileOptions = {}): Compiled
         controls: [...opening, ...controls],
       });
       if (bars) tracks[tracks.length - 1].bars = bars;
+      if (bars && parent !== undefined) tracks[tracks.length - 1].parent = parent;
     }
 
     if (node.tracks && typeof node.tracks === 'object') {
       for (const [childName, child] of Object.entries(node.tracks)) {
-        if (child && typeof child === 'object') walk(child, childName, props);
+        if (child && typeof child === 'object') walk(child, childName, props, node === doc ? undefined : name);
       }
     }
   };

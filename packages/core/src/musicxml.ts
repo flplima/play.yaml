@@ -149,7 +149,7 @@ function writeMeasure(
 ): void {
   w.open('measure', ` number="${info.number}"`);
   const first = index === 0;
-  if (first || pm.key || info.timeChanged) {
+  if (first || pm.key || info.timeChanged || pm.clefs) {
     w.open('attributes');
     if (first) w.leaf('divisions', score.divisions);
     if (pm.key) writeKey(w, pm.key);
@@ -162,6 +162,8 @@ function writeMeasure(
     if (first) {
       if (part.staves > 1) w.leaf('staves', part.staves);
       part.clefs.forEach((clef, i) => writeClef(w, clef, part.staves > 1 ? i + 1 : undefined));
+    } else {
+      pm.clefs?.forEach((clef, i) => clef && writeClef(w, clef, part.staves > 1 ? i + 1 : undefined));
     }
     w.close('attributes');
   }
@@ -175,9 +177,25 @@ function writeMeasure(
       w.leaf('duration', info.length);
       w.close('backup');
     }
-    for (const event of voice.events) writeEvent(w, part, voice, event);
+    for (const event of voice.events) {
+      if (event.kind === 'rest' && event.hidden) writeForward(w, part, voice, event.duration);
+      else writeEvent(w, part, voice, event);
+    }
   });
   w.close('measure');
+}
+
+/**
+ * An unprinted rest is a `<forward>`: time that passes in the voice with
+ * nothing drawn. Readers turn it into a spacer, where a rest marked
+ * `print-object="no"` would still be laid out and collide.
+ */
+function writeForward(w: Writer, part: Part, voice: NotationVoice, duration: number): void {
+  w.open('forward');
+  w.leaf('duration', duration);
+  w.leaf('voice', voice.voice);
+  if (part.staves > 1) w.leaf('staff', voice.staff);
+  w.close('forward');
 }
 
 function writeTempo(w: Writer, mark: TempoMark): void {
