@@ -1,7 +1,8 @@
 # Third-party notices
 
 The studio (`packages/web`) loads these libraries in the browser. play.yaml
-itself is MIT licensed (see `LICENSE`).
+itself is MIT licensed (see `LICENSE`). The command line's own dependencies
+are at the end.
 
 ## OpenSheetMusicDisplay
 
@@ -56,3 +57,13 @@ itself is MIT licensed (see `LICENSE`).
   yWorks GmbH and 2013-2015 Vitaly Puzrin. https://github.com/yWorks/svg2pdf.js
 - Draws the engraved SVG pages into the PDF as vectors. Loaded only when a
   PDF is made.
+
+## The command line (`packages/cli`)
+
+The cli does not bundle these. npm installs them as normal dependencies, each
+with its own licence file, and they load only when a PDF is written.
+
+- `opensheetmusicdisplay` 2.3.1, BSD-3-Clause (see above). Engraves the pages.
+- `jsdom` 31, MIT. https://github.com/jsdom/jsdom (the page model OpenSheetMusicDisplay draws into, since Node has no browser)
+- `pdfkit` 0.20, MIT. https://github.com/foliojs/pdfkit
+- `svg-to-pdfkit` 0.1, MIT. https://github.com/alafr/SVG-to-PDFKit

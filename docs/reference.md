@@ -550,6 +550,8 @@ npm run dev:stop     # stop the dev server
 ```
 It offers a YAML editor with syntax highlighting, the bundled example scores (editable in-session, never persisted), opening/saving local `.play.yaml` files via the File System Access API, playback on the built-in orchestra, and per-instrument routing to your MIDI devices via WebMIDI (with a per-mapping test note). The panel picks the output: **Built-in** renders everything in the browser using the Web Audio API and the VPO sample library, while **MIDI** routes notes and CC events to your hardware or virtual MIDI devices. The **⬇ MIDI** button exports the compiled score as a Standard MIDI File (`.mid`), and the **⬇ MP3** button renders the score offline with the built-in sounds (tempo map included) and downloads it as an MP3.
 
+The **Score** tab shows the score as sheet music on A4 pages. While the song plays, the sounding notes turn red and the page follows them. The **⬇ PDF** button downloads those pages as a PDF. The engraving library is a 0.4 MB download, fetched the first time you open the tab.
+
 Two studio behaviors worth knowing:
 
 - **Live editing (hot-swap)**: edit the score *while it plays* — any change that compiles splices into the running transport at an upcoming bar boundary, Sonic-Pi-style, with no Stop→Play. The status bar reports the bar the update landed on; held MIDI notes from the old take are released on the barline.
@@ -577,6 +579,25 @@ You can compile `.play.yaml` scores into Standard MIDI Files:
 ```bash
 node packages/cli/dist/export.js --input examples/my-score.play.yaml --output track.mid
 ```
+
+### Print a score as sheet music
+The same command writes a PDF, or MusicXML for another notation program. The output's extension picks the format:
+
+```bash
+node packages/cli/dist/export.js --input examples/fur-elise.play.yaml --output fur-elise.pdf
+node packages/cli/dist/export.js --input examples/fur-elise.play.yaml --output fur-elise.pdf --paper letter
+node packages/cli/dist/export.js --input examples/fur-elise.play.yaml --output fur-elise.musicxml
+```
+
+What gets printed:
+
+- **The notes as written**: full note values, with no `gate`, `humanize`, `rubato` or strum. Ties, dots, tuplets, rests, beams and up to four voices per staff.
+- **Key, meter and tempo**: the key signature comes from `scale:`. A score with no `scale:` prints with no key signature. Meter and tempo changes are printed where they happen.
+- **Keyboards**: tracks that share a keyboard `sample:` (piano, organ, harp and friends) print as one part on a grand staff. A track named `rh`, `right` or `upper` goes on the upper staff, and `lh`, `left` or `lower` on the lower one. Other names are split around middle C. A track named `pedal` gets a staff of its own.
+- **Drums**: a `kit:` track prints on a percussion staff, with x noteheads for hats and cymbals.
+- **Sections and repeats**: written out in full, with no repeat signs.
+
+What is not printed yet: dynamics and technique words, slurs, lyrics, chord symbols and repeat signs. Transposing instruments are written at sounding pitch.
 
 ### Import a `.mid` into a score
 
@@ -671,6 +692,6 @@ third-party sheet music. See [CONTRIBUTING.md](../CONTRIBUTING.md) for the rule.
 
 This is a monorepo managed with npm workspaces:
 
-- `packages/core/`: The `play.yaml` engine — dependency-free and environment-free (no Node or DOM APIs), so it runs identically in Node and browsers. Layered as: `theory` (pitch/scale/meter math) → `vocabulary` (dynamics, articulations, tempo marks, techniques, named controls) → `set` (the `set:` shorthand) → `tokens` (measure tokenizing) → `song` (the compiler), plus the zero-dep YAML subset (`yaml`), the `.mid` encoder (`exporter`), the `.mid` decoder + musical fidelity comparator (`fidelity`), beat→seconds tempo mapping (`time`), the Web Audio synth presets (`synth`), and the SFZ parser and sampler that play the orchestra (`sfz`, `sfzSampler`, `vpoCatalogue`, `vpo`, see above). Everything re-exports from the package root.
-- `packages/cli/`: Command-line tools built on core: `play-yaml` exports scores to `.mid`; `play-yaml-play` plays them through the speakers (rendered offline by `packages/node-audio/`) or streams live MIDI — notes, the score's CC automation and the tempo map — to a virtual MIDI port; `play-yaml-fidelity` scores a `.play.yaml` against a reference `.mid` and flags where they diverge.
-- `packages/web/`: The browser studio (Vite/React): CodeMirror editor with played-note highlighting, Tone.js transport playback on the built-in orchestra & synth, and per-instrument WebMIDI routing to any MIDI device or virtual instrument. Consumes core by source, so core edits hot-reload without a rebuild. The interface is [shadcn/ui](https://ui.shadcn.com) (Radix primitives, vendored into `src/components/ui/`) on Tailwind v4; every colour comes from the tokens in `src/index.css`, which hold a dark palette in `:root` — the studio is a dark-only tool.
+- `packages/core/`: The `play.yaml` engine — dependency-free and environment-free (no Node or DOM APIs), so it runs identically in Node and browsers. Layered as: `theory` (pitch/scale/meter math) → `vocabulary` (dynamics, articulations, tempo marks, techniques, named controls) → `set` (the `set:` shorthand) → `tokens` (measure tokenizing) → `song` (the compiler), plus the zero-dep YAML subset (`yaml`), the `.mid` encoder (`exporter`), the sheet music model and its MusicXML writer (`notation`, `musicxml`), the `.mid` decoder + musical fidelity comparator (`fidelity`), beat→seconds tempo mapping (`time`), the Web Audio synth presets (`synth`), and the SFZ parser and sampler that play the orchestra (`sfz`, `sfzSampler`, `vpoCatalogue`, `vpo`, see above). Everything re-exports from the package root.
+- `packages/cli/`: Command-line tools built on core: `play-yaml` exports scores to `.mid`, MusicXML or a PDF of sheet music; `play-yaml-play` plays them through the speakers (rendered offline by `packages/node-audio/`) or streams live MIDI — notes, the score's CC automation and the tempo map — to a virtual MIDI port; `play-yaml-fidelity` scores a `.play.yaml` against a reference `.mid` and flags where they diverge.
+- `packages/web/`: The browser studio (Vite/React): CodeMirror editor with played-note highlighting, a sheet music view and PDF export (engraved by [OpenSheetMusicDisplay](https://opensheetmusicdisplay.org)), Tone.js transport playback on the built-in orchestra & synth, and per-instrument WebMIDI routing to any MIDI device or virtual instrument. Consumes core by source, so core edits hot-reload without a rebuild. The interface is [shadcn/ui](https://ui.shadcn.com) (Radix primitives, vendored into `src/components/ui/`) on Tailwind v4; every colour comes from the tokens in `src/index.css`, which hold a dark palette in `:root` — the studio is a dark-only tool.
