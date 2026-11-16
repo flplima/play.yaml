@@ -39,3 +39,20 @@ itself is MIT licensed (see `LICENSE`).
 - Version 1.3.3, npm package `typescript-collections`. MIT licence,
   copyright 2010-2017 Tomasz Ciborski.
   https://github.com/basarat/typescript-collections
+
+## jsPDF
+
+- Version 4.2.1, npm package `jspdf`. MIT licence, copyright 2010-2025 James
+  Hall and 2015-2025 yWorks GmbH. https://github.com/parallax/jsPDF
+- Builds the PDF file. Loaded only when a PDF is made. Its own
+  dependencies (`fast-png`, `@babel/runtime`, `fflate`, MIT) and optional
+  ones (`dompurify`, `html2canvas`, `canvg`, `core-js`) come along as
+  separate lazy chunks; `dompurify` is MPL-2.0 or Apache-2.0,
+  the others MIT.
+
+## svg2pdf.js
+
+- Version 2.9.0, npm package `svg2pdf.js`. MIT licence, copyright 2015-2026
+  yWorks GmbH and 2013-2015 Vitaly Puzrin. https://github.com/yWorks/svg2pdf.js
+- Draws the engraved SVG pages into the PDF as vectors. Loaded only when a
+  PDF is made.
