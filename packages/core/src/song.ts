@@ -30,6 +30,12 @@ export interface TimelineEvent {
   duration: number;
   velocity: number;
   midi: number;
+  /**
+   * Written compile only: a drum roll (`sd~`) kept as one note, with how many
+   * `~` marks it carried. A performance compile retriggers the hits instead,
+   * and never sets this.
+   */
+  roll?: number;
 }
 
 /** Properties a track passes down to its children. */
@@ -292,6 +298,44 @@ export type SectionNode =
 
 export type SongDoc = TrackNode & { sections?: Record<string, SectionNode> };
 
+/**
+ * One measure of a track as written, from a written compile (`{ written: true }`).
+ * Notation needs what the timeline alone cannot say: where the bar lines
+ * fall once the meter changes, how the meter was spelled (6/8 and 3/4 are
+ * both three beats) and which key the bar is in.
+ */
+export interface BarInfo {
+  /** Where the measure starts, in quarter-note beats. */
+  start: number;
+  /** Its length in quarter-note beats. */
+  beats: number;
+  /** The meter as notated: "6/8", "3/4". A plain beat count reads as quarters ("5/4"). */
+  meter: string;
+  /**
+   * The track's key in force, as written ("eb major"). Only `scale:` props,
+   * directives and `set` clauses move it; an `==Dm7==` chord-scale token
+   * changes the degrees, not the key signature.
+   */
+  scale: string;
+}
+
+/**
+ * How to compile. The default is a performance: everything the score says
+ * about *how* to play (gate, humanize, rubato, strums, bow release) shapes
+ * the timeline.
+ */
+export interface CompileOptions {
+  /**
+   * Compile the notes as written instead: every note lasts its full slot
+   * (gate 1, holds merged), with no humanize, rubato warp, strum spread,
+   * voices cut, same-pitch trim or bow release, and a drum roll stays one
+   * note. `chance` and generators still expand exactly as in a performance,
+   * so the two compiles agree on which notes exist. Tracks also carry their
+   * bar map (`bars`). This is what sheet music is drawn from.
+   */
+  written?: boolean;
+}
+
 export interface CompiledTrack {
   name: string;
   channel: number;
@@ -302,6 +346,8 @@ export interface CompiledTrack {
   timeline: TimelineEvent[];
   /** CC changes declared mid-song, in beat order. */
   controls: ControlEvent[];
+  /** Written compile only: one entry per measure, numbered measures' gaps included. */
+  bars?: BarInfo[];
 }
 
 export interface CompiledSong {
@@ -386,6 +432,8 @@ interface EmitCtx {
   chance: number;
   /** Seeded timing/velocity jitter; unset = play exactly as written. */
   humanize?: HumanizeSpec;
+  /** Written compile: notes as notated, no performance shaping. */
+  written: boolean;
 }
 
 /** Should this note be dropped by the running `chance`? Deterministic. */
@@ -553,7 +601,7 @@ function placeToken(token: string, start: number, span: number, ctx: EmitCtx, bo
     }
     const pitch = drumName(spec.note) ?? String(spec.note);
     const baseVelocity = clampVelocity(velocityAt(ctx, start) + boost);
-    if (strumMarks > 0) {
+    if (strumMarks > 0 && !ctx.written) {
       // `sd~` is a roll: retriggered hits filling the slot at 32nd-note pace
       // (`~~` at 64ths), swelling into the beat it lands on. Retriggers keep
       // the roll audible on any GM synth and in the .mid export.
@@ -582,6 +630,8 @@ function placeToken(token: string, start: number, span: number, ctx: EmitCtx, bo
       velocity: clampVelocity(baseVelocity + h.dv),
       midi: spec.note,
     };
+    // Written, a roll is one note with tremolo strokes, not its retriggers.
+    if (strumMarks > 0) event.roll = strumMarks;
     ctx.events.push(event);
     ctx.held = { events: [event], span };
     return;
@@ -768,6 +818,8 @@ export interface PlayResult {
   lengthBeats: number;
   /** Tokens that compiled to silence, with the bar they sat in. */
   warnings: string[];
+  /** Written mode only: the bar map, one entry per measure. */
+  bars?: BarInfo[];
 }
 
 /**
@@ -787,7 +839,9 @@ export function parsePlayFull(
    * *from*, and the ramp collapses to a jump.
    */
   opening: ControlEvent[] = [],
+  options: CompileOptions = {},
 ): PlayResult {
+  const written = options.written === true;
   let measureBeats = measureToBeats(props.measure);
   const controlAliases = props.controls ?? {};
   const baseTempo = props.tempo ?? DEFAULT_TEMPO;
@@ -802,17 +856,24 @@ export function parsePlayFull(
     octave: props.octave ?? DEFAULT_OCTAVE,
     transpose: props.transpose ?? 0,
     velocity: clampVelocity(props.velocity ?? worded.velocity ?? DEFAULT_VELOCITY),
-    gate: props.gate ?? worded.gate ?? DEFAULT_GATE,
-    strum: props.strum ?? DEFAULT_STRUM,
-    voices: props.voices ?? 0,
+    // Written mode drops every performance choice up front; the patch
+    // applier below then refuses to bring them back mid-score.
+    gate: written ? 1 : props.gate ?? worded.gate ?? DEFAULT_GATE,
+    strum: written ? 0 : props.strum ?? DEFAULT_STRUM,
+    voices: written ? 0 : props.voices ?? 0,
     strumTail: props.strumTail,
-    rubato: props.rubato ?? worded.rubato ?? 0,
+    rubato: written ? 0 : props.rubato ?? worded.rubato ?? 0,
     warnings: [],
     measureNumber: 1,
     seed: props.seed ?? DEFAULT_SEED,
     chance: Math.max(0, Math.min(1, props.chance ?? 1)),
-    humanize: normalizeHumanize(props.humanize),
+    humanize: written ? undefined : normalizeHumanize(props.humanize),
+    written,
   };
+  // The key and meter as written, for the bar map. `ctx.scale` cannot stand
+  // in for the key: an `==Dm7==` token moves it without changing the signature.
+  let keyText = props.scale ?? 'c major';
+  let meterText = notatedMeterText(props.measure ?? DEFAULT_MEASURE);
   const controls: ControlEvent[] = [];
   const tempos: TempoEvent[] = [];
   /** Last value emitted per CC, so a drift knows where it starts. */
@@ -924,14 +985,18 @@ export function parsePlayFull(
       emitExpressionRamp(at, ctx.velocityRamp.toBeat, from, to);
     }
 
-    if (patch.gate !== undefined) ctx.gate = patch.gate;
-    if (patch.strum !== undefined) ctx.strum = patch.strum;
-    if (patch.voices !== undefined) ctx.voices = patch.voices;
-    if (patch.strumTail !== undefined) ctx.strumTail = patch.strumTail;
-    if (patch.rubato !== undefined) ctx.rubato = patch.rubato;
+    if (!written) {
+      if (patch.gate !== undefined) ctx.gate = patch.gate;
+      if (patch.strum !== undefined) ctx.strum = patch.strum;
+      if (patch.voices !== undefined) ctx.voices = patch.voices;
+      if (patch.strumTail !== undefined) ctx.strumTail = patch.strumTail;
+      if (patch.rubato !== undefined) ctx.rubato = patch.rubato;
+      if (patch.humanize !== undefined) ctx.humanize = patch.humanize ?? undefined;
+    }
     if (patch.seed !== undefined) ctx.seed = patch.seed;
     if (patch.chance !== undefined) ctx.chance = Math.max(0, Math.min(1, patch.chance));
-    if (patch.humanize !== undefined) ctx.humanize = patch.humanize ?? undefined;
+    if (patch.scale) keyText = patch.scale;
+    if (patch.measure) meterText = notatedMeterText(patch.measure);
 
     if (patch.aTempo) setTempo(baseTempo, 0, at);
     if (patch.tempo) {
@@ -962,6 +1027,16 @@ export function parsePlayFull(
   let m = 0;
   let beat = 0;
   let endBeat = 0;
+  // The bar map (written mode).
+  const bars: BarInfo[] = [];
+  const noteBar = (index: number, start: number) => {
+    if (!written) return;
+    // Bars skipped by a numbered jump are silent bars in the running meter.
+    for (let i = bars.length; i < index; i++) {
+      bars[i] = { start: round(start - (index - i) * measureBeats), beats: measureBeats, meter: meterText, scale: keyText };
+    }
+    bars[index] = { start, beats: measureBeats, meter: meterText, scale: keyText };
+  };
   const compileMeasure = (raw: string) => {
     const measure = raw.trim();
     if (!measure) return;
@@ -993,6 +1068,9 @@ export function parsePlayFull(
       } else if (isMarkToken(tok)) {
         applySet(setTokenBody(tok), at);
       } else {
+        // Recorded at the first note, so a key set at the head of the bar
+        // (`||eb major|| …`) belongs to this bar rather than the next.
+        if (slot === 0) noteBar(m, beat);
         placeToken(tok, at, slots[slot].span, ctx);
         pos += slots[slot++].span;
       }
@@ -1045,7 +1123,7 @@ export function parsePlayFull(
   // earlier note's late Note-Off would cut the restruck note short. Trim the
   // earlier one to release just before the restrike instead.
   const lastByPitch = new Map<number, TimelineEvent>();
-  for (const e of ctx.events) {
+  for (const e of written ? [] : ctx.events) {
     const prev = lastByPitch.get(e.midi);
     if (prev && prev.time < e.time && prev.time + prev.duration > e.time) {
       prev.duration = round(Math.max(0.01, e.time - prev.time - 0.02));
@@ -1059,7 +1137,7 @@ export function parsePlayFull(
    * one exist — and a phrase ends where the *sound* stops, which under a
    * legato overlap or a held chord is not where any single note ends.
    */
-  if (exprSpec && props.release !== undefined && props.release !== null) {
+  if (!written && exprSpec && props.release !== undefined && props.release !== null) {
     const cfg = typeof props.release === 'number' ? { over: props.release } : props.release;
     const over = Math.max(0, cfg.over ?? 0.5);
     const minGap = Math.max(0, cfg.gap ?? 0.25);
@@ -1134,7 +1212,26 @@ export function parsePlayFull(
     }
   }
 
-  return { timeline: ctx.events, controls, tempos, lengthBeats: endBeat, warnings: ctx.warnings };
+  const result: PlayResult = { timeline: ctx.events, controls, tempos, lengthBeats: endBeat, warnings: ctx.warnings };
+  if (written) result.bars = bars;
+  return result;
+}
+
+/**
+ * A `measure:` value as a time signature. Strings are kept as written, so
+ * 6/8 stays 6/8; a plain beat count is read in quarters (5 → 5/4), or in
+ * eighths or sixteenths when it is not a whole number of quarters.
+ */
+function notatedMeterText(measure: string | number): string {
+  const text = String(measure).trim();
+  const sig = /^(\d+)\s*\/\s*(\d+)$/.exec(text);
+  if (sig) return `${parseInt(sig[1], 10)}/${parseInt(sig[2], 10)}`;
+  const beats = measureToBeats(measure);
+  for (const den of [4, 8, 16, 32]) {
+    const num = (beats * den) / 4;
+    if (Math.abs(num - Math.round(num)) < 1e-9) return `${Math.round(num)}/${den}`;
+  }
+  return `${Math.round(beats)}/4`;
 }
 
 /**
@@ -1379,7 +1476,7 @@ function effectiveProps(
 /**
  * Compile a document (which is itself a track) into flat per-track timelines.
  */
-export function compileDoc(doc: SongDoc): CompiledSong {
+export function compileDoc(doc: SongDoc, options: CompileOptions = {}): CompiledSong {
   if (!doc || typeof doc !== 'object') {
     throw new Error('Score must be a mapping with a "play:", "sections:" or "tracks:" key.');
   }
@@ -1407,8 +1504,8 @@ export function compileDoc(doc: SongDoc): CompiledSong {
     const { props, opening } = node === doc ? root : effectiveProps(node, inherited);
 
     if (node.play != null) {
-      const { timeline, controls, tempos, lengthBeats: trackBeats, warnings: trackWarnings } =
-        parsePlayFull(node.play, props, opening);
+      const { timeline, controls, tempos, lengthBeats: trackBeats, warnings: trackWarnings, bars } =
+        parsePlayFull(node.play, props, opening, options);
       for (const w of trackWarnings) {
         const tagged = `${name}: ${w}`;
         if (!warnings.includes(tagged)) warnings.push(tagged);
@@ -1432,6 +1529,7 @@ export function compileDoc(doc: SongDoc): CompiledSong {
         timeline,
         controls: [...opening, ...controls],
       });
+      if (bars) tracks[tracks.length - 1].bars = bars;
     }
 
     if (node.tracks && typeof node.tracks === 'object') {

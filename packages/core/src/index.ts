@@ -17,3 +17,5 @@ export * from './vpoCatalogue';
 export * from './vpo';
 export * from './schedule';
 export * from './notate';
+export * from './notation';
+export * from './musicxml';
