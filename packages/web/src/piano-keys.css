@@ -1,0 +1,101 @@
+/*
+ * piano-keys.css — the keyboard under the falling notes, in CSS 3D.
+ *
+ * The plane of keys is tilted about its far edge, which is the strike line:
+ * that edge keeps the exact width of the canvas above, so a note lands on its
+ * key at any width. Only the near edge grows, a few percent, with the
+ * perspective. A key is a flat top face plus a front face that hangs below the
+ * near edge; black keys are the same parts lifted by translateZ.
+ */
+.pk-stage {
+  position: relative;
+  flex: none;
+  height: var(--pk-h);
+  overflow: hidden;
+  perspective: 900px;
+  perspective-origin: 50% -40%;
+  background: #05060a;
+}
+.pk-plane {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: var(--pk-plane-h);
+  transform-origin: 50% 0;
+  transform: rotateX(32deg);
+  transform-style: preserve-3d;
+}
+.pk-key {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  transform-style: preserve-3d;
+  transform-origin: 50% 0;
+  transition: transform 140ms ease-out;
+  --hue: 265;
+}
+.pk-key.down {
+  transition-duration: 45ms;
+  transform: translateZ(calc(var(--pk-depth) * -0.5)) rotateX(-4deg);
+}
+.pk-black {
+  bottom: 38%;
+  transform: translateZ(var(--pk-lift));
+  z-index: 2;
+}
+.pk-black.down {
+  transform: translateZ(calc(var(--pk-lift) - var(--pk-depth) * 0.45)) rotateX(-3deg);
+}
+.pk-top,
+.pk-front {
+  position: absolute;
+  left: 0;
+  right: 0;
+  transition: background-color 140ms ease-out, box-shadow 140ms ease-out;
+}
+.pk-top {
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(to bottom, #dcdce3, #f4f4f8 70%, #ffffff);
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.45);
+  border-radius: 0 0 3px 3px;
+}
+.pk-front {
+  top: 100%;
+  height: var(--pk-depth);
+  transform-origin: 50% 0;
+  transform: rotateX(-90deg);
+  background: linear-gradient(to bottom, #c9c9d2, #8e8e9a);
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.45);
+}
+.pk-black > .pk-top {
+  background: linear-gradient(to bottom, #2a2b34, #15161c 80%, #0c0d11);
+  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.08), 2px 6px 6px rgba(0, 0, 0, 0.5);
+}
+.pk-black > .pk-front {
+  height: var(--pk-lift);
+  background: linear-gradient(to bottom, #3a3b46, #08090c);
+  box-shadow: none;
+}
+.pk-key.down > .pk-top,
+.pk-key.down > .pk-front {
+  transition-duration: 45ms;
+}
+.pk-key.down > .pk-top {
+  background: linear-gradient(to bottom, hsl(var(--hue) 80% 58%), hsl(var(--hue) 85% 72%));
+}
+.pk-key.down > .pk-front {
+  background: linear-gradient(to bottom, hsl(var(--hue) 70% 48%), hsl(var(--hue) 70% 36%));
+}
+.pk-black.down > .pk-top {
+  background: linear-gradient(to bottom, hsl(var(--hue) 70% 40%), hsl(var(--hue) 75% 52%));
+}
+.pk-black.down > .pk-front {
+  background: linear-gradient(to bottom, hsl(var(--hue) 65% 34%), hsl(var(--hue) 65% 24%));
+}
+@media (prefers-reduced-motion: reduce) {
+  .pk-key,
+  .pk-top,
+  .pk-front {
+    transition: none;
+  }
+}

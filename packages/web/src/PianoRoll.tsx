@@ -6,11 +6,14 @@
  * Synthesia and every game descended from it draws music — which is the one
  * visualisation most people can already read without being taught.
  *
- * Drawn on a canvas rather than as DOM nodes: a busy score is thousands of
- * rectangles moving every frame, and that is a repaint, not a reconciliation.
+ * The notes are drawn on a canvas rather than as DOM nodes: a busy score is
+ * thousands of rectangles moving every frame, and that is a repaint, not a
+ * reconciliation. The keyboard is the opposite case, about eighty nodes that
+ * change rarely, so it is DOM with CSS 3D (PianoKeys.tsx).
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { CompiledSong } from '@play.yaml/core';
+import PianoKeys, { isBlack, type KeysApi } from './PianoKeys';
 
 interface Props {
   song: CompiledSong | null;
@@ -21,20 +24,36 @@ interface Props {
 /** Beats of music visible above the keyboard. */
 const LOOK_AHEAD = 8;
 
-/** Which semitones are black keys, indexed by pitch class. */
-const BLACK = [false, true, false, true, false, false, true, false, true, false, true, false];
-
 /**
  * One colour per track, walked in order. Chosen to stay distinct on a dark
  * background and to survive being drawn small — a track is identified by hue
  * alone, so the hues are spaced rather than pretty.
  */
 const TRACK_HUES = [265, 190, 42, 330, 150, 15, 220, 95];
-const KEY_DOWN_HUE = TRACK_HUES[0];
+
+/**
+ * The pitch span the roll and the keyboard share: the score's own range,
+ * padded a couple of semitones so the outermost notes are not flush against
+ * the edge. One owner, so the canvas columns and the keys cannot disagree.
+ */
+function pitchRange(song: CompiledSong | null): { lo: number; hi: number } {
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (const t of song?.tracks ?? []) {
+    for (const n of t.timeline) {
+      if (n.midi < lo) lo = n.midi;
+      if (n.midi > hi) hi = n.midi;
+    }
+  }
+  if (lo > hi) return { lo: 48, hi: 84 };
+  return { lo: Math.max(0, lo - 2), hi: Math.min(127, hi + 2) };
+}
 
 export default function PianoRoll({ song, currentBeat }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const keysRef = useRef<KeysApi | null>(null);
+  const { lo, hi } = useMemo(() => pitchRange(song), [song]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -62,6 +81,7 @@ export default function PianoRoll({ song, currentBeat }: Props) {
       const tracks = song?.tracks ?? [];
       const notes = tracks.flatMap((t, i) => t.timeline.map((n) => ({ ...n, track: i })));
       if (!notes.length) {
+        keysRef.current?.press(new Map());
         ctx.fillStyle = 'rgba(255,255,255,0.28)';
         ctx.font = '13px ui-sans-serif, system-ui, sans-serif';
         ctx.textAlign = 'center';
@@ -69,38 +89,17 @@ export default function PianoRoll({ song, currentBeat }: Props) {
         return;
       }
 
-      // Pitch span: the score's own range, padded to a couple of semitones so
-      // the outermost notes are not flush against the edge.
-      let lo = Infinity;
-      let hi = -Infinity;
-      for (const n of notes) {
-        if (n.midi < lo) lo = n.midi;
-        if (n.midi > hi) hi = n.midi;
-      }
-      lo = Math.max(0, lo - 2);
-      hi = Math.min(127, hi + 2);
       const span = Math.max(1, hi - lo + 1);
       const keyW = w / span;
 
-      const keyboardH = Math.min(72, Math.max(40, h * 0.16));
-      const rollH = h - keyboardH;
+      const rollH = h;
       const pxPerBeat = rollH / LOOK_AHEAD;
       const xOf = (midi: number) => (midi - lo) * keyW;
-
-      // ── the keyboard ────────────────────────────────────────────────────
-      for (let m = lo; m <= hi; m++) {
-        const black = BLACK[((m % 12) + 12) % 12];
-        ctx.fillStyle = black ? '#15161c' : '#e9e9ee';
-        ctx.fillRect(xOf(m), rollH, keyW, keyboardH);
-        ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(xOf(m) + 0.5, rollH + 0.5, keyW - 1, keyboardH - 1);
-      }
 
       // Lane shading: the black-key columns, so pitch is readable while notes
       // are in flight rather than only when they land.
       for (let m = lo; m <= hi; m++) {
-        if (!BLACK[((m % 12) + 12) % 12]) continue;
+        if (!isBlack(m)) continue;
         ctx.fillStyle = 'rgba(255,255,255,0.035)';
         ctx.fillRect(xOf(m), 0, keyW, rollH);
       }
@@ -121,7 +120,7 @@ export default function PianoRoll({ song, currentBeat }: Props) {
       }
 
       // ── the notes ───────────────────────────────────────────────────────
-      const sounding: number[] = [];
+      const sounding = new Map<number, number>();
       for (const n of notes) {
         const end = n.time + n.duration;
         if (end < currentBeat - 0.5 || n.time > currentBeat + LOOK_AHEAD) continue;
@@ -130,7 +129,7 @@ export default function PianoRoll({ song, currentBeat }: Props) {
         const height = Math.max(2, bottom - top);
         const hue = TRACK_HUES[n.track % TRACK_HUES.length];
         const live = n.time <= currentBeat && end > currentBeat;
-        if (live) sounding.push(n.midi);
+        if (live) sounding.set(n.midi, hue);
         // A note being played is lit; one still falling is dimmer, and the
         // dimming follows velocity so a phrase's shape is visible before it
         // arrives rather than only when it sounds.
@@ -149,13 +148,7 @@ export default function PianoRoll({ song, currentBeat }: Props) {
         }
       }
 
-      // ── keys that are down ──────────────────────────────────────────────
-      for (const m of sounding) {
-        if (m < lo || m > hi) continue;
-        const black = BLACK[((m % 12) + 12) % 12];
-        ctx.fillStyle = black ? `hsl(${KEY_DOWN_HUE} 70% 52%)` : `hsl(${KEY_DOWN_HUE} 80% 68%)`;
-        ctx.fillRect(xOf(m), rollH, keyW, keyboardH);
-      }
+      keysRef.current?.press(sounding);
 
       // The strike line: where a note becomes a sound.
       ctx.strokeStyle = 'rgba(255,255,255,0.5)';
@@ -170,11 +163,16 @@ export default function PianoRoll({ song, currentBeat }: Props) {
     const observer = new ResizeObserver(draw);
     observer.observe(wrap);
     return () => observer.disconnect();
-  }, [song, currentBeat]);
+  }, [song, currentBeat, lo, hi]);
 
   return (
-    <div ref={wrapRef} className="relative h-full w-full overflow-hidden bg-[#0b0c10]">
-      <canvas ref={canvasRef} className="block h-full w-full" />
+    <div className="flex h-full w-full flex-col overflow-hidden bg-[#0b0c10]">
+      {/* The canvas takes whatever height the keyboard leaves, so the strike
+          line is always exactly where the keys begin. */}
+      <div ref={wrapRef} className="relative min-h-0 flex-1">
+        <canvas ref={canvasRef} className="absolute inset-0 block h-full w-full" />
+      </div>
+      <PianoKeys lo={lo} hi={hi} apiRef={keysRef} />
     </div>
   );
 }
