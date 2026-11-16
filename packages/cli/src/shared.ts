@@ -4,13 +4,18 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { compileDoc, parseYaml, type CompiledSong } from '@play.yaml/core';
+import { compileDoc, parseYaml, type CompiledSong, type SongDoc } from '@play.yaml/core';
+
+/** Read a `.play.yaml` (or `.json`) score as a document, uncompiled. */
+export function loadDoc(file: string): SongDoc {
+  const resolved = path.resolve(process.cwd(), file);
+  const text = fs.readFileSync(resolved, 'utf8');
+  return /\.ya?ml$/i.test(file) ? parseYaml(text) : JSON.parse(text);
+}
 
 /** Read and compile a `.play.yaml` (or `.json`) score; compileDoc rejects a document with nothing to play. */
 export function loadScore(file: string): CompiledSong {
-  const resolved = path.resolve(process.cwd(), file);
-  const text = fs.readFileSync(resolved, 'utf8');
-  return compileDoc(/\.ya?ml$/i.test(file) ? parseYaml(text) : JSON.parse(text));
+  return compileDoc(loadDoc(file));
 }
 
 /** One flag: its spellings and what it stores. */
