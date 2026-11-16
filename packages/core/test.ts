@@ -2256,6 +2256,7 @@ check('a drum bar is unpitched on a percussion clef, with x heads for hats', () 
   const xml = encodeMusicXml(score);
   assert.ok(xml.includes('<sign>percussion</sign>') && xml.includes('<unpitched>') && xml.includes('<notehead>x</notehead>'));
   assert.ok(xml.includes('<midi-unpitched>37</midi-unpitched>'), 'MusicXML counts GM keys from 1');
+  assert.deepStrictEqual([...new Set(firstVoice(score, 0).map((e) => e.stem))], ['up'], 'a one-voice kit has every stem up');
 });
 check('an empty measure is one whole-measure rest, whatever the meter', () => {
   const score = scoreFromDoc({ measure: '3/4', play: ['c d e', '~', 'f g a'] });
@@ -2281,7 +2282,7 @@ check('MusicXML: header, element order and backups', () => {
   assert.ok(xml.includes('<score-partwise version="4.0">'));
   assert.ok(/<backup>\s*<duration>10080<\/duration>/.test(xml), 'the second voice backs up a whole measure');
   const notes = xml.match(/<note>[\s\S]*?<\/note>/g)!;
-  const order = ['chord', 'pitch', 'rest', 'duration', 'tie', 'voice', 'type', 'dot', 'accidental', 'time-modification', 'staff', 'notations'];
+  const order = ['chord', 'pitch', 'rest', 'duration', 'tie', 'voice', 'type', 'dot', 'accidental', 'time-modification', 'stem', 'notehead', 'staff', 'beam', 'notations'];
   for (const note of notes) {
     const tags = [...note.matchAll(/^ {8}<([a-z-]+)/gm)].map((m) => order.indexOf(m[1]));
     assert.ok(tags.length >= 3 && !tags.includes(-1), `unexpected children:\n${note}`);
@@ -2289,6 +2290,42 @@ check('MusicXML: header, element order and backups', () => {
   }
   assert.ok(xml.includes('<time-modification>') && xml.includes('<tuplet type="start" bracket="yes"/>'));
   assert.ok(xml.includes('<tie type="start"/>') && xml.includes('<tied type="stop"/>'));
+});
+const beamsOf = (events: NotationEvent[]) => events.map((e) => (e.beams ?? []).join('+') || '-');
+check('beams: four eighths in 2/4 pair by beat; in 4/4 a half bar of eighths is one group', () => {
+  assert.deepStrictEqual(beamsOf(firstVoice(scoreFromDoc({ measure: '2/4', play: ['{c d} {e f}'] }), 0)),
+    ['begin', 'end', 'begin', 'end']);
+  assert.deepStrictEqual(beamsOf(firstVoice(scoreFromDoc({ play: ['{c d} {e f} {g a} b'] }), 0)),
+    ['begin', 'continue', 'continue', 'end', 'begin', 'end', '-']);
+});
+check('beams: 16ths group per beat, with a second beam', () => {
+  const events = firstVoice(scoreFromDoc({ play: ['{c d e f} {g a b c5} c5 ~'] }), 0);
+  assert.deepStrictEqual(beamsOf(events).slice(0, 8), [
+    'begin+begin', 'continue+continue', 'continue+continue', 'end+end',
+    'begin+begin', 'continue+continue', 'continue+continue', 'end+end',
+  ]);
+  assert.deepStrictEqual(beamsOf(events).slice(8), ['-', '-']);
+});
+check('beams: a dotted eighth and 16th hook back; a 16th and dotted eighth hook forward', () => {
+  const events = firstVoice(scoreFromDoc({ play: ['{c _ _ d} {e f _ _} g ~'] }), 0);
+  assert.deepStrictEqual(beamsOf(events).slice(0, 4), ['begin', 'end+backward hook', 'begin+forward hook', 'end']);
+});
+check('beams: a rest breaks the beam, and a lone eighth keeps its flag', () => {
+  const events = firstVoice(scoreFromDoc({ play: ['{c d ~ e} {f ~} g a'] }), 0);
+  assert.deepStrictEqual(beamsOf(events), ['begin+begin', 'end+end', '-', '-', '-', '-', '-', '-']);
+});
+check('beams: a triplet is beamed as its own group', () => {
+  const events = firstVoice(scoreFromDoc({ play: ['{c d e} {f g} a b'] }), 0);
+  assert.deepStrictEqual(beamsOf(events), ['begin', 'continue', 'end', 'begin', 'end', '-', '-']);
+});
+check('beams: 6/8 groups of three eighths; drums beam the same way', () => {
+  const events = firstVoice(scoreFromDoc({ measure: '6/8', play: ['c d e f g a'] }), 0);
+  assert.deepStrictEqual(beamsOf(events), ['begin', 'continue', 'end', 'begin', 'continue', 'end']);
+  const drums = firstVoice(scoreFromDoc({ kit: 'acoustic', play: ['{hh hh} {hh hh} {hh hh} {hh hh}'] }), 0);
+  assert.deepStrictEqual(beamsOf(drums), ['begin', 'continue', 'continue', 'end', 'begin', 'continue', 'continue', 'end']);
+  const xml = encodeMusicXml(scoreFromDoc({ measure: '6/8', play: ['[c e] d e f g a'] }));
+  assert.ok(/<beam number="1">begin<\/beam>/.test(xml));
+  assert.strictEqual((xml.match(/<beam number="1">begin<\/beam>/g) ?? []).length, 2, 'a chord carries its beam once');
 });
 check('the MusicXML encoder is deterministic', () => {
   const text = fs.readFileSync(path.join(__dirname, '../../examples/drum-lab.play.yaml'), 'utf8');

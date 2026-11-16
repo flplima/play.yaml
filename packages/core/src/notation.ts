@@ -62,6 +62,9 @@ export interface SpelledPitch {
 
 export type Notehead = 'normal' | 'x' | 'circle-x' | 'diamond' | 'triangle';
 
+/** One beam line at one note, as MusicXML spells it. */
+export type BeamValue = 'begin' | 'continue' | 'end' | 'forward hook' | 'backward hook';
+
 /** Where a drum sits on the percussion staff, and what it looks like there. */
 export interface DrumDisplay {
   step: Step;
@@ -111,6 +114,18 @@ export interface NotationEvent {
   tuplet?: TupletMark;
   /** Tremolo strokes for a drum roll (`sd~` = 3). */
   tremolo?: number;
+  /**
+   * Beams through this note or chord: `[0]` is the eighth beam, `[1]` the
+   * 16th, and so on. Absent on rests, unbeamed notes and lone flags.
+   */
+  beams?: BeamValue[];
+  /**
+   * A fixed stem direction. Only percussion sets it: a drum part reads with
+   * every stem up (feet down when a second voice holds them), while a
+   * renderer left to itself flips stems by staff position, kick up and snare
+   * down in the same groove.
+   */
+  stem?: 'up' | 'down';
 }
 
 export interface NotationVoice {
@@ -600,6 +615,7 @@ function buildVoiceEvents(
   segments: Segment[],
   length: number,
   { levels, beatLevel }: { levels: number[]; beatLevel: number },
+  time: NotationTime,
   T: number,
   warn: (message: string) => void,
 ): NotationEvent[] {
@@ -675,7 +691,123 @@ function buildVoiceEvents(
       inside[inside.length - 1].tuplet!.stop = true;
     }
   }
+  beamVoice(events, beamGroups(time, length, T, groups), time, T);
   return events;
+}
+
+// ---------------------------------------------------------------------------
+// Beams
+// ---------------------------------------------------------------------------
+
+/** How many beams a written value carries: eighth 1, 16th 2, 32nd 3... */
+function beamCount(type: NoteType | undefined): number {
+  const index = type ? NOTE_TYPES.indexOf(type) : -1;
+  return index >= 3 ? index - 2 : 0;
+}
+
+/**
+ * Where beams may run in a measure, as [start, end) spans in ticks. Beams
+ * show the beat: a quarter in simple meters (also in 2/2, where 16ths still
+ * group by quarters), a dotted quarter in 6/8, 9/8 and 12/8, and the usual
+ * 3+2 and 2+2+3 eighths in 5/8 and 7/8. A tuplet is its own span, so its
+ * bracket and its beam agree.
+ */
+function beamGroups(time: NotationTime, length: number, T: number, tuplets: TupletGroup[]): [number, number][] {
+  const eighth = T / 2;
+  let sizes: number[];
+  if (isCompound(time) && time.beatType === 8) {
+    sizes = [3 * eighth];
+  } else if (time.beatType === 8) {
+    const n = time.beats;
+    const counts = n === 5 ? [3, 2] : n === 7 ? [2, 2, 3] : n % 2 === 0 ? Array(n / 2).fill(2)
+      : [...Array((n - 3) / 2).fill(2), 3];
+    sizes = counts.map((c) => c * eighth);
+  } else {
+    sizes = [T];
+  }
+  const base: [number, number][] = [];
+  for (let at = 0, i = 0; at < length; i++) {
+    const size = sizes[Math.min(i, sizes.length - 1)] ?? T;
+    base.push([at, Math.min(length, at + size)]);
+    at += size;
+  }
+  // Tuplet spans replace whatever base spans they cover.
+  const out: [number, number][] = [];
+  for (const [s0, e0] of base) {
+    let cursor = s0;
+    for (const g of tuplets) {
+      if (g.end <= cursor || g.start >= e0) continue;
+      if (g.start > cursor) out.push([cursor, g.start]);
+      cursor = Math.max(cursor, g.end);
+    }
+    if (cursor < e0) out.push([cursor, e0]);
+  }
+  for (const g of tuplets) out.push([g.start, g.end]);
+  const unique = new Map(out.map((span) => [`${span[0]}:${span[1]}`, span]));
+  return [...unique.values()].sort((a, b) => a[0] - b[0] || b[1] - a[1]);
+}
+
+/**
+ * Beam a voice of one measure. Notes shorter than a quarter that fall in
+ * the same beam span are joined; a rest or a longer note breaks the run, and
+ * a run of one keeps its flag. In 4/4 and in half-note meters, a half bar of
+ * nothing but plain eighths is beamed as one group of four, as engravers do.
+ */
+function beamVoice(events: NotationEvent[], spans: [number, number][], time: NotationTime, T: number): void {
+  const beamable = (e: NotationEvent) => e.kind === 'note' && beamCount(e.type) > 0;
+  const runs: NotationEvent[][] = [];
+  const used = new Set<NotationEvent>();
+  const halfBars = time.beatType === 2 || (time.beats === 4 && time.beatType === 4);
+  if (halfBars) {
+    const length = events.reduce((sum, e) => sum + e.duration, 0);
+    for (let h = 0; h + 2 * T <= length; h += 2 * T) {
+      const inside = events.filter((e) => e.offset >= h && e.offset < h + 2 * T);
+      const plainEighths = inside.length === 4 && inside.every((e) =>
+        e.kind === 'note' && e.type === 'eighth' && e.dots === 0 && !e.tuplet && e.duration === T / 2);
+      if (plainEighths) {
+        runs.push(inside);
+        inside.forEach((e) => used.add(e));
+      }
+    }
+  }
+  for (const [start, end] of spans) {
+    let run: NotationEvent[] = [];
+    for (const e of events) {
+      if (e.offset < start || e.offset >= end || used.has(e)) continue;
+      if (beamable(e) && e.offset + e.duration <= end) {
+        run.push(e);
+        used.add(e);
+      } else {
+        runs.push(run);
+        run = [];
+      }
+    }
+    runs.push(run);
+  }
+  for (const run of runs) {
+    if (run.length < 2) continue;
+    const depth = Math.max(...run.map((e) => beamCount(e.type)));
+    for (const e of run) e.beams = [];
+    for (let level = 1; level <= depth; level++) {
+      for (let i = 0; i < run.length; i++) {
+        const e = run[i];
+        if (beamCount(e.type) < level) continue;
+        const prev = i > 0 && beamCount(run[i - 1].type) >= level;
+        const next = i < run.length - 1 && beamCount(run[i + 1].type) >= level;
+        let value: BeamValue;
+        if (prev && next) value = 'continue';
+        else if (next) value = 'begin';
+        else if (prev) value = 'end';
+        // A lone shorter value hooks toward the note it shares its half of
+        // the beat with: a dotted eighth and 16th hooks back, a 16th and
+        // dotted eighth hooks forward.
+        else if (i === 0) value = 'forward hook';
+        else if (i === run.length - 1) value = 'backward hook';
+        else value = (e.offset - run[0].offset) % (2 * e.duration) === 0 ? 'forward hook' : 'backward hook';
+        e.beams![level - 1] = value;
+      }
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -973,7 +1105,7 @@ function buildPart(track: CompiledTrack, index: number, isRoot: boolean, env: Pa
             });
           }
           for (const seg of segments) seg.midis.sort((a, b) => a - b);
-          voice.events = buildVoiceEvents(segments, measure.length, levels, T, (msg) => partWarn(mi, msg));
+          voice.events = buildVoiceEvents(segments, measure.length, levels, measure.time, T, (msg) => partWarn(mi, msg));
         }
         voices.push(voice);
       });
@@ -996,6 +1128,7 @@ function buildPart(track: CompiledTrack, index: number, isRoot: boolean, env: Pa
         }
         n.drum = { step, octave, notehead, instrument: instrumentId };
       }
+      for (const v of voices) for (const e of v.events) if (e.kind === 'note') e.stem = v.voice === 1 ? 'up' : 'down';
     } else {
       const table = spellingTable(key, /^[a-gA-G]b/.test(scale.trim()));
       for (let st = 1; st <= staves; st++) spellStaff(voices.filter((v) => v.staff === st), key, table);
