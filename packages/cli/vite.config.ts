@@ -9,6 +9,6 @@ export default libConfig({
     fidelity: 'src/fidelity.ts',
     'import-midi': 'src/import-midi.ts',
   },
-  external: ['fs', 'path', '@play.yaml/node-audio', '@play.yaml/core', 'easymidi'],
+  external: ['fs', 'path', '@play.yaml/node-audio', '@play.yaml/core', 'easymidi', 'opensheetmusicdisplay', 'jsdom', 'pdfkit', 'svg-to-pdfkit'],
   executables: ['cli', 'export', 'fidelity', 'import-midi'],
 });
