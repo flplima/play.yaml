@@ -118,7 +118,7 @@ form, no .mid focus); ABC has the corpus and engraving but not multi-track
 production; beats had YAML sections but only drums.
 
 **What others do better:**
-- *Engraving*: LilyPond/ABC render real notation; we render none.
+- *Engraving*: LilyPond/ABC render full notation. We print the notes and rhythm (through MusicXML and OpenSheetMusicDisplay), with no dynamics, slurs or repeat signs yet.
 - *Liveness*: Sonic Pi/Strudel/Melrose hot-swap code while playing; we stop
   and restart.
 - *Pattern algebra*: Tidal's transforms (alternation, euclid, probability,
@@ -156,7 +156,7 @@ production; beats had YAML sections but only drums.
    grid — our drum groove currently plays machine-exact. *Shipped 2026-07-28
    (`humanize:` prop/clause, seeded and compile-time; swing stays notated as
    triplet groups).*
-6. **Score preview** (abcjs): render the compiled timeline as simple SVG
+6. **Score preview** (abcjs), *shipped as the studio's Score tab and the PDF export*: render the compiled timeline as simple SVG
    notation (or export ABC/LilyPond for engraving) with abcjs's
    score-following cursor idea. We already have token highlighting; engraved
    preview is the complement, and ABC export is a low-cost first step.

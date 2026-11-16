@@ -71,9 +71,9 @@ The core parses the YAML and compiles it to a timeline of notes, control changes
    └───────────┘   └───────────┘
 ```
 
-Both play the score with the built-in sounds, export a `.mid` file, or send live MIDI to your instruments.
+Both play the score with the built-in sounds, export a `.mid` file, or send live MIDI to your instruments. Both also print it as sheet music, in a PDF.
 
-The studio is an editor that plays what you write. Edit while it plays, and the change lands on the next bar. The share button puts the whole score in the link, so there is no server and nothing is uploaded.
+The studio is an editor that plays what you write. Edit while it plays, and the change lands on the next bar. The Score tab shows the same music as sheet music, and follows the playback. The share button puts the whole score in the link, so there is no server and nothing is uploaded.
 
 ## try it
 
@@ -87,6 +87,9 @@ npm run build
 
 # write a .mid file
 node packages/cli/dist/export.js --input examples/twinkle.play.yaml --output twinkle.mid
+
+# or print it as sheet music
+node packages/cli/dist/export.js --input examples/twinkle.play.yaml --output twinkle.pdf
 
 # or play it on your speakers (mind the volume)
 node packages/cli/dist/cli.js examples/twinkle.play.yaml
@@ -113,10 +116,10 @@ play.yaml borrows from the tools that came before it. Live editing on the bar li
 | plays on | synths, a sampled orchestra, your MIDI gear | General MIDI sounds | synths, samples, your MIDI gear | synths, samples, your MIDI gear | nothing, it writes files |
 | exports a MIDI file | ✓ | ✓ | ✗ | ✗ | ✓ |
 | imports a MIDI file | ✓ | ✗ (MusicXML) | ✗ | ✗ | ✓ |
-| prints sheet music | ✗ | ✗ | ✗ | ✗ | ✓ |
+| prints sheet music | ✓ (notes and rhythm, no dynamics or slurs yet) | ✗ | ✗ | ✗ | ✓ |
 | license | MIT | EPL-2.0 | AGPL-3.0 | MIT | GPL-3.0 |
 
-So, if you want to print a score, use LilyPond. If you want to improvise on stage, use Strudel. If you want a whole piece in a text file that plays back with expression, try play.yaml.
+So, if you want the best-looking printed score, use LilyPond. If you want to improvise on stage, use Strudel. If you want a whole piece in a text file that plays back with expression, try play.yaml.
 
 ### AI music tools
 
