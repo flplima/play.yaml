@@ -3,8 +3,9 @@
  * and ES output side by side, unminified, Node as the target, declarations
  * from `src/`.
  */
-import { resolve } from 'path';
-import { defineConfig, type UserConfig } from 'vite';
+import { chmodSync } from 'fs';
+import { join, resolve } from 'path';
+import { defineConfig, type Plugin, type UserConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 
 export interface LibOptions {
@@ -40,6 +41,23 @@ export function libConfig(opts: LibOptions): UserConfig {
       target: 'node18',
       minify: false,
     },
-    plugins: opts.declarations ? [dts({ rollupTypes: false, entryRoot: 'src', include: ['src'] })] : [],
+    plugins: [
+      ...(opts.declarations ? [dts({ rollupTypes: false, entryRoot: 'src', include: ['src'] })] : []),
+      executable(opts.executables ?? []),
+    ],
   });
+}
+
+/** vite empties `dist/` on every build, so the new files lose the execute bit. */
+function executable(names: string[]): Plugin {
+  return {
+    name: 'play-yaml-executable',
+    writeBundle(options, bundle) {
+      for (const chunk of Object.values(bundle)) {
+        if (chunk.type === 'chunk' && names.includes(chunk.name)) {
+          chmodSync(join(options.dir!, chunk.fileName), 0o755);
+        }
+      }
+    },
+  };
 }
