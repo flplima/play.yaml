@@ -149,6 +149,12 @@
     "lengthBeats": 228,
     "sha256": "6d78031dcb90fa57895cbf724eef2d2d9cda1b0653d3747ca2731f1f2870c670"
   },
+  "songs/ravel-bolero/ravel-bolero.play.yaml": {
+    "tracks": 32,
+    "notes": 35980,
+    "lengthBeats": 1020,
+    "sha256": "7d035fb14292709c01f1383c04776eba755b12b774d2f2b69c6de04eeee83042"
+  },
   "songs/satie-gymnopedie-no-1/satie-gymnopedie-no-1.play.yaml": {
     "tracks": 4,
     "notes": 455,

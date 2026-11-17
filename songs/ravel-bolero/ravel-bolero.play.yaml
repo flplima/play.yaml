@@ -1,0 +1,2093 @@
+# Maurice Ravel: Boléro (1928), reduced orchestration
+# Public domain: Ravel died in 1937 and the Benois heirs' co-author claim was
+# rejected in 2024, so the work is free in France since 2016; it was published
+# in 1929, so it is free in the US since 2025.
+#
+# Source: the Durand full score (plate D. & F. 11 839, engraved 1929), read
+# through Nicolas Sceaux's CC0 LilyPond edition of it (github.com/nsceaux/Ravel_Bolero)
+# and checked by eye against a scan of the Durand plates. Every note below is one
+# of Ravel's, at concert pitch. The reduction keeps the snare drum, the harp, the
+# whole string section and, in each section, the instruments that carry the
+# theme or the rhythm figure; it drops the wind and brass doublings. See README.md.
+#
+# Form: 340 bars of 3/4 at quarter = 72. A 4-bar opening, then theme A (16 bars)
+# and theme B (16 bars) passed from instrument to instrument, two of each in
+# turn: 18 statements in all, one per rehearsal number, each over the same
+# two-bar ostinato. At 18 the music turns to E major for 8 bars, back to C, and
+# collapses.
+
+title: "Boléro"
+composer: "Maurice Ravel"
+key: c major
+tempo: 72
+tempo text: Tempo di Bolero, moderato assai
+measure: 3/4
+
+# A track ending in -2 holds a second line of the same instrument: a divisi,
+# a second player, or a held note under a moving one.
+tracks:
+  snare: { kit: acoustic }
+  snare-2: { kit: acoustic }
+  harp: { preset: harp, channel: 5 }
+  violins-1: { preset: violins, channel: 1, controls: { playmode: 20 } }
+  violins-1-2: { preset: violins, channel: 1, controls: { playmode: 20 } }
+  violins-2: { preset: violins, channel: 1, controls: { playmode: 20 } }
+  violins-2-2: { preset: violins, channel: 1, controls: { playmode: 20 } }
+  violas: { preset: violas, channel: 2, controls: { playmode: 20 } }
+  violas-2: { preset: violas, channel: 2, controls: { playmode: 20 } }
+  cellos: { preset: cellos, channel: 3, controls: { playmode: 20 } }
+  cellos-2: { preset: cellos, channel: 3, controls: { playmode: 20 } }
+  basses: { preset: basses, channel: 4, controls: { playmode: 20 } }
+  flute: { preset: flute, channel: 6 }
+  clarinet: { preset: clarinet, channel: 11 }
+  clarinet-2: { preset: clarinet, channel: 11 }
+  bassoon: { preset: bassoon, channel: 12 }
+  bassoon-2: { preset: bassoon, channel: 12 }
+  oboe: { preset: oboe, channel: 8 }
+  oboe-2: { preset: oboe, channel: 8 }
+  english-horn: { preset: english-horn, channel: 9 }
+  trumpet: { preset: trumpet, channel: 13 }
+  trumpet-2: { preset: trumpet, channel: 13 }
+  horn: { preset: horn, channel: 14 }
+  horn-2: { preset: horn, channel: 14 }
+  tenor-sax: { preset: bass-clarinet, channel: 11 }
+  soprano-sax: { preset: clarinet, channel: 11 }
+  celesta: { preset: celesta, channel: 16 }
+  piccolo: { preset: piccolo, channel: 7 }
+  trombone: { preset: trombone, channel: 15 }
+  trombone-2: { preset: trombone, channel: 15 }
+  percussion: { kit: acoustic }
+  percussion-2: { kit: acoustic }
+
+sections:
+  # bars 1-20: snare and pizzicato alone, then theme A on the flute (bar 5)
+  opening:
+    loop: false
+    snare:
+      play:
+        - "pianissimo"
+        - 10x: ["{sd {sd sd sd}} {sd {sd sd sd}} {sd sd}", "{sd {sd sd sd}} {sd {sd sd sd}} {sd sd sd sd sd sd}"]
+    violas:
+      play:
+        - "pianissimo, pizzicato"
+        - 20x: "g3 [g3 g4] ~"
+    cellos:
+      play:
+        - "pianissimo, pizzicato"
+        - 10x: ["c3 ~ [g2 g3]", "c3 ~ {[g2 g3] g3}"]
+    flute:
+      wait: 4
+      play:
+        - "pianissimo"
+        - "c5 {_ _ b4 c5} {d5 c5 b4 a4}"
+        - "{c5 _ c5 a4} c5 {_ _ b4 c5}"
+        - "{a4 g4 e4 f4} g4 _"
+        - "{_ f4 e4 d4} {e4 f4 g4 a4} g4"
+        - "_ {_ a4 b4 a4} {g4 f4 e4 d4}"
+        - "{e4 d4 c4 _} {_ _ c4 d4} {e4 f4}"
+        - "d4 g4 _"
+        - "_ _ {_ ~}"
+        - "d5 {_ _ _ c5} {b4 a4 b4 c5}"
+        - "{d5 c5 b4 _} {_ c5 b4 a4} {c5 b4 a4 f4}"
+        - "{_ _ f4 f4} {f4 a4} {c5 a4 b4 g4}"
+        - "{f4 _ f4 f4} {f4 a4} {b4 g4 a4 f4}"
+        - "{d4 _ d4 c4} d4 {_ _ d4 d4}"
+        - "{d4 f4} {a4 f4 g4 e4} {d4 _ d4 c4}"
+        - "d4 {_ _ d4 c4} {d4 _ e4 f4}"
+        - "g4 _ {_ f4 e4 d4}"
+
+  # bars 21-38: theme A, clarinet; the second flute takes up the snare rhythm on G
+  r1-clarinet:
+    loop: false
+    snare:
+      play:
+        - 9x: ["{sd {sd sd sd}} {sd {sd sd sd}} {sd sd}", "{sd {sd sd sd}} {sd {sd sd sd}} {sd sd sd sd sd sd}"]
+    violas:
+      play:
+        - 18x: "[c3 g3] [g3 g4] c3"
+    cellos:
+      play:
+        - 9x: ["c3 ~ [g2 g3]", "c3 ~ {[g2 g3] g3}"]
+    flute:
+      play:
+        - "{~ {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4}"
+        - 8x: ["{g4 {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4 g4 g4 g4 g4}", "{g4 {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4}"]
+        - "{g4 {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4 g4 g4 g4 g4}"
+    clarinet:
+      wait: 2
+      play:
+        - "piano"
+        - "c5 {_ _ b4 c5} {d5 c5 b4 a4}"
+        - "{c5 _ c5 a4} c5 {_ _ b4 c5}"
+        - "{a4 g4 e4 f4} g4 _"
+        - "{_ f4 e4 d4} {e4 f4 g4 a4} g4"
+        - "_ {_ a4 b4 a4} {g4 f4 e4 d4}"
+        - "{e4 d4 c4 _} {_ _ c4 d4} {e4 f4}"
+        - "d4 g4 _"
+        - "_ _ {_ ~}"
+        - "d5 {_ _ _ c5} {b4 a4 b4 c5}"
+        - "{d5 c5 b4 _} {_ c5 b4 a4} {c5 b4 a4 f4}"
+        - "{_ _ f4 f4} {f4 a4} {c5 a4 b4 g4}"
+        - "{f4 _ f4 f4} {f4 a4} {b4 g4 a4 f4}"
+        - "{d4 _ d4 c4} d4 {_ _ d4 d4}"
+        - "{d4 f4} {a4 f4 g4 e4} {d4 _ d4 c4}"
+        - "d4 {_ _ d4 c4} {d4 _ e4 f4}"
+        - "g4 _ {_ f4 e4 d4}"
+
+  # bars 39-56: theme B, bassoon high in its range; the harp comes in
+  r2-bassoon:
+    loop: false
+    snare:
+      play:
+        - "piano"
+        - 9x: ["{sd {sd sd sd}} {sd {sd sd sd}} {sd sd}", "{sd {sd sd sd}} {sd {sd sd sd}} {sd sd sd sd sd sd}"]
+    harp:
+      play:
+        - "piano"
+        - 10x: "~ [d3 e3] [c3 d3]"
+        - 2x: "~ [c3 d3] [b2 c3]"
+        - 3x: "~ [d3 e3] [c3 d3]"
+        - "~ [c3 d3] [bb2 c3]"
+        - "~ [bb2 c3] [ab2 c3]"
+        - "~ [ab2 c3] [g2 c3]"
+    violas:
+      play:
+        - "piano"
+        - 18x: "[c3 g3] [g3 g4] c3"
+    cellos:
+      play:
+        - "piano"
+        - 9x: ["c3 ~ [g2 g3]", "c3 ~ {[g2 g3] g3}"]
+    flute:
+      play:
+        - "piano"
+        - "{~ {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4}"
+        - 8x: ["{g4 {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4 g4 g4 g4 g4}", "{g4 {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4}"]
+        - "{g4 {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4 g4 g4 g4 g4}"
+    bassoon:
+      wait: 2
+      play:
+        - "mezzopiano"
+        - "bb4 {_ a4 g4 f4} {bb4 c5 a4 g4}"
+        - "{bb4 _ a4 g4} bb4 {a4 bb4 a4 g4}"
+        - "_ {_ f4 e4 d4} e4"
+        - "_ {~ bb4} {c5 db5}"
+        - "{_ db5} {_ db5} {db5 db5}"
+        - "{db5 db5 db5} {db5 _ c5 bb4} {db5 _ c5 bb4}"
+        - "{db5 c5 bb4 ab4} {g4 f4 e4 _} _"
+        - "_ _ {_ ~}"
+        - "d4 {_ e4} {d4 e4 f4 _}"
+        - "_ {g4 ab4} {f4 g4 e4}"
+        - "{d4 e4 d4 c4} {_ bb3} _"
+        - "{_ c4 bb3 c4} {d4 e4 d4 c4} {d4 c4 bb3 ab3}"
+        - "{bb3 ab3 g3 _} {_ f3} _"
+        - "_ {_ g3 f3 eb3} _"
+        - "_ {f3 eb3 f3 db3} _"
+        - "_ {_ db3 eb3 db3} {f3 eb3 db3 c3}"
+
+  # bars 57-74: theme B, E-flat clarinet (on the clarinet here), an octave up
+  r3-eb-clarinet:
+    loop: false
+    snare:
+      play:
+        - 9x: ["{sd {sd sd sd}} {sd {sd sd sd}} {sd sd}", "{sd {sd sd sd}} {sd {sd sd sd}} {sd sd sd sd sd sd}"]
+    harp:
+      play:
+        - "mezzopiano"
+        - 10x: "~ [c4 d4 e4] [bb3 c4 d4]"
+        - 2x: "~ [c4 d4 f4] [b3 c4 d4]"
+        - 2x: "~ [c4 d4 e4] [bb3 c4 d4]"
+        - "~ [c4 d4 e4] [ab3 c4 d4]"
+        - "~ [ab3 c4 d4] [g3 bb3 c4]"
+        - "~ [g3 bb3 c4] [g3 ab3 c4]"
+        - "~ [g3 ab3 c4] [g3 c4]"
+    violas:
+      play:
+        - 18x: "[c3 g3] [g3 g4] [c3 g3]"
+    cellos:
+      play:
+        - 9x: ["[c2 c3] ~ [g2 g3]", "[c2 c3] ~ {[g2 g3] g3}"]
+    flute:
+      play:
+        - "{~ {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4}"
+        - 8x: ["{g4 {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4 g4 g4 g4 g4}", "{g4 {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4}"]
+        - "{g4 {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4 g4 g4 g4 g4}"
+    clarinet:
+      wait: 2
+      play:
+        - "bb5 {_ a5 g5 f5} {bb5 c6 a5 g5}"
+        - "{bb5 _ a5 g5} bb5 {a5 bb5 a5 g5}"
+        - "_ {_ f5 e5 d5} e5"
+        - "_ {~ bb5} {c6 db6}"
+        - "{_ db6} {_ db6} {db6 db6}"
+        - "{db6 db6 db6} {db6 _ c6 bb5} {db6 _ c6 bb5}"
+        - "{db6 c6 bb5 ab5} {g5 f5 e5 _} _"
+        - "_ _ {_ ~}"
+        - "d5 {_ e5} {d5 e5 f5 _}"
+        - "_ {g5 ab5} {f5 g5 e5}"
+        - "{d5 e5 d5 c5} {_ bb4} _"
+        - "{_ c5 bb4 c5} {d5 e5 d5 c5} {d5 c5 bb4 ab4}"
+        - "{bb4 ab4 g4 _} {_ f4} _"
+        - "_ {_ g4 f4 eb4} _"
+        - "_ {f4 eb4 f4 db4} _"
+        - "_ {_ db4 eb4 db4} {f4 eb4 db4 c4}"
+    bassoon:
+      play:
+        - "_ ~ ~"
+
+  # bars 75-92: theme A, oboe d'amore (on the oboe here); the bassoons take the rhythm
+  r4-oboe-d-amore:
+    loop: false
+    snare:
+      play:
+        - 9x: ["{sd {sd sd sd}} {sd {sd sd sd}} {sd sd}", "{sd {sd sd sd}} {sd {sd sd sd}} {sd sd sd sd sd sd}"]
+    violins-2:
+      play:
+        - "piano, pizzicato"
+        - 7x: "~ [g3 d4 e4 g4] [g3 b3 d4 g4]"
+        - "~ [g3 d4 e4 g4] [g3 b3 e4 g4]"
+        - 9x: "~ [g3 d4 f4 g4] [g3 b3 d4 g4]"
+        - "~ [g3 c4 e4 g4] [g3 c4 d4 g4]"
+    violas:
+      play:
+        - 18x: "[c3 g3] c4 [c3 c4]"
+    cellos:
+      play:
+        - 4x: ["[c2 g2 e3] ~ [g2 g3]", "[c2 g2 e3] ~ {[g2 g3] g3}"]
+        - 4x: ["[c2 g2 d3] ~ [g2 g3]", "[c2 g2 d3] ~ {[g2 g3] g3}"]
+        - "[c2 g2 d3] ~ [g2 g3]"
+        - "[c2 g2 e3] ~ {[g2 g3] g3}"
+    basses:
+      play:
+        - "piano, pizzicato"
+        - 18x: "c2 ~ g2"
+    clarinet:
+      play:
+        - "_ ~ ~"
+    bassoon:
+      play:
+        - "{~ {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4}"
+        - 17x: "{g4 {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4}"
+    bassoon-2:
+      wait: 1
+      play:
+        - "mezzopiano"
+        - 8x: ["~ ~ {~ g4 g4 ~ g4 g4}", "~"]
+        - "~ ~ {~ g4 g4 ~ g4 g4}"
+    oboe:
+      wait: 2
+      play:
+        - "mezzopiano"
+        - "c5 {_ _ b4 c5} {d5 c5 b4 a4}"
+        - "{c5 _ c5 a4} c5 {_ _ b4 c5}"
+        - "{a4 g4 e4 f4} g4 _"
+        - "{_ f4 e4 d4} {e4 f4 g4 a4} g4"
+        - "_ {_ a4 b4 a4} {g4 f4 e4 d4}"
+        - "{e4 d4 c4 _} {_ _ c4 d4} {e4 f4}"
+        - "d4 g4 _"
+        - "_ _ {_ ~}"
+        - "d5 {_ _ _ c5} {b4 a4 b4 c5}"
+        - "{d5 c5 b4 _} {_ c5 b4 a4} {c5 b4 a4 f4}"
+        - "{_ _ f4 f4} {f4 a4} {c5 a4 b4 g4}"
+        - "{f4 _ f4 f4} {f4 a4} {b4 g4 a4 f4}"
+        - "{d4 _ d4 c4} d4 {_ _ d4 d4}"
+        - "{d4 f4} {a4 f4 g4 e4} {d4 _ d4 c4}"
+        - "d4 {_ _ d4 c4} {d4 _ e4 f4}"
+        - "g4 _ {_ f4 e4 d4}"
+
+  # bars 93-110: theme A, flute and muted trumpet an octave apart
+  r5-flute-and-trumpet:
+    loop: false
+    snare:
+      play:
+        - 9x: ["{sd {sd sd sd}} {sd {sd sd sd}} {sd sd}", "{sd {sd sd sd}} {sd {sd sd sd}} {sd sd sd sd sd sd}"]
+    violins-1:
+      play:
+        - "piano, pizzicato"
+        - 7x: "~ [c4 d4 e4 d5 e5] [b3 c4 d4 b4 d5]"
+        - "~ [c4 d4 e4 d5 e5] [b3 c4 e4 b4 e5]"
+        - 9x: "~ [c4 d4 f4 d5 f5] [b3 c4 d4 b4 d5]"
+        - "~ [c4 d4 e4 d5 e5] [g3 c4 d4 c5 d5]"
+    violas:
+      play:
+        - 18x: "[c3 g3] [g3 g4 c5] [c3 g3 g4 c5]"
+    cellos:
+      play:
+        - 4x: ["[c2 g2 e3] ~ [g2 g3]", "[c2 g2 e3] ~ {[g2 g3] g3}"]
+        - 4x: ["[c2 g2 d3] ~ [g2 g3]", "[c2 g2 d3] ~ {[g2 g3] g3}"]
+        - "[c2 g2 d3] ~ [g2 g3]"
+        - "[c2 g2 e3] ~ {[g2 g3] g3}"
+    basses:
+      play:
+        - 18x: "c2 ~ g2"
+    flute:
+      wait: 2
+      play:
+        - "pianissimo"
+        - "c6 {_ _ b5 c6} {d6 c6 b5 a5}"
+        - "{c6 _ c6 a5} c6 {_ _ b5 c6}"
+        - "{a5 g5 e5 f5} g5 _"
+        - "{_ f5 e5 d5} {e5 f5 g5 a5} g5"
+        - "_ {_ a5 b5 a5} {g5 f5 e5 d5}"
+        - "{e5 d5 c5 _} {_ _ c5 d5} {e5 f5}"
+        - "d5 g5 _"
+        - "_ _ {_ ~}"
+        - "d6 {_ _ _ c6} {b5 a5 b5 c6}"
+        - "{d6 c6 b5 _} {_ c6 b5 a5} {c6 b5 a5 f5}"
+        - "{_ _ f5 f5} {f5 a5} {c6 a5 b5 g5}"
+        - "{f5 _ f5 f5} {f5 a5} {b5 g5 a5 f5}"
+        - "{d5 _ d5 c5} d5 {_ _ d5 d5}"
+        - "{d5 f5} {a5 f5 g5 e5} {d5 _ d5 c5}"
+        - "d5 {_ _ d5 c5} {d5 _ e5 f5}"
+        - "g5 _ {_ f5 e5 d5}"
+    trumpet:
+      wait: 2
+      play:
+        - "mezzopiano"
+        - "c5 {_ _ b4 c5} {d5 c5 b4 a4}"
+        - "{c5 _ c5 a4} c5 {_ _ b4 c5}"
+        - "{a4 g4 e4 f4} g4 _"
+        - "{_ f4 e4 d4} {e4 f4 g4 a4} g4"
+        - "_ {_ a4 b4 a4} {g4 f4 e4 d4}"
+        - "{e4 d4 c4 _} {_ _ c4 d4} {e4 f4}"
+        - "d4 g4 _"
+        - "_ _ {_ ~}"
+        - "d5 {_ _ _ c5} {b4 a4 b4 c5}"
+        - "{d5 c5 b4 _} {_ c5 b4 a4} {c5 b4 a4 f4}"
+        - "{_ _ f4 f4} {f4 a4} {c5 a4 b4 g4}"
+        - "{f4 _ f4 f4} {f4 a4} {b4 g4 a4 f4}"
+        - "{d4 _ d4 c4} d4 {_ _ d4 d4}"
+        - "{d4 f4} {a4 f4 g4 e4} {d4 _ d4 c4}"
+        - "d4 {_ _ d4 c4} {d4 _ e4 f4}"
+        - "g4 _ {_ f4 e4 d4}"
+    horn:
+      play:
+        - "piano"
+        - "{~ {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4}"
+        - 8x: ["{g4 {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4 g4 g4 g4 g4}", "{g4 {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4}"]
+        - "{g4 {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4 g4 g4 g4 g4}"
+
+  # bars 111-128: theme B, tenor saxophone (on the bass clarinet here)
+  r6-tenor-sax:
+    loop: false
+    snare:
+      play:
+        - 9x: ["{sd {sd sd sd}} {sd {sd sd sd}} {sd sd}", "{sd {sd sd sd}} {sd {sd sd sd}} {sd sd sd sd sd sd}"]
+    violins-2:
+      play:
+        - "mezzopiano"
+        - 2x: "~ [c4 e4] [b3 d4]"
+        - 8x: "~ [c4 e4] [bb3 d4]"
+        - 2x: "~ [c4 f4] [b3 d4]"
+        - 2x: "~ [c4 e4] [bb3 d4]"
+        - "~ [c4 e4] [ab3 d4]"
+        - "~ [ab3 d4] c4"
+        - 2x: "~ c4 c4"
+    violas:
+      play:
+        - "mezzopiano"
+        - 15x: "[c3 g3] [g3 d4] [c3 c4]"
+        - "[c3 g3] c4 [c3 bb3]"
+        - "[c3 g3] bb3 [c3 ab3]"
+        - "[c3 g3] ab3 [c3 g3]"
+    cellos:
+      play:
+        - "mezzopiano"
+        - 5x: ["[c2 g2 e3] ~ [g2 g3]", "[c2 g2 e3] ~ {[g2 g3] g3}"]
+        - "[c2 g2 d3] ~ [g2 g3]"
+        - "[c2 g2 d3] ~ {[g2 g3] g3}"
+        - "[c2 g2 e3] ~ [g2 g3]"
+        - "[c2 g2 e3] ~ {[g2 g3] g3}"
+        - "[c2 g2 e3] ~ [g2 g3]"
+        - "[c2 g2 d3] g3 {[g2 g3] g3}"
+        - "[c2 g2 g3] g3 [g2 g3]"
+        - "[c2 g2 g3] g3 {[g2 g3] g3}"
+    basses:
+      play:
+        - "mezzopiano"
+        - 18x: "c2 ~ g1"
+    flute:
+      play:
+        - "piano"
+        - "{c5 ~} {[c4 e4] ~} {[c4 d4] ~}"
+        - 9x: "~ {[c4 e4] ~} {[c4 d4] ~}"
+        - 2x: "~ {[c4 f4] ~} {[c4 d4] ~}"
+        - 2x: "~ {[c4 e4] ~} {[c4 d4] ~}"
+        - "~ {e4 ~} {d4 ~}"
+        - "~ {d4 ~} {c4 ~}"
+        - 2x: "~ {c4 ~} {c4 ~}"
+    trumpet:
+      play:
+        - "{~ {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4}"
+        - 8x: ["{g4 {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4 g4 g4 g4 g4}", "{g4 {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4}"]
+        - "{g4 {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4 g4 g4 g4 g4}"
+    tenor-sax:
+      wait: 2
+      play:
+        - "mezzopiano"
+        - "bb4 {_ a4 g4 f4} {bb4 c5 a4 g4}"
+        - "{bb4 _ a4 g4} bb4 {a4 bb4 a4 g4}"
+        - "_ {_ f4 e4 d4} e4"
+        - "_ {~ bb4} {c5 db5}"
+        - "{_ db5} {_ db5} {db5 db5}"
+        - "{db5 db5 db5} {db5 _ c5 bb4} {db5 _ c5 bb4}"
+        - "{db5 c5 bb4 ab4} {g4 f4 e4 _} _"
+        - "_ _ {_ ~}"
+        - "d4 {_ e4} {d4 e4 f4 _}"
+        - "_ {g4 ab4} {f4 g4 e4}"
+        - "{d4 e4 d4 c4} {_ bb3} _"
+        - "{_ c4 bb3 c4} {d4 e4 d4 c4} {d4 c4 bb3 ab3}"
+        - "{bb3 ab3 g3 _} {_ f3} _"
+        - "_ {_ g3 f3 eb3} _"
+        - "_ {f3 eb3 f3 db3} _"
+        - "_ {_ db3 eb3 db3} {f3 eb3 db3 c3}"
+
+  # bars 129-146: theme B, sopranino then soprano saxophone (both on the clarinet here)
+  r7-soprano-saxes:
+    loop: false
+    snare:
+      play:
+        - 9x: ["{sd {sd sd sd}} {sd {sd sd sd}} {sd sd}", "{sd {sd sd sd}} {sd {sd sd sd}} {sd sd sd sd sd sd}"]
+    violins-1:
+      play:
+        - "mezzopiano"
+        - 10x: "~ [c4 d4 e4 d5 e5] [bb3 c4 d4 bb4 d5]"
+        - 2x: "~ [c4 d4 f4 d5 f5] [b3 c4 d4 b4 d5]"
+        - 2x: "~ [c4 d4 e4 d5 e5] [bb3 c4 d4 bb4 d5]"
+        - "~ [c4 d4 e4 d5 e5] [ab3 c4 d4 ab4 c5 d5]"
+        - "~ [ab3 c4 d4 ab4 c5 d5] [bb3 c4 g4 bb4 c5]"
+        - "~ [bb3 c4 g4 bb4 c5] [ab3 c4 g4 ab4 c5]"
+        - "~ [ab3 c4 g4 ab4 c5] [g3 c4 g4 c5]"
+    violas:
+      play:
+        - 18x: "[c3 g3] [g3 g4 c5] [c3 g3 g4 c5]"
+    cellos:
+      play:
+        - 7x: ["[c2 g2 e3] ~ [g2 g3]", "[c2 g2 e3] ~ {[g2 g3] g3}"]
+        - "[c2 g2 e3] ~ [g2 g3]"
+        - "[c2 g2 d3] ~ {[g2 g3] g3}"
+        - "[c2 g2 g3] ~ [g2 g3]"
+        - "[c2 g2 g3] ~ {[g2 g3] g3}"
+    basses:
+      play:
+        - 18x: "c2 ~ g1"
+    oboe:
+      play:
+        - "piano"
+        - 10x: "~ {[c5 e5] ~} {[c5 d5] ~}"
+        - 2x: "~ {[c5 f5] ~} {[c5 d5] ~}"
+        - 3x: "~ {[d5 e5] ~} {[c5 d5] ~}"
+        - "~ {[c5 d5] ~} {[bb4 c5] ~}"
+        - "~ {[bb4 c5] ~} {[ab4 c5] ~}"
+        - "~ {[ab4 c5] ~} {[g4 c5] ~}"
+    english-horn:
+      play:
+        - "piano"
+        - 14x: "~ {g4 ~} {g4 ~}"
+        - "~ {g4 ~} {ab4 ~}"
+        - "~ {ab4 ~} {g4 ~}"
+        - 2x: "~ {g4 ~} {g4 ~}"
+    trumpet:
+      play:
+        - "{~ {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4}"
+        - 8x: ["{g4 {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4 g4 g4 g4 g4}", "{g4 {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4}"]
+        - "{g4 {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4 g4 g4 g4 g4}"
+    tenor-sax:
+      play:
+        - "_ ~ ~"
+    soprano-sax:
+      wait: 2
+      play:
+        - "mezzopiano"
+        - "bb5 {_ a5 g5 f5} {bb5 c6 a5 g5}"
+        - "{bb5 _ a5 g5} bb5 {a5 bb5 a5 g5}"
+        - "_ {_ f5 e5 d5} e5"
+        - "_ {~ bb5} {c6 db6}"
+        - "{_ db6} {_ db6} {db6 db6}"
+        - "{db6 db6 db6} {db6 _ c6 bb5} {db6 _ c6 bb5}"
+        - "{db6 c6 bb5 ab5} {g5 f5 e5 _} _"
+        - "_ _ {_ ~}"
+        - "d5 {_ e5} {d5 e5 f5 _}"
+        - "_ {g5 ab5} {f5 g5 e5}"
+        - "{d5 e5 d5 c5} {_ bb4} _"
+        - "{_ c5 bb4 c5} {d5 e5 d5 c5} {d5 c5 bb4 ab4}"
+        - "{bb4 ab4 g4 _} {_ f4} _"
+        - "_ {_ g4 f4 eb4} _"
+        - "_ {f4 eb4 f4 db4} _"
+        - "_ {_ db4 eb4 db4} {f4 eb4 db4 c4}"
+
+  # bars 147-164: theme A, horn, with the celesta one and two octaves up and the piccolos a 12th and a 17th up
+  r8-horn-celesta-piccolos:
+    loop: false
+    snare:
+      play:
+        - "mezzopiano"
+        - 9x: ["{sd {sd sd sd}} {sd {sd sd sd}} {sd sd}", "{sd {sd sd sd}} {sd {sd sd sd}} {sd sd sd sd sd sd}"]
+    harp:
+      play:
+        - "mezzoforte"
+        - 18x: "~ [g3 g4] _"
+    violins-2:
+      play:
+        - "mezzoforte"
+        - 7x: "~ [c4 d4 e4] [b3 c4 d4]"
+        - "~ [c4 d4 e4] [b3 c4 e4]"
+        - 9x: "~ [c4 d4 f4] [b3 c4 d4]"
+        - "~ [c4 e4] [c4 d4]"
+    violas:
+      play:
+        - "mezzoforte"
+        - 18x: "[c3 g3] [g3 g4] [c3 g3 g4]"
+    cellos:
+      play:
+        - "mezzoforte"
+        - 4x: ["[c2 g2 e3] ~ [g2 g3]", "[c2 g2 e3] ~ {[g2 g3] g3}"]
+        - 4x: ["[c2 g2 d3] ~ [g2 g3]", "[c2 g2 d3] ~ {[g2 g3] g3}"]
+        - "[c2 g2 d3] ~ [g2 g3]"
+        - "[c2 g2 e3] ~ {[g2 g3] g3}"
+    basses:
+      play:
+        - "mezzoforte"
+        - 18x: "c2 ~ g1"
+    flute:
+      play:
+        - "mezzopiano"
+        - "{~ {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4}"
+        - 8x: ["{g4 {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4 g4 g4 g4 g4}", "{g4 {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4}"]
+        - "{g4 {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4 g4 g4 g4 g4}"
+    bassoon:
+      play:
+        - "mezzoforte"
+        - 7x: "~ {[c4 e4] ~} {[c4 d4] ~}"
+        - "~ {[c4 e4] ~} {[b3 e4] ~}"
+        - 9x: "~ {[d4 f4] ~} {[b3 d4] ~}"
+        - "~ {[c4 e4] ~} {[c4 d4] ~}"
+    horn:
+      play:
+        - "mezzoforte"
+        - "{~ {g3 g3 g3}} {g3 {g3 g3 g3}} {g3 g3}"
+        - "{g3 {g3 g3 g3}} {g3 {g3 g3 g3}} {g3 g3 g3 g3 g3 g3}"
+        - "c5 {_ _ b4 c5} {d5 c5 b4 a4}"
+        - "{[g3 c5] _ c5 a4} c5 {_ _ b4 c5}"
+        - "{a4 g4 e4 f4} g4 _"
+        - "{_ f4 e4 d4} {e4 f4 g4 a4} g4"
+        - "_ {_ a4 b4 a4} {g4 f4 e4 d4}"
+        - "{e4 d4 c4 _} {_ _ c4 d4} {e4 f4}"
+        - "d4 g4 _"
+        - "_ _ {_ {g3 g3 g3}}"
+        - "d5 {_ _ _ c5} {b4 a4 b4 c5}"
+        - "{d5 c5 b4 _} {_ c5 b4 a4} {c5 b4 a4 f4}"
+        - "{_ _ f4 f4} {[g3 f4] a4} {c5 a4 b4 g4}"
+        - "{[g3 f4] _ f4 f4} {[g3 f4] a4} {b4 g4 a4 f4}"
+        - "{[g3 d4] _ d4 c4} d4 {_ _ d4 d4}"
+        - "{[g3 d4] f4} {a4 f4 g4 e4} {d4 _ d4 c4}"
+        - "d4 {_ _ d4 c4} {[g3 d4] _ e4 f4}"
+        - "g4 _ {_ f4 e4 d4}"
+    horn-2:
+      wait: 2
+      play:
+        - "mezzoforte"
+        - "{g3 {g3 g3 g3}} {g3 {g3 g3 g3}} {g3 g3}"
+        - "{~ {g3 g3 g3}} {g3 {g3 g3 g3}} {g3 g3 g3 g3 g3 g3}"
+        - 2x: ["{g3 {g3 g3 g3}} {g3 {g3 g3 g3}} {g3 g3}", "{g3 {g3 g3 g3}} {g3 {g3 g3 g3}} {g3 g3 g3 g3 g3 g3}"]
+        - "{g3 {g3 g3 g3}} {g3 {g3 g3 g3}} {g3 g3}"
+        - "{g3 {g3 g3 g3}} {g3 {g3 g3 g3}} {{g3 g3 g3} ~}"
+        - "{g3 {g3 g3 g3}} {g3 {g3 g3 g3}} {g3 g3}"
+        - "{g3 {g3 g3 g3}} {g3 {g3 g3 g3}} {g3 g3 g3 g3 g3 g3}"
+        - "{g3 {g3 g3 g3}} {~ {g3 g3 g3}} {g3 g3}"
+        - "{~ {g3 g3 g3}} {~ {g3 g3 g3}} {g3 g3 g3 g3 g3 g3}"
+        - "{~ {g3 g3 g3}} {g3 {g3 g3 g3}} {g3 g3}"
+        - "{~ {g3 g3 g3}} {g3 {g3 g3 g3}} {g3 g3 g3 g3 g3 g3}"
+        - "{g3 {g3 g3 g3}} {g3 {g3 g3 g3}} {~ g3}"
+        - "{g3 {g3 g3 g3}} {g3 {g3 g3 g3}} {g3 g3 g3 g3 g3 g3}"
+    soprano-sax:
+      play:
+        - "_ ~ ~"
+    celesta:
+      wait: 2
+      play:
+        - "piano"
+        - "[c6 c7] {_ _ [b5 b6] [c6 c7]} {[d6 d7] [c6 c7] [b5 b6] [a5 a6]}"
+        - "{[c6 c7] _ [c6 c7] [a5 a6]} [c6 c7] {_ _ [b5 b6] [c6 c7]}"
+        - "{[a5 a6] [g5 g6] [e5 e6] [f5 f6]} [g5 g6] _"
+        - "{_ [f5 f6] [e5 e6] [d5 d6]} {[e5 e6] [f5 f6] [g5 g6] [a5 a6]} [g5 g6]"
+        - "_ {_ [a5 a6] [b5 b6] [a5 a6]} {[g5 g6] [f5 f6] [e5 e6] [d5 d6]}"
+        - "{[e5 e6] [d5 d6] [c5 c6] _} {_ _ [c5 c6] [d5 d6]} {[e5 e6] [f5 f6]}"
+        - "[d5 d6] [g5 g6] _"
+        - "_ _ {_ ~}"
+        - "[d6 d7] {_ _ _ [c6 c7]} {[b5 b6] [a5 a6] [b5 b6] [c6 c7]}"
+        - "{[d6 d7] [c6 c7] [b5 b6] _} {_ [c6 c7] [b5 b6] [a5 a6]} {[c6 c7] [b5 b6] [a5 a6] [f5 f6]}"
+        - "{_ _ [f5 f6] [f5 f6]} {[f5 f6] [a5 a6]} {[c6 c7] [a5 a6] [b5 b6] [g5 g6]}"
+        - "{[f5 f6] _ [f5 f6] [f5 f6]} {[f5 f6] [a5 a6]} {[b5 b6] [g5 g6] [a5 a6] [f5 f6]}"
+        - "{[d5 d6] _ [d5 d6] [c5 c6]} [d5 d6] {_ _ [d5 d6] [d5 d6]}"
+        - "{[d5 d6] [f5 f6]} {[a5 a6] [f5 f6] [g5 g6] [e5 e6]} {[d5 d6] _ [d5 d6] [c5 c6]}"
+        - "[d5 d6] {_ _ [d5 d6] [c5 c6]} {[d5 d6] _ [e5 e6] [f5 f6]}"
+        - "[g5 g6] _ {_ [f5 f6] [e5 e6] [d5 d6]}"
+    piccolo:
+      wait: 2
+      play:
+        - "pianissimo"
+        - "[g6 e7] {_ _ [f#6 d#7] [g6 e7]} {[a6 f#7] [g6 e7] [f#6 d#7] [e6 c#7]}"
+        - "{[g6 e7] _ [g6 e7] [e6 c#7]} [g6 e7] {_ _ [f#6 d#7] [g6 e7]}"
+        - "{[e6 c#7] [d6 b6] [b5 g#6] [c6 a6]} [d6 b6] _"
+        - "{_ [c6 a6] [b5 g#6] [a5 f#6]} {[b5 g#6] [c6 a6] [d6 b6] [e6 c#7]} [d6 b6]"
+        - "_ {_ [e6 c#7] [f#6 d#7] [e6 c#7]} {[d6 b6] [c6 a6] [b5 g#6] [a5 f#6]}"
+        - "{[b5 g#6] [a5 f#6] [g5 e6] _} {_ _ [g5 e6] [a5 f#6]} {[b5 g#6] [c6 a6]}"
+        - "[a5 f#6] [d6 b6] _"
+        - "_ _ {_ ~}"
+        - "[a6 f#7] {_ _ _ [g6 e7]} {[f#6 d#7] [e6 c#7] [f#6 d#7] [g6 e7]}"
+        - "{[a6 f#7] [g6 e7] [f#6 d#7] _} {_ [g6 e7] [f#6 d#7] [e6 c#7]} {[g6 e7] [f#6 d#7] [e6 c#7] [c6 a6]}"
+        - "{_ _ [c6 a6] [c6 a6]} {[c6 a6] [e6 c#7]} {[g6 e7] [e6 c#7] [f#6 d#7] [d6 b6]}"
+        - "{[c6 a6] _ [c6 a6] [c6 a6]} {[c6 a6] [e6 c#7]} {[f#6 d#7] [d6 b6] [e6 c#7] [c6 a6]}"
+        - "{[a5 f#6] _ [a5 f#6] [g5 e6]} [a5 f#6] {_ _ [a5 f#6] [a5 f#6]}"
+        - "{[a5 f#6] [c6 a6]} {[e6 c#7] [c6 a6] [d6 b6] [b5 g#6]} {[a5 f#6] _ [a5 f#6] [g5 e6]}"
+        - "[a5 f#6] {_ _ [a5 f#6] [g5 e6]} {[a5 f#6] _ [b5 g#6] [c6 a6]}"
+        - "[d6 b6] _ {_ [c6 a6] [b5 g#6] [a5 f#6]}"
+
+  # bars 165-182: theme A, oboe, oboe d'amore, cor anglais and two clarinets in parallel
+  r9-oboes-and-clarinets:
+    loop: false
+    snare:
+      play:
+        - "mezzoforte"
+        - 9x: ["{sd {sd sd sd}} {sd {sd sd sd}} {sd sd}", "{sd {sd sd sd}} {sd {sd sd sd}} {sd sd sd sd sd sd}"]
+    harp:
+      play:
+        - 18x: "~ [g4 g5] [g3 g4]"
+    violins-1:
+      play:
+        - "mezzoforte"
+        - 7x: "~ [g3 c4 e4 g4 c5 e5] [b3 c4 d4 g4 b4 d5]"
+        - "~ [g3 c4 e4 g4 c5 e5] [b3 c4 e4 b4 c5 e5]"
+        - 9x: "~ [c4 d4 f4 d5 f5] [b3 c4 d4 b4 d5]"
+        - "~ [g3 e4 g4 c5 e5] [g3 c4 d4 g4 c5 d5]"
+    violins-2:
+      play:
+        - "[g3 g4] {g5 {g3 g4 c5}} {[g3 g4 g5] [g3 g4 g5]}"
+        - 8x: ["{g5 {g3 g4 c5}} {g5 {g3 g4 c5}} {g5 g5}", "{g5 {g3 g4 c5}} {g5 {g3 g4 c5}} {[g3 g4 g5] [g3 g4 g5]}"]
+        - "{g5 {g3 g4 c5}} {g5 {g3 g4 c5}} {g5 g5}"
+    violins-2-2:
+      play:
+        - "mezzoforte, pizzicato"
+        - "{~ {g3 g4 c5}} [g3 g4] ~"
+        - 8x: ["[g3 g4] [g3 g4] {g3 g4 c5 g3 g4 c5}", "[g3 g4] [g3 g4] ~"]
+        - "[g3 g4] [g3 g4] {g3 g4 c5 g3 g4 c5}"
+    violas:
+      play:
+        - "[c3 c4] {c5 {c3 g3 g4}} {[c3 c4 c5] [c4 c5]}"
+        - 8x: ["{c5 {c3 g3 g4}} {c5 {c3 g3 g4}} {c5 c5}", "{c5 {c3 g3 g4}} {c5 {c3 g3 g4}} {[c3 c4 c5] [c4 c5]}"]
+        - "{c5 {c3 g3 g4}} {c5 {c3 g3 g4}} {c5 c5}"
+    violas-2:
+      play:
+        - "mezzoforte, pizzicato"
+        - "{~ {c3 g3 g4}} [g3 g4] ~"
+        - 8x: ["[c3 c4] [g3 g4] {c3 g3 g4 c3 g3 g4}", "[c3 c4] [g3 g4] ~"]
+        - "[c3 c4] [g3 g4] {c3 g3 g4 c3 g3 g4}"
+    cellos:
+      play:
+        - 4x: ["[c2 g2 e3] ~ [g2 g3]", "[c2 g2 e3] ~ {[g2 g3] g3}"]
+        - 4x: ["[c2 g2 d3] ~ [g2 g3]", "[c2 g2 d3] ~ {[g2 g3] g3}"]
+        - "[c2 g2 d3] ~ [g2 g3]"
+        - "[c2 g2 e3] ~ {[g2 g3] g3}"
+    basses:
+      play:
+        - 18x: "c2 ~ g1"
+    clarinet:
+      wait: 2
+      play:
+        - "mezzoforte"
+        - "[c5 c6] {_ _ [b4 b5] [c5 c6]} {[d5 d6] [c5 c6] [b4 b5] [a4 a5]}"
+        - "{[c5 c6] _ [c5 c6] [a4 a5]} [c5 c6] {_ _ [b4 b5] [c5 c6]}"
+        - "{[a4 a5] [g4 g5] [e4 e5] [f4 f5]} [g4 g5] _"
+        - "{_ [f4 f5] [e4 e5] [d4 d5]} {[e4 e5] [f4 f5] [g4 g5] [a4 a5]} [g4 g5]"
+        - "_ {_ [a4 a5] [b4 b5] [a4 a5]} {[g4 g5] [f4 f5] [e4 e5] [d4 d5]}"
+        - "{[e4 e5] [d4 d5] [c4 c5] _} {_ _ [c4 c5] [d4 d5]} {[e4 e5] [f4 f5]}"
+        - "[d4 d5] [g4 g5] _"
+        - "_ _ {_ ~}"
+        - "[d5 d6] {_ _ _ [c5 c6]} {[b4 b5] [a4 a5] [b4 b5] [c5 c6]}"
+        - "{[d5 d6] [c5 c6] [b4 b5] _} {_ [c5 c6] [b4 b5] [a4 a5]} {[c5 c6] [b4 b5] [a4 a5] [f4 f5]}"
+        - "{_ _ [f4 f5] [f4 f5]} {[f4 f5] [a4 a5]} {[c5 c6] [a4 a5] [b4 b5] [g4 g5]}"
+        - "{[f4 f5] _ [f4 f5] [f4 f5]} {[f4 f5] [a4 a5]} {[b4 b5] [g4 g5] [a4 a5] [f4 f5]}"
+        - "{[d4 d5] _ [d4 d5] [c4 c5]} [d4 d5] {_ _ [d4 d5] [d4 d5]}"
+        - "{[d4 d5] [f4 f5]} {[a4 a5] [f4 f5] [g4 g5] [e4 e5]} {[d4 d5] _ [d4 d5] [c4 c5]}"
+        - "[d4 d5] {_ _ [d4 d5] [c4 c5]} {[d4 d5] _ [e4 e5] [f4 f5]}"
+        - "[g4 g5] _ {_ [f4 f5] [e4 e5] [d4 d5]}"
+    bassoon:
+      play:
+        - 7x: "~ {[c4 e4] ~} {[c4 d4] ~}"
+        - "~ {[c4 e4] ~} {[c4 e4] ~}"
+        - 9x: "~ {[c4 f4] ~} {[b3 d4] ~}"
+        - "~ {[d4 e4] ~} {[c4 d4] ~}"
+    oboe:
+      wait: 2
+      play:
+        - "mezzoforte"
+        - "[g5 c6] {_ _ [f#5 b5] [g5 c6]} {[a5 d6] [g5 c6] [f#5 b5] [e5 a5]}"
+        - "{[g5 c6] _ [g5 c6] [e5 a5]} [g5 c6] {_ _ [f#5 b5] [g5 c6]}"
+        - "{[e5 a5] [d5 g5] [b4 e5] [c5 f5]} [d5 g5] _"
+        - "{_ [c5 f5] [b4 e5] [a4 d5]} {[b4 e5] [c5 f5] [d5 g5] [e5 a5]} [d5 g5]"
+        - "_ {_ [e5 a5] [f#5 b5] [e5 a5]} {[d5 g5] [c5 f5] [b4 e5] [a4 d5]}"
+        - "{[b4 e5] [a4 d5] [g4 c5] _} {_ _ [g4 c5] [a4 d5]} {[b4 e5] [c5 f5]}"
+        - "[a4 d5] [d5 g5] _"
+        - "_ _ {_ ~}"
+        - "[a5 d6] {_ _ _ [g5 c6]} {[f#5 b5] [e5 a5] [f#5 b5] [g5 c6]}"
+        - "{[a5 d6] [g5 c6] [f#5 b5] _} {_ [g5 c6] [f#5 b5] [e5 a5]} {[g5 c6] [f#5 b5] [e5 a5] [c5 f5]}"
+        - "{_ _ [c5 f5] [c5 f5]} {[c5 f5] [e5 a5]} {[g5 c6] [e5 a5] [f#5 b5] [d5 g5]}"
+        - "{[c5 f5] _ [c5 f5] [c5 f5]} {[c5 f5] [e5 a5]} {[f#5 b5] [d5 g5] [e5 a5] [c5 f5]}"
+        - "{[a4 d5] _ [a4 d5] [g4 c5]} [a4 d5] {_ _ [a4 d5] [a4 d5]}"
+        - "{[a4 d5] [c5 f5]} {[e5 a5] [c5 f5] [d5 g5] [b4 e5]} {[a4 d5] _ [a4 d5] [g4 c5]}"
+        - "[a4 d5] {_ _ [a4 d5] [g4 c5]} {[a4 d5] _ [b4 e5] [c5 f5]}"
+        - "[d5 g5] _ {_ [c5 f5] [b4 e5] [a4 d5]}"
+    english-horn:
+      wait: 2
+      play:
+        - "mezzoforte"
+        - "c5 {_ _ b4 c5} {d5 c5 b4 a4}"
+        - "{c5 _ c5 a4} c5 {_ _ b4 c5}"
+        - "{a4 g4 e4 f4} g4 _"
+        - "{_ f4 e4 d4} {e4 f4 g4 a4} g4"
+        - "_ {_ a4 b4 a4} {g4 f4 e4 d4}"
+        - "{e4 d4 c4 _} {_ _ c4 d4} {e4 f4}"
+        - "d4 g4 _"
+        - "_ _ {_ ~}"
+        - "d5 {_ _ _ c5} {b4 a4 b4 c5}"
+        - "{d5 c5 b4 _} {_ c5 b4 a4} {c5 b4 a4 f4}"
+        - "{_ _ f4 f4} {f4 a4} {c5 a4 b4 g4}"
+        - "{f4 _ f4 f4} {f4 a4} {b4 g4 a4 f4}"
+        - "{d4 _ d4 c4} d4 {_ _ d4 d4}"
+        - "{d4 f4} {a4 f4 g4 e4} {d4 _ d4 c4}"
+        - "d4 {_ _ d4 c4} {d4 _ e4 f4}"
+        - "g4 _ {_ f4 e4 d4}"
+    trumpet:
+      play:
+        - "mezzoforte"
+        - "{~ {g4 g4 g4}} {[g4 c5 e5] {g4 g4 g4}} {[g4 c5 d5] g4}"
+        - 3x: ["{g4 {g4 g4 g4}} {[g4 c5 e5] {g4 g4 g4}} {[c5 d5] {g4 g4 g4}}", "{g4 {g4 g4 g4}} {[g4 c5 e5] {g4 g4 g4}} {[g4 c5 d5] g4}"]
+        - "{g4 {g4 g4 g4}} {[g4 c5 e5] {g4 g4 g4}} {[b4 e5] {g4 g4 g4}}"
+        - 4x: ["{g4 {g4 g4 g4}} {[g4 c5 f5] {g4 g4 g4}} {[g4 b4 d5] g4}", "{g4 {g4 g4 g4}} {[g4 c5 f5] {g4 g4 g4}} {[b4 d5] {g4 g4 g4}}"]
+        - "{g4 {g4 g4 g4}} {[g4 c5 f5] {g4 g4 g4}} {[g4 b4 d5] g4}"
+        - "{g4 {g4 g4 g4}} {[g4 d5 e5] {g4 g4 g4}} {[c5 d5] {g4 g4 g4}}"
+    trumpet-2:
+      wait: 1
+      play:
+        - "mezzoforte"
+        - 8x: ["~ ~ {{g4 g4 g4} ~}", "~"]
+        - "~ ~ {{g4 g4 g4} ~}"
+    horn:
+      play:
+        - "{~ {g3 g3 g3}} {g3 {g3 g3 g3}} {g3 g3}"
+        - 8x: ["{g3 {g3 g3 g3}} {g3 {g3 g3 g3}} {g3 g3 g3 g3 g3 g3}", "{g3 {g3 g3 g3}} {g3 {g3 g3 g3}} {g3 g3}"]
+        - "{g3 {g3 g3 g3}} {g3 {g3 g3 g3}} {g3 g3 g3 g3 g3 g3}"
+
+  # bars 183-200: theme B, trombone
+  r10-trombone:
+    loop: false
+    snare:
+      play:
+        - 9x: ["{sd {sd sd sd}} {sd {sd sd sd}} {sd sd}", "{sd {sd sd sd}} {sd {sd sd sd}} {sd sd sd sd sd sd}"]
+    harp:
+      play:
+        - 2x: "[c2 c3] [c4 d4 e4] [b3 c4 d4]"
+        - 8x: "[c2 c3] [c4 d4 e4] [bb3 c4 d4]"
+        - 2x: "[c2 c3] [c4 d4 f4] [b3 c4 d4]"
+        - 2x: "[c2 c3] [c4 d4 e4] [bb3 c4 d4]"
+        - "[c2 c3] [c4 d4 e4] [ab3 c4 d4]"
+        - "[c2 c3] [ab3 c4 d4] [g3 bb3 c4]"
+        - "[c2 c3] [g3 bb3 c4] [g3 ab3 c4]"
+        - "[c2 c3] [g3 ab3 c4] [g3 c4]"
+    violins-2:
+      play:
+        - "[g3 g4 g5] [c4 d4 e4 g4] [b3 c4 d4 g4]"
+        - "~ [c4 d4 e4 g4] [b3 c4 d4 g4]"
+        - 8x: "~ [c4 d4 e4 g4] [bb3 c4 d4 g4]"
+        - 2x: "~ [c4 d4 f4 g4] [b3 c4 d4 g4]"
+        - 2x: "~ [c4 d4 e4 g4] [bb3 c4 d4 g4]"
+        - "~ [c4 d4 e4 g4] [ab3 c4 d4 g4]"
+        - "~ [ab3 c4 d4 g4] [bb3 c4 g4]"
+        - "~ [bb3 c4 g4] [ab3 c4 g4]"
+        - "~ [ab3 c4 g4] [g3 c4 g4]"
+    violas:
+      play:
+        - "arco"
+        - "{[c3 c4 c5] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] [g3 g4]}"
+        - 8x: ["{[c3 g3 c4 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4]}", "{[c3 g3 c4 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] [g3 g4]}"]
+        - "{[c3 g3 c4 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4]}"
+    cellos:
+      play:
+        - 5x: ["[c2 g2 e3] g3 [c2 g2 g3]", "[c2 g2 e3] g3 {[c2 g2 g3] g2}"]
+        - "[c2 g2 d3] g3 [c2 g2 g3]"
+        - "[c2 g2 d3] g3 {[c2 g2 g3] g3}"
+        - "[c2 g2 e3] g3 [c2 g2 g3]"
+        - "[c2 g2 e3] g3 {[c2 g2 g3] g3}"
+        - "[c2 g2 e3] g3 [c2 g2 g3]"
+        - "[c2 g2 d3] g3 {[c2 g2 g3] g3}"
+        - "[c2 g2 g3] g3 [c2 g2 g3]"
+        - "[c2 g2 g3] g3 {[c2 g2 g3] g3}"
+    basses:
+      play:
+        - 18x: "c2 ~ g1"
+    flute:
+      play:
+        - "mezzoforte"
+        - "{~ {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4}"
+        - 8x: ["{g4 {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4 g4 g4 g4 g4}", "{g4 {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4}"]
+        - "{g4 {g4 g4 g4}} {g4 {g4 g4 g4}} {g4 g4 g4 g4 g4 g4}"
+    clarinet:
+      play:
+        - "{c5 ~} {e4 ~} {d4 ~}"
+        - 14x: "~ {e4 ~} {d4 ~}"
+        - "~ {d4 ~} {c4 ~}"
+        - 2x: "~ {c4 ~} {c4 ~}"
+    horn:
+      play:
+        - "{~ {g3 g3 g3}} {g3 {g3 g3 g3}} {g3 g3}"
+        - 8x: ["{g3 {g3 g3 g3}} {g3 {g3 g3 g3}} {g3 g3 g3 g3 g3 g3}", "{g3 {g3 g3 g3}} {g3 {g3 g3 g3}} {g3 g3}"]
+        - "{g3 {g3 g3 g3}} {g3 {g3 g3 g3}} {g3 g3 g3 g3 g3 g3}"
+    trombone:
+      wait: 2
+      play:
+        - "mezzoforte"
+        - "bb4 {_ a4 g4 f4} {bb4 c5 a4 g4}"
+        - "{bb4 _ a4 g4} bb4 {a4 bb4 a4 g4}"
+        - "_ {_ f4 e4 d4} e4"
+        - "_ {~ bb4} {c5 db5}"
+        - "{_ db5} {_ db5} {db5 db5}"
+        - "{db5 db5 db5} {db5 _ c5 bb4} {db5 _ c5 bb4}"
+        - "{db5 c5 bb4 ab4} {g4 f4 e4 _} _"
+        - "_ _ {_ ~}"
+        - "d4 {_ e4} {d4 e4 f4 _}"
+        - "_ {g4 ab4} {f4 g4 e4}"
+        - "{d4 e4 d4 c4} {_ bb3} _"
+        - "{_ c4 bb3 c4} {d4 e4 d4 c4} {d4 c4 bb3 ab3}"
+        - "{bb3 ab3 g3 _} {_ f3} _"
+        - "_ {_ g3 f3 eb3} _"
+        - "_ {f3 eb3 f3 db3} _"
+        - "_ {_ db3 eb3 db3} {f3 eb3 db3 c3}"
+
+  # bars 201-218: theme B, piccolo, flutes, oboes, cor anglais, clarinets and tenor saxophone
+  r11-woodwinds:
+    loop: false
+    snare:
+      play:
+        - "forte"
+        - 9x: ["{sd {sd sd sd}} {sd {sd sd sd}} {sd sd}", "{sd {sd sd sd}} {sd {sd sd sd}} {sd sd sd sd sd sd}"]
+    harp:
+      play:
+        - "forte"
+        - 10x: "[c2 c3] [c5 d5 e5] [bb4 c5 d5]"
+        - 2x: "[c2 c3] [c5 d5 f5] [b4 c5 d5]"
+        - 2x: "[c2 c3] [c5 d5 e5] [bb4 c5 d5]"
+        - "[c2 c3] [c5 d5 e5] [ab4 c5 d5]"
+        - "[c2 c3] [ab4 c5 d5] [g4 bb4 c5]"
+        - "[c2 c3] [g4 bb4 c5] [g4 ab4 c5]"
+        - "[c2 c3] [g4 ab4 c5] [g4 c5]"
+    violins-1:
+      play:
+        - "forte"
+        - 10x: "g3 [c4 d4 e4 d5 e5] [bb3 c4 d4 bb4 d5]"
+        - 2x: "g3 [c4 d4 f4 d5 f5] [b3 c4 d4 b4 d5]"
+        - 2x: "g3 [c4 d4 e4 d5 e5] [bb3 c4 d4 bb4 d5]"
+        - "g3 [c4 d4 e4 d5 e5] [ab3 c4 d4 ab4 c5]"
+        - "g3 [ab3 c4 d4 ab4 c5 d5] [bb3 c4 g4 bb4 c5]"
+        - "g3 [bb3 c4 g4 bb4 c5] [ab3 c4 g4 ab4 c5]"
+        - "g3 [ab3 c4 g4 ab4 c5] [g3 c4 g4 c5]"
+    violins-2:
+      play:
+        - "forte, arco"
+        - "{~ {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] [g3 g4]}"
+        - 8x: ["{[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4]}", "{[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] [g3 g4]}"]
+        - "{[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4]}"
+    violas:
+      play:
+        - "forte, pizzicato"
+        - "{[c3 g3 c4 g4] ~} [c3 g3 g4 c5] [c3 g3 g4 c5]"
+        - 17x: "[c3 g3 g4] [c3 g3 g4 c5] [c3 g3 g4 c5]"
+    cellos:
+      play:
+        - "forte"
+        - 5x: ["[c2 g2 e3] g3 [c2 g2 g3]", "[c2 g2 e3] g3 {[c2 g2 g3] g2}"]
+        - "[c2 g2 d3] g3 [c2 g2 g3]"
+        - "[c2 g2 d3] g3 {[c2 g2 g3] g2}"
+        - "[c2 g2 e3] g3 [c2 g2 g3]"
+        - "[c2 g2 e3] g3 {[c2 g2 g3] g2}"
+        - "[c2 g2 e3] g3 [c2 g2 g3]"
+        - "[c2 g2 d3] g3 {[g2 g3] g2}"
+        - "[c2 g2 g3] g3 [c2 g2 g3]"
+        - "[c2 g2 g3] g3 {[c2 g2 g3] g2}"
+    basses:
+      play:
+        - "forte"
+        - 18x: "c2 ~ g1"
+    flute:
+      play:
+        - "{g4 ~} ~ ~"
+        - "~"
+        - "forte"
+        - "[e6 g6] {_ [d6 f6] [c6 e6] [bb5 d6]} {[e6 g6] [f6 a6] [d6 f6] [c6 e6]}"
+        - "{[e6 g6] _ [d6 f6] [c6 e6]} [e6 g6] {[d6 f6] [e6 g6] [d6 f6] [c6 e6]}"
+        - "_ {_ [bb5 d6] [g5 c6] [f5 bb5]} [g5 c6]"
+        - "_ {~ [d6 g6]} {[e6 a6] [e6 bb6]}"
+        - "{_ [e6 bb6]} {_ [e6 bb6]} {[e6 bb6] [e6 bb6]}"
+        - "{[e6 bb6] [e6 bb6] [e6 bb6]} {[e6 bb6] _ [eb6 a6] [db6 g6]} {[e6 bb6] _ [eb6 a6] [db6 g6]}"
+        - "{[e6 bb6] [eb6 a6] [db6 g6] [c6 f6]} {[bb5 e6] [ab5 d6] [g5 c6] _} _"
+        - "_ _ {_ ~}"
+        - "[f5 a5] {_ [g5 b5]} {[f5 a5] [g5 b5] [a5 c6] _}"
+        - "_ {[b5 d6] [d6 f6]} {[ab5 b5] [b5 d6] [g5 b5]}"
+        - "{[g5 a5] [a5 c6] [g5 a5] [e5 g5]} {_ [d5 g5]} _"
+        - "{_ [e5 a5] [d5 g5] [e5 a5]} {[g5 bb5] [a5 c6] [g5 bb5] [e5 a5]} {[g5 bb5] [e5 a5] [d5 g5] [c5 e5]}"
+        - "{[e5 g5] [c5 e5]} {_ [c5 f5]} _"
+        - "_ {_ [d5 g5] [c5 f5] [bb4 eb5]} _"
+        - "_ {[c5 f5] [bb4 eb5] [c5 f5] [ab4 db5]} _"
+        - "_ {_ [ab4 db5] [bb4 eb5] [ab4 db5]} {[c5 f5] [bb4 eb5] [ab4 db5] [g4 c5]}"
+    clarinet:
+      wait: 2
+      play:
+        - "forte"
+        - "[bb4 bb5] {_ [a4 a5] [g4 g5] [f4 f5]} {[bb4 bb5] [c5 c6] [a4 a5] [g4 g5]}"
+        - "{[bb4 bb5] _ [a4 a5] [g4 g5]} [bb4 bb5] {[a4 a5] [bb4 bb5] [a4 a5] [g4 g5]}"
+        - "_ {_ [f4 f5] [e4 e5] [d4 d5]} [e4 e5]"
+        - "_ {~ [bb4 bb5]} {[c5 c6] [db5 db6]}"
+        - "{_ [db5 db6]} {_ [db5 db6]} {[db5 db6] [db5 db6]}"
+        - "{[db5 db6] [db5 db6] [db5 db6]} {[db5 db6] _ [c5 c6] [bb4 bb5]} {[db5 db6] _ [c5 c6] [bb4 bb5]}"
+        - "{[db5 db6] [c5 c6] [bb4 bb5] [ab4 ab5]} {[g4 g5] [f4 f5] [e4 e5] _} _"
+        - "_ _ {_ ~}"
+        - "[d4 d5] {_ [e4 e5]} {[d4 d5] [e4 e5] [f4 f5] _}"
+        - "_ {[g4 g5] [ab4 ab5]} {[f4 f5] [g4 g5] [e4 e5]}"
+        - "{[d4 d5] [e4 e5] [d4 d5] [c4 c5]} {_ [bb3 bb4]} _"
+        - "{_ [c4 c5] [bb3 bb4] [c4 c5]} {[d4 d5] [e4 e5] [d4 d5] [c4 c5]} {[d4 d5] [c4 c5] [bb3 bb4] [ab3 ab4]}"
+        - "{[bb3 bb4] [ab3 ab4] [g3 g4] _} {_ c4} _"
+        - "_ {_ d4 c4 bb3} _"
+        - "_ {c4 bb3 c4 ab3} _"
+        - "_ {_ ab3 bb3 ab3} {c4 bb3 ab3 g3}"
+    oboe:
+      wait: 2
+      play:
+        - "forte"
+        - "[g5 bb5] {_ [f5 a5] [e5 g5] [d5 f5]} {[g5 bb5] [a5 c6] [f5 a5] [e5 g5]}"
+        - "{[g5 bb5] _ [f5 a5] [e5 g5]} [g5 bb5] {[f5 a5] [g5 bb5] [f5 a5] [e5 g5]}"
+        - "_ {_ [d5 f5] [c5 e5] [bb4 d5]} [c5 e5]"
+        - "_ {~ [g5 bb5]} {[a5 c6] [bb5 db6]}"
+        - "{_ [bb5 db6]} {_ [bb5 db6]} {[bb5 db6] [bb5 db6]}"
+        - "{[bb5 db6] [bb5 db6] [bb5 db6]} {[bb5 db6] _ [a5 c6] [g5 bb5]} {[bb5 db6] _ [a5 c6] [g5 bb5]}"
+        - "{[bb5 db6] [a5 c6] [g5 bb5] [f5 ab5]} {[e5 g5] [d5 f5] [c5 e5] _} _"
+        - "_ _ {_ ~}"
+        - "[a4 d5] {_ [b4 e5]} {[a4 d5] [b4 e5] [c5 f5] _}"
+        - "_ {[d5 g5] [f5 ab5]} {[b4 f5] [d5 g5] [b4 e5]}"
+        - "{[a4 d5] [c5 e5] [a4 d5] [g4 c5]} {_ [g4 bb4]} _"
+        - "{_ [a4 c5] [g4 bb4] [a4 c5]} {[bb4 d5] [c5 e5] [bb4 d5] [a4 c5]} {[bb4 d5] [a4 c5] [g4 bb4] [e4 ab4]}"
+        - "{bb4 ab4 [e4 g4] _} {_ f4} _"
+        - "_ {_ g4 f4 eb4} _"
+        - "_ {f4 eb4 f4 db4} _"
+        - "_ {_ db4 eb4 db4} {f4 eb4 db4 c4}"
+    oboe-2:
+      wait: 14
+      play:
+        - "forte"
+        - "{g4 ~} ~ ~"
+    english-horn:
+      wait: 2
+      play:
+        - "forte"
+        - "e5 {_ d5 c5 bb4} {e5 f5 d5 c5}"
+        - "{e5 _ d5 c5} e5 {d5 e5 d5 c5}"
+        - "_ {_ bb4 g4 f4} g4"
+        - "_ {~ d5} {e5 e5}"
+        - "{_ e5} {_ e5} {e5 e5}"
+        - "{e5 e5 e5} {e5 _ eb5 db5} {e5 _ eb5 db5}"
+        - "{e5 eb5 db5 c5} {bb4 ab4 g4 _} _"
+        - "_ _ {_ ~}"
+        - "d4 {_ e4} {d4 e4 f4 _}"
+        - "_ {g4 ab4} {f4 g4 e4}"
+        - "{g4 a4 g4 e4} {_ d4} _"
+        - "{_ e4 d4 e4} {g4 a4 g4 e4} {g4 e4 d4 c4}"
+        - "{e4 c4} {_ ab3} _"
+        - "_ {_ bb3 ab3 g3} _"
+        - "_ {ab3 g3 ab3 f3} _"
+        - "_ {_ f3 g3 f3} {ab3 g3 f3 e3}"
+    horn:
+      play:
+        - "forte"
+        - "{~ {g3 g3 g3}} {g3 {g3 g3 g3}} {g3 g3}"
+        - 8x: ["{g3 {g3 g3 g3}} {g3 {g3 g3 g3}} {g3 g3 g3 g3 g3 g3}", "{g3 {g3 g3 g3}} {g3 {g3 g3 g3}} {g3 g3}"]
+        - "{g3 {g3 g3 g3}} {g3 {g3 g3 g3}} {g3 g3 g3 g3 g3 g3}"
+    tenor-sax:
+      wait: 2
+      play:
+        - "forte"
+        - "bb4 {_ a4 g4 f4} {bb4 c5 a4 g4}"
+        - "{bb4 _ a4 g4} bb4 {a4 bb4 a4 g4}"
+        - "_ {_ f4 e4 d4} e4"
+        - "_ {~ bb4} {c5 db5}"
+        - "{_ db5} {_ db5} {db5 db5}"
+        - "{db5 db5 db5} {db5 _ c5 bb4} {db5 _ c5 bb4}"
+        - "{db5 c5 bb4 ab4} {g4 f4 e4 _} _"
+        - "_ _ {_ ~}"
+        - "d4 {_ e4} {d4 e4 f4 _}"
+        - "_ {g4 ab4} {f4 g4 e4}"
+        - "{d4 e4 d4 c4} {_ bb3} _"
+        - "{_ c4 bb3 c4} {d4 e4 d4 c4} {d4 c4 bb3 ab3}"
+        - "{bb3 ab3 g3 _} {_ f3} _"
+        - "_ {_ g3 f3 eb3} _"
+        - "_ {f3 eb3 f3 db3} _"
+        - "_ {_ db3 eb3 db3} {f3 eb3 db3 c3}"
+    piccolo:
+      wait: 2
+      play:
+        - "forte"
+        - "bb6 {_ a6 g6 f6} {bb6 c7 a6 g6}"
+        - "{bb6 _ a6 g6} bb6 {a6 bb6 a6 g6}"
+        - "_ {_ f6 e6 d6} e6"
+        - "_ {~ bb6} {c7 db7}"
+        - "{_ db7} {_ db7} {db7 db7}"
+        - "{db7 db7 db7} {db7 _ c7 bb6} {db7 _ c7 bb6}"
+        - "{db7 c7 bb6 ab6} {g6 f6 e6 _} _"
+        - "_ _ {_ ~}"
+        - "d6 {_ e6} {d6 e6 f6 _}"
+        - "_ {g6 ab6} {f6 g6 e6}"
+        - "{d6 e6 d6 c6} {_ bb5} _"
+        - "{_ c6 bb5 c6} {d6 e6 d6 c6} {d6 c6 bb5 ab5}"
+        - "{bb5 ab5 g5 _} {_ ~} ~"
+    trombone:
+      play:
+        - "_ ~ ~"
+
+  # bars 219-236: theme A, first violins in octaves (Ravel doubles them with woodwinds); horns on the rhythm
+  r12-violins:
+    loop: false
+    snare:
+      play:
+        - 9x: ["{sd {sd sd sd}} {sd {sd sd sd}} {sd sd}", "{sd {sd sd sd}} {sd {sd sd sd}} {sd sd sd sd sd sd}"]
+    violins-1:
+      wait: 2
+      play:
+        - "arco"
+        - "[c5 c6] {_ _ [b4 b5] [c5 c6]} {[d5 d6] [c5 c6] [b4 b5] [a4 a5]}"
+        - "{[c5 c6] _ [c5 c6] [a4 a5]} [c5 c6] {_ _ [b4 b5] [c5 c6]}"
+        - "{[a4 a5] [g4 g5] [e4 e5] [f4 f5]} [g4 g5] _"
+        - "{_ [f4 f5] [e4 e5] [d4 d5]} {[e4 e5] [f4 f5] [g4 g5] [a4 a5]} [g4 g5]"
+        - "_ {_ [a4 a5] [b4 b5] [a4 a5]} {[g4 g5] [f4 f5] [e4 e5] [d4 d5]}"
+        - "{[e4 e5] [d4 d5] [c4 c5] _} {_ _ [c4 c5] [d4 d5]} {[e4 e5] [f4 f5]}"
+        - "[d4 d5] [g4 g5] _"
+        - "_ _ {_ ~}"
+        - "[d5 d6] {_ _ _ [c5 c6]} {[b4 b5] [a4 a5] [b4 b5] [c5 c6]}"
+        - "{[d5 d6] [c5 c6] [b4 b5] _} {_ [c5 c6] [b4 b5] [a4 a5]} {[c5 c6] [b4 b5] [a4 a5] [f4 f5]}"
+        - "{_ _ [f4 f5] [f4 f5]} {[f4 f5] [a4 a5]} {[c5 c6] [a4 a5] [b4 b5] [g4 g5]}"
+        - "{[f4 f5] _ [f4 f5] [f4 f5]} {[f4 f5] [a4 a5]} {[b4 b5] [g4 g5] [a4 a5] [f4 f5]}"
+        - "{[d4 d5] _ [d4 d5] [c4 c5]} [d4 d5] {_ _ [d4 d5] [d4 d5]}"
+        - "{[d4 d5] [f4 f5]} {[a4 a5] [f4 f5] [g4 g5] [e4 e5]} {[d4 d5] _ [d4 d5] [c4 c5]}"
+        - "[d4 d5] {_ _ [d4 d5] [c4 c5]} {[d4 d5] _ [e4 e5] [f4 f5]}"
+        - "[g4 g5] _ {_ [f4 f5] [e4 e5] [d4 d5]}"
+    violins-2:
+      play:
+        - "pizzicato"
+        - "{[g3 g4] ~} [g3 e4 g4 c5 d5 e5 g5] [g3 b3 d4 g4 b4 d5 g5]"
+        - 5x: "~ [g3 e4 g4 c5 d5 e5 g5] [g3 b3 d4 g4 b4 d5 g5]"
+        - "~ [g3 d4 g4 c5 d5 e5 g5] [g3 b3 d4 g4 b4 d5 g5]"
+        - "~ [g3 e4 g4 c5 d5 e5 g5] [g3 b3 e4 g4 b4 e5 g5]"
+        - 9x: "~ [g3 f4 g4 d5 f5 g5] [g3 b3 d4 g4 b4 d5 g5]"
+        - "~ [g3 e4 g4 c5 e5 g5] [g3 b3 d4 g4 c5 d5 g5]"
+    violas:
+      play:
+        - 7x: "[c3 g3] [c3 c4 d4 c5] [c3 c4 d4 c5]"
+        - "[c3 g3 g4] [c3 c4 d4 c5] [c3 c4 e4 c5]"
+        - 10x: "[c3 g3 g4] [c3 c4 d4 c5] [c3 c4 d4 c5]"
+    cellos:
+      play:
+        - 4x: ["[c2 g2 e3] g3 [c2 g2 g3]", "[c2 g2 e3] g3 {[c2 g2 g3] [g2 g3]}"]
+        - 4x: ["[c2 g2 d3] g3 [c2 g2 g3]", "[c2 g2 d3] g3 {[c2 g2 g3] [g2 g3]}"]
+        - "[c2 g2 d3] g3 [c2 g2 g3]"
+        - "[c2 g2 e3] g3 {[c2 g2 g3] [g2 g3]}"
+    basses:
+      play:
+        - 18x: "c2 ~ g1"
+    flute:
+      play:
+        - "_ ~ ~"
+    clarinet:
+      play:
+        - "_ ~ ~"
+    oboe:
+      play:
+        - "_ ~ ~"
+    english-horn:
+      play:
+        - "_ ~ ~"
+    horn:
+      play:
+        - "{~ {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] [g3 g4]}"
+        - 8x: ["{[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4]}", "{[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] [g3 g4]}"]
+        - "{[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4]}"
+    tenor-sax:
+      play:
+        - "_ ~ ~"
+
+  # bars 237-254: theme A, all the violins, in parallel lines (Ravel adds woodwinds and tenor saxophone)
+  r13-violins-and-winds:
+    loop: false
+    snare:
+      play:
+        - 9x: ["{sd {sd sd sd}} {sd {sd sd sd}} {sd sd}", "{sd {sd sd sd}} {sd {sd sd sd}} {sd sd sd sd sd sd}"]
+    harp:
+      play:
+        - 7x: "[c2 c3] [g3 c4 e4 g4 c5 d5 e5 g5] [g3 b3 d4 g4 b4 c5 d5 g5]"
+        - "[c2 c3] [g3 c4 e4 g4 c5 d5 e5 g5] [g3 c4 e4 g4 b4 c5 e5 g5]"
+        - 9x: "[c2 c3] [g3 c4 f4 g4 c5 d5 f5 g5] [g3 b3 d4 g4 b4 c5 d5 g5]"
+        - "[c2 c3] [g3 c4 e4 g4 c5 d5 e5 g5] [g3 c4 d4 g4 c5 d5 g5]"
+    violins-1:
+      play:
+        - "[c4 c5] ~ ~"
+        - "~"
+        - "[c5 e5 g5 c6] {_ _ [b4 d5 f#5 b5] [c5 e5 g5 c6]} {[d5 f#5 a5 d6] [c5 e5 g5 c6] [b4 d5 f#5 b5] [a4 c5 e5 a5]}"
+        - "{[c5 e5 g5 c6] _ [c5 e5 g5 c6] [a4 c5 e5 a5]} [c5 e5 g5 c6] {_ _ [b4 d5 f#5 b5] [c5 e5 g5 c6]}"
+        - "{[a4 c5 e5 a5] [g4 b4 d5 g5] [e4 g4 b4 e5] [f4 a4 c5 f5]} [g4 c5 g5] _"
+        - "{_ [f4 a4 c5 f5] [e4 g4 b4 e5] [d4 f4 a4 d5]} {[e4 g4 b4 e5] [f4 a4 c5 f5] [g4 b4 d5 g5] [a4 c5 e5 a5]} [g4 b4 d5 g5]"
+        - "_ {_ [a4 c5 e5 a5] [b4 d5 f#5 b5] [a4 c5 e5 a5]} {[g4 b4 d5 g5] [f4 a4 c5 f5] [e4 g4 b4 e5] [d4 f4 a4 d5]}"
+        - "{[e4 g4 b4 e5] [d4 f4 a4 d5] [c4 e4 g4 c5] _} {_ _ [c4 e4 g4 c5] [d4 f4 a4 d5]} {[e4 g4 b4 e5] [f4 a4 c5 f5]}"
+        - "[d4 f4 a4 d5] [g4 b4 d5 g5] _"
+        - "_ _ {_ ~}"
+        - "[d5 f5 a5 d6] {_ _ _ [c5 e5 g5 c6]} {[b4 d5 f5 b5] [a4 c5 e5 a5] [b4 d5 f5 b5] [c5 e5 g5 c6]}"
+        - "{[d5 f5 a5 d6] [c5 e5 g5 c6] [b4 d5 f5 b5] _} {_ [c5 e5 g5 c6] [b4 d5 f5 b5] [a4 c5 e5 a5]} {[c5 e5 g5 c6] [b4 d5 f5 b5] [a4 c5 e5 a5] [f4 a4 c5 f5]}"
+        - "{_ _ [f4 a4 c5 f5] [f4 a4 c5 f5]} {[f4 a4 c5 f5] [a4 c5 e5 a5]} {[c5 e5 g5 c6] [a4 c5 e5 a5] [b4 d5 f5 b5] [g4 b4 d5 g5]}"
+        - "{[f4 a4 c5 f5] _ [f4 a4 c5 f5] [f4 a4 c5 f5]} {[f4 a4 c5 f5] [a4 c5 e5 a5]} {[b4 d5 f5 b5] [g4 b4 d5 g5] [a4 c5 e5 a5] [f4 a4 c5 f5]}"
+        - "{[d4 f4 a4 d5] _ [d4 f4 a4 d5] [c4 e4 g4 c5]} [d4 f4 a4 d5] {_ _ [d4 f4 a4 d5] [d4 f4 a4 d5]}"
+        - "{[d4 f4 a4 d5] [f4 a4 c5 f5]} {[a4 c5 e5 a5] [f4 a4 c5 f5] [g4 b4 d5 g5] [e4 g4 b4 e5]} {[d4 f4 a4 d5] _ [d4 f4 a4 d5] [c4 e4 g4 c5]}"
+        - "[d4 f4 a4 d5] {_ _ [d4 f4 a4 d5] [c4 e4 g4 c5]} {[d4 f4 a4 d5] _ [e4 g4 b4 e5] [f4 a4 c5 f5]}"
+        - "[g4 c5 e5 g5] _ {_ [f4 a4 c5 f5] [e4 g4 b4 e5] [d4 f4 a4 d5]}"
+    violins-1-2:
+      wait: 4
+      play:
+        - "forte, arco"
+        - "~ e5 d5"
+        - "{e5 ~ ~ ~} ~ ~"
+    violins-2:
+      wait: 2
+      play:
+        - "arco"
+        - "[c5 e5 g5 c6] {_ _ [b4 d5 f#5 b5] [c5 e5 g5 c6]} {[d5 f#5 a5 d6] [c5 e5 g5 c6] [b4 d5 f#5 b5] [a4 c5 e5 a5]}"
+        - "{[c5 e5 g5 c6] _ [c5 e5 g5 c6] [a4 c5 e5 a5]} [c5 e5 g5 c6] {_ _ [b4 d5 f#5 b5] [c5 e5 g5 c6]}"
+        - "{[a4 c5 e5 a5] [g4 b4 d5 g5] [e4 g4 b4 e5] [f4 a4 c5 f5]} [g4 c5 g5] _"
+        - "{_ [f4 a4 c5 f5] [e4 g4 b4 e5] [d4 f4 a4 d5]} {[e4 g4 b4 e5] [f4 a4 c5 f5] [g4 b4 d5 g5] [a4 c5 e5 a5]} [g4 b4 d5 g5]"
+        - "_ {_ [a4 c5 e5 a5] [b4 d5 f#5 b5] [a4 c5 e5 a5]} {[g4 b4 d5 g5] [f4 a4 c5 f5] [e4 g4 b4 e5] [d4 f4 a4 d5]}"
+        - "{[e4 g4 b4 e5] [d4 f4 a4 d5] [c4 e4 g4 c5] _} {_ _ [c4 e4 g4 c5] [d4 f4 a4 d5]} {[e4 g4 b4 e5] [f4 a4 c5 f5]}"
+        - "[d4 f4 a4 d5] [g4 b4 d5 g5] _"
+        - "_ _ {_ ~}"
+        - "[d5 f5 a5 d6] {_ _ _ [c5 e5 g5 c6]} {[b4 d5 f5 b5] [a4 c5 e5 a5] [b4 d5 f5 b5] [c5 e5 g5 c6]}"
+        - "{[d5 f5 a5 d6] [c5 e5 g5 c6] [b4 d5 f5 b5] _} {_ [c5 e5 g5 c6] [b4 d5 f5 b5] [a4 c5 e5 a5]} {[c5 e5 g5 c6] [b4 d5 f5 b5] [a4 c5 e5 a5] [f4 a4 c5 f5]}"
+        - "{_ _ [f4 a4 c5 f5] [f4 a4 c5 f5]} {[f4 a4 c5 f5] [a4 c5 e5 a5]} {[c5 e5 g5 c6] [a4 c5 e5 a5] [b4 d5 f5 b5] [g4 b4 d5 g5]}"
+        - "{[f4 a4 c5 f5] _ [f4 a4 c5 f5] [f4 a4 c5 f5]} {[f4 a4 c5 f5] [a4 c5 e5 a5]} {[b4 d5 f5 b5] [g4 b4 d5 g5] [a4 c5 e5 a5] [f4 a4 c5 f5]}"
+        - "{[d4 f4 a4 d5] _ [d4 f4 a4 d5] [c4 e4 g4 c5]} [d4 f4 a4 d5] {_ _ [d4 f4 a4 d5] [d4 f4 a4 d5]}"
+        - "{[d4 f4 a4 d5] [f4 a4 c5 f5]} {[a4 c5 e5 a5] [f4 a4 c5 f5] [g4 b4 d5 g5] [e4 g4 b4 e5]} {[d4 f4 a4 d5] _ [d4 f4 a4 d5] [c4 e4 g4 c5]}"
+        - "[d4 f4 a4 d5] {_ _ [d4 f4 a4 d5] [c4 e4 g4 c5]} {[d4 f4 a4 d5] _ [e4 g4 b4 e5] [f4 a4 c5 f5]}"
+        - "[g4 c5 e5 g5] _ {_ [f4 a4 c5 f5] [e4 g4 b4 e5] [d4 f4 a4 d5]}"
+    violins-2-2:
+      wait: 4
+      play:
+        - "forte, arco"
+        - "~ e5 d5"
+        - "{e5 ~ ~ ~} ~ ~"
+    violas:
+      play:
+        - 7x: "[c3 g3 g4] [c3 g3 c4 d4 g4 c5 e5] [c3 b3 c4 d4 g4 b4 d5]"
+        - "[c3 g3 g4] [c3 g3 c4 d4 g4 c5 e5] [c3 g3 b3 e4 g4 c5 e5]"
+        - 9x: "[c3 g3 g4] [c3 c4 d4 f4 c5 d5 f5] [c3 b3 c4 d4 g4 b4 d5]"
+        - "[c3 g3 g4] [c3 g3 c4 d4 g4 c5 e5] [c3 g3 c4 d4 g4 b4 d5]"
+    cellos:
+      play:
+        - 5x: "[c2 g2 e3 c4] [g3 e4] [c2 g2 g3]"
+        - "[c2 g2 e3 c4] [g3 e4] {[c2 g2 g3] [g2 g3]}"
+        - "[c2 g2 e3 c4] [g3 e4] [c2 g2 g3]"
+        - "[c2 g2 e3 c4] [g3 e4] {[c2 g2 g3] [g2 g3]}"
+        - 4x: ["[c2 g2 d3 c4] [g3 c4] [c2 g2 g3]", "[c2 g2 d3 c4] [g3 c4] {[c2 g2 g3] [g2 g3]}"]
+        - "[c2 g2 d3 c4] [g3 c4] [c2 g2 g3]"
+        - "[c2 g2 e3 c4] [g3 e4] {[c2 g2 g3] [g2 g3]}"
+    basses:
+      play:
+        - 18x: "c2 ~ g1"
+    bassoon:
+      play:
+        - 9x: ["{c2 ~} {c3 ~} {g2 ~}", "{c2 ~} {c3 ~} {g2 g2}"]
+    horn:
+      play:
+        - "{~ {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] [g3 g4]}"
+        - 8x: ["{[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4]}", "{[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] [g3 g4]}"]
+        - "{[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4]}"
+
+  # bars 255-272: theme B, violins and trumpet (Ravel adds woodwinds); horns on the rhythm
+  r14-violins-and-winds:
+    loop: false
+    snare:
+      play:
+        - 9x: ["{sd {sd sd sd}} {sd {sd sd sd}} {sd sd}", "{sd {sd sd sd}} {sd {sd sd sd}} {sd sd sd sd sd sd}"]
+    harp:
+      play:
+        - 2x: "[c2 c3] [g3 c4 e4 g4 c5 d5 e5 g5] [g3 b3 d4 g4 b4 c5 d5 g5]"
+        - 8x: "[c2 c3] [g3 c4 e4 g4 c5 d5 e5 g5] [g3 bb3 d4 g4 bb4 c5 d5 g5]"
+        - 2x: "[c2 c3] [g3 c4 f4 g4 c5 d5 f5 g5] [g3 b3 d4 g4 b4 c5 d5 g5]"
+        - 2x: "[c2 c3] [g3 c4 e4 g4 c5 d5 e5 g5] [g3 bb3 d4 g4 bb4 c5 d5 g5]"
+        - "[c2 c3] [g3 c4 e4 g4 c5 d5 e5 g5] [g3 c4 d4 g4 ab4 c5 d5 g5]"
+        - "[c2 c3] [g3 c4 d4 g4 ab4 c5 d5 g5] [g3 bb3 c4 g4 bb4 c5 g5]"
+        - "[c2 c3] [g3 bb3 c4 g4 bb4 c5 g5] [g3 ab3 c4 g4 ab4 c5 g5]"
+        - "[c2 c3] [g3 ab3 c4 g4 ab4 c5 g5] [g3 c4 g4 c5 g5]"
+    violins-1:
+      play:
+        - "{[c4 e4 g4 c5] ~} ~ ~"
+        - "~"
+        - "[bb4 bb5] {_ [a4 a5] [g4 g5] [f4 f5]} {[bb4 bb5] [c5 c6] [a4 a5] [g4 g5]}"
+        - "{[bb4 bb5] _ [a4 a5] [g4 g5]} [bb4 bb5] {[a4 a5] [bb4 bb5] [a4 a5] [g4 g5]}"
+        - "_ {_ [f4 f5] [e4 e5] [d4 d5]} [e4 e5]"
+        - "_ {~ [bb4 bb5]} {[c5 c6] [db5 db6]}"
+        - "{_ [db5 db6]} {_ [db5 db6]} {[db5 db6] [db5 db6]}"
+        - "{[db5 db6] [db5 db6] [db5 db6]} {[db5 db6] _ [c5 c6] [bb4 bb5]} {[db5 db6] _ [c5 c6] [bb4 bb5]}"
+        - "{[db5 db6] [c5 c6] [bb4 bb5] [ab4 ab5]} {[g4 g5] [f4 f5] [e4 e5] _} _"
+        - "_ _ {_ ~}"
+        - "[d4 d5] {_ [e4 e5]} {[d4 d5] [e4 e5] [f4 f5] _}"
+        - "_ {[g4 g5] [ab4 ab5]} {[f4 f5] [g4 g5] [e4 e5]}"
+        - "{[d4 d5] [e4 e5] [d4 d5] [c4 c5]} {_ [bb3 bb4]} _"
+        - "{_ [c4 c5] [bb3 bb4] [c4 c5]} {[d4 d5] [e4 e5] [d4 d5] [c4 c5]} {[d4 d5] [c4 c5] [bb3 bb4] [ab3 ab4]}"
+        - "{[bb3 bb4] [ab3 ab4] [g3 g4] _} {_ f4} _"
+        - "_ {_ g4 f4 eb4} _"
+        - "_ {f4 eb4 f4 db4} _"
+        - "_ {_ db4 eb4 db4} {f4 eb4 db4 c4}"
+    violins-2:
+      play:
+        - "{[c4 e4 g4 c5] ~} ~ ~"
+        - "~"
+        - "[bb4 bb5] {_ [a4 a5] [g4 g5] [f4 f5]} {[bb4 bb5] [c5 c6] [a4 a5] [g4 g5]}"
+        - "{[bb4 bb5] _ [a4 a5] [g4 g5]} [bb4 bb5] {[a4 a5] [bb4 bb5] [a4 a5] [g4 g5]}"
+        - "_ {_ [f4 f5] [e4 e5] [d4 d5]} [e4 e5]"
+        - "_ {~ [bb4 bb5]} {[c5 c6] [db5 db6]}"
+        - "{_ [db5 db6]} {_ [db5 db6]} {[db5 db6] [db5 db6]}"
+        - "{[db5 db6] [db5 db6] [db5 db6]} {[db5 db6] _ [c5 c6] [bb4 bb5]} {[db5 db6] _ [c5 c6] [bb4 bb5]}"
+        - "{[db5 db6] [c5 c6] [bb4 bb5] [ab4 ab5]} {[g4 g5] [f4 f5] [e4 e5] _} _"
+        - "_ _ {_ ~}"
+        - "[d4 d5] {_ [e4 e5]} {[d4 d5] [e4 e5] [f4 f5] _}"
+        - "_ {[g4 g5] [ab4 ab5]} {[f4 f5] [g4 g5] [e4 e5]}"
+        - "{[d4 d5] [e4 e5] [d4 d5] [c4 c5]} {_ [bb3 bb4]} _"
+        - "{_ [c4 c5] [bb3 bb4] [c4 c5]} {[d4 d5] [e4 e5] [d4 d5] [c4 c5]} {[d4 d5] [c4 c5] [bb3 bb4] [ab3 ab4]}"
+        - "{[bb3 bb4] [ab3 ab4] [g3 g4] _} ~ [ab3 c4 d4 ab4 c5 d5]"
+        - "~ [ab3 c4 d4 ab4 c5 d5] [bb3 c4 g4 bb4 c5]"
+        - "~ [bb3 c4 g4 bb4 c5] [ab3 c4 g4 ab4 c5]"
+        - "~ [ab3 c4 g4 ab4 c5] [g3 c4 g4 c5]"
+    violas:
+      play:
+        - 2x: "[c3 g3 g4] [c3 g3 c4 d4 g4 c5 e5] [c3 b3 c4 d4 g4 b4 d5]"
+        - 5x: "[c3 g3 g4] [c3 g3 c4 d4 g4 c5 e5] [c3 bb3 c4 d4 g4 bb4 d5]"
+        - 3x: "[c3 g3 c4 g4] [c3 g3 c4 d4 g4 c5 e5] [c3 bb3 c4 d4 g4 bb4 d5]"
+        - 2x: "[c3 g3 g4] [c3 c4 d4 f4 c5 d5 f5] [c3 b3 c4 d4 g4 b4 d5]"
+        - 2x: "[c3 g3 g4] [c3 g3 c4 d4 g4 c5 e5] [c3 bb3 c4 d4 g4 bb4 d5]"
+        - "arco"
+        - "[c3 g3 g4] {[c3 g3 c4 d4 g4 c5] f3} _"
+        - "_ {_ g3 f3 eb3} _"
+        - "_ {f3 eb3 f3 db3} _"
+        - "_ {_ db3 eb3 db3} {f3 eb3 db3 c3}"
+    cellos:
+      play:
+        - 5x: ["[c2 g2 e3 c4] [g3 e4] [c2 g2 g3]", "[c2 g2 e3 c4] [g3 e4] {[c2 g2 g3] [g2 g3]}"]
+        - "[c2 g2 d3 c4] [g3 c4] [c2 g2 g3]"
+        - "[c2 g2 d3 c4] [g3 c4] {[c2 g2 g3] [a2 g3]}"
+        - "[c2 g2 e3 c4] [g3 e4] [c2 g2 g3]"
+        - "[c2 g2 e3 c4] [g3 e4] {[c2 g2 g3] [g2 g3]}"
+        - "[c2 g2 e3 c4] [g3 e4] [c2 g2 g3]"
+        - "[c2 g2 d3 c4] [g3 c4] {[c2 g2 g3] [g2 g3]}"
+        - "[c2 g2 g3] [g3 c4] [c2 g2 g3]"
+        - "[c2 g2 g3] [g3 c4] {[c2 g2 g3] [g2 g3]}"
+    basses:
+      play:
+        - 18x: "c2 ~ g1"
+    trumpet:
+      wait: 2
+      play:
+        - "bb4 {_ a4 g4 f4} {bb4 c5 a4 g4}"
+        - "{bb4 _ a4 g4} bb4 {a4 bb4 a4 g4}"
+        - "_ {_ f4 e4 d4} e4"
+        - "_ {~ bb4} {c5 db5}"
+        - "{_ db5} {_ db5} {db5 db5}"
+        - "{db5 db5 db5} {db5 _ c5 bb4} {db5 _ c5 bb4}"
+        - "{db5 c5 bb4 ab4} {g4 f4 e4 _} _"
+        - "_ _ {_ ~}"
+        - "d4 {_ e4} {d4 e4 f4 _}"
+        - "_ {g4 ab4} {f4 g4 e4}"
+        - "{d4 e4 d4 c4} {_ bb3} _"
+        - "{_ c4 bb3 c4} {d4 e4 d4 c4} {d4 c4 bb3 ab3}"
+        - "{bb3 ab3 g3 _} {_ ~} ~"
+    horn:
+      play:
+        - "{[c4 e4 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 c4 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 c4 g4] [g3 g4]}"
+        - 4x: ["{[g3 e4 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 c4 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4]}", "{[g3 e4 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 c4 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 c4 g4] [g3 g4]}"]
+        - "{[g3 e4 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 c4 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4]}"
+        - "{[g3 f4 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 c4 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 c4 g4] [g3 g4]}"
+        - "{[g3 f4 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 c4 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4]}"
+        - "{[g3 e4 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 c4 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 c4 g4] [g3 g4]}"
+        - "{[g3 e4 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 c4 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4]}"
+        - "{[g3 e4 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 c4 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 ab3 g4] [g3 g4]}"
+        - "{[g3 c4 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 ab3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {g4 [g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4]}"
+        - "{[g3 c4 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] [g3 g4]}"
+        - "{[g3 c4 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {g4 [g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4]}"
+    horn-2:
+      wait: 1
+      play:
+        - "forte"
+        - 7x: ["~ ~ {c4 ~}", "~"]
+        - "~ ~ {g3 ~}"
+        - "~"
+        - "~ ~ {g3 ~}"
+
+  # bars 273-290: theme B, violins, violas and cellos, trombone and sopranino saxophone (Ravel adds woodwinds)
+  r15-violins-and-trombone:
+    loop: false
+    snare:
+      play:
+        - 9x: ["{sd {sd sd sd}} {sd {sd sd sd}} {sd sd}", "{sd {sd sd sd}} {sd {sd sd sd}} {sd sd sd sd sd sd}"]
+    harp:
+      play:
+        - "[c2 c3 g3 e4] [c3 g3 c4 e4 g4 c5 e5 g5] [c3 g3 bb3 d4 g4 bb4 d5 g5]"
+        - "[c2 c3 g3 c4 e4] [c3 g3 c4 e4 g4 c5 e5 g5] [c3 g3 bb3 d4 g4 bb4 d5 g5]"
+        - 3x: "[c2 c3 g3 e4] [c3 g3 c4 e4 g4 c5 e5 g5] [c3 g3 bb3 d4 g4 bb4 d5 g5]"
+        - 5x: "[c2 c3 g3 g4] [c3 g3 c4 e4 g4 c5 e5 g5] [c3 g3 bb3 d4 g4 bb4 d5 g5]"
+        - 2x: "[c2 c3 g3 f4] [c3 g3 c4 d4 g4 c5 f5 g5] [c3 g3 b3 d4 g4 b4 d5 g5]"
+        - 2x: "[c2 c3 g3 e4] [c3 g3 c4 e4 g4 c5 e5 g5] [c3 g3 bb3 d4 g4 bb4 d5 g5]"
+        - "[c2 c3 g3 e4] [c3 g3 c4 e4 g4 c5 e5 g5] [c3 ab3 c4 d4 g4 c5 d5 g5]"
+        - "[c2 c3 g3 c4 d4] [c3 ab3 c4 d4 g4 c5 d5 g5] [c3 g3 bb3 c4 g4 bb4 c5 g5]"
+        - "[c2 c3 g3 bb3 c4] [c3 g3 bb3 c4 g4 bb4 c5 g5] [c3 g3 ab3 c4 g4 ab4 c5 g5]"
+        - "[c2 c3 g3 ab3 c4] [c3 g3 ab3 c4 g4 ab4 c5 g5] [c3 g3 c4 g4 c5 g5]"
+    violins-1:
+      play:
+        - "_ {c4 ~} ~"
+        - "~"
+        - "[g5 bb5] {_ [f5 a5] [e5 g5] [d5 f5]} {[g5 bb5] [a5 c6] [f5 a5] [e5 g5]}"
+        - "{[g5 bb5] _ [f5 a5] [e5 g5]} [g5 bb5] {[f5 a5] [g5 bb5] [f5 a5] [e5 g5]}"
+        - "_ {_ [d5 f5] [c5 e5] [bb4 d5]} [c5 e5]"
+        - "_ {~ [g5 bb5]} {[a5 c6] [bb5 db6]}"
+        - "{_ [bb5 db6]} {_ [bb5 db6]} {[bb5 db6] [bb5 db6]}"
+        - "{[bb5 db6] [bb5 db6] [bb5 db6]} {[bb5 db6] _ [a5 c6] [g5 bb5]} {[bb5 db6] _ [a5 c6] [g5 bb5]}"
+        - "{[bb5 db6] [a5 c6] [g5 bb5] [f5 ab5]} {[e5 g5] [d5 f5] [c5 e5] _} _"
+        - "_ _ {_ ~}"
+        - "[a4 d5] {_ [b4 e5]} {[a4 d5] [b4 e5] [c5 f5] _}"
+        - "_ {[d5 g5] [f5 ab5]} {[b4 f5] [d5 g5] [b4 e5]}"
+        - "{[a4 d5] [c5 e5] [a4 d5] [g4 c5]} {_ [g4 bb4]} _"
+        - "{_ [a4 c5] [g4 bb4] [a4 c5]} {[bb4 d5] [c5 e5] [bb4 d5] [a4 c5]} {[bb4 d5] [a4 c5] [g4 bb4] [e4 ab4]}"
+        - "{bb4 ab4 [e4 g4] _} {_ [c4 f4]} _"
+        - "_ {_ [d4 g4] [c4 f4] [bb3 eb4]} _"
+        - "_ {[c4 f4] [bb3 eb4] [c4 f4] [ab3 db4]} _"
+        - "_ {_ [ab3 db4] [bb3 eb4] [ab3 db4]} {[c4 f4] [bb3 eb4] [ab3 db4] [g3 c4]}"
+    violins-1-2:
+      wait: 14
+      play:
+        - "{g4 ~} ~ ~"
+    violins-2:
+      play:
+        - 2x: "~ [g3 c4 e4 g4 c5 e5] [g3 b3 d4 g4 c5 d5]"
+        - "[g5 bb5] {_ [f5 a5] [e5 g5] [d5 f5]} {[g5 bb5] [a5 c6] [f5 a5] [e5 g5]}"
+        - "{[g5 bb5] _ [f5 a5] [e5 g5]} [g5 bb5] {[f5 a5] [g5 bb5] [f5 a5] [e5 g5]}"
+        - "_ {_ [d5 f5] [c5 e5] [bb4 d5]} [c5 e5]"
+        - "_ {~ [g5 bb5]} {[a5 c6] [bb5 db6]}"
+        - "{_ [bb5 db6]} {_ [bb5 db6]} {[bb5 db6] [bb5 db6]}"
+        - "{[bb5 db6] [bb5 db6] [bb5 db6]} {[bb5 db6] _ [a5 c6] [g5 bb5]} {[bb5 db6] _ [a5 c6] [g5 bb5]}"
+        - "{[bb5 db6] [a5 c6] [g5 bb5] [f5 ab5]} {[e5 g5] [d5 f5] [c5 e5] _} _"
+        - "_ _ {_ ~}"
+        - "[a4 d5] {_ [b4 e5]} {[a4 d5] [b4 e5] [c5 f5] _}"
+        - "_ {[d5 g5] [f5 ab5]} {[b4 f5] [d5 g5] [b4 e5]}"
+        - "{[a4 d5] [c5 e5] [a4 d5] [g4 c5]} {_ [g4 bb4]} _"
+        - "{_ [a4 c5] [g4 bb4] [a4 c5]} {[bb4 d5] [c5 e5] [bb4 d5] [a4 c5]} {[bb4 d5] [a4 c5] [g4 bb4] [e4 ab4]}"
+        - "{bb4 ab4 [e4 g4] _} {_ [c4 f4]} _"
+        - "_ {_ [d4 g4] [c4 f4] [bb3 eb4]} _"
+        - "_ {[c4 f4] [bb3 eb4] [c4 f4] [ab3 db4]} _"
+        - "_ {_ [ab3 db4] [bb3 eb4] [ab3 db4]} {[c4 f4] [bb3 eb4] [ab3 db4] c4}"
+    violins-2-2:
+      wait: 14
+      play:
+        - "{g4 ~} ~ ~"
+        - 2x: "~"
+        - "~ ~ {~ ~ ~ g3}"
+    violas:
+      play:
+        - "_ {_ ~} ~"
+        - "~"
+        - "e5 {_ d5 c5 bb4} {e5 f5 d5 c5}"
+        - "{e5 _ d5 c5} e5 {d5 e5 d5 c5}"
+        - "_ {_ bb4 g4 f4} g4"
+        - "_ {~ d5} {e5 e5}"
+        - "{_ e5} {_ e5} {e5 e5}"
+        - "{e5 e5 e5} {e5 _ eb5 db5} {e5 _ eb5 db5}"
+        - "{e5 eb5 db5 c5} {bb4 ab4 g4 _} _"
+        - "_ _ {_ ~}"
+        - "f4 {_ g4} {f4 g4 a4 _}"
+        - "_ {b4 d5} {ab4 b4 g4}"
+        - "{g4 a4 g4 e4} {_ d4} _"
+        - "{_ e4 d4 e4} {g4 a4 g4 e4} {g4 e4 d4 c4}"
+        - "{e4 c4} {_ [f3 ab3]} _"
+        - "_ {_ [g3 bb3] [f3 ab3] [eb3 g3]} _"
+        - "_ {[f3 ab3] [eb3 g3] [f3 ab3] [db3 f3]} _"
+        - "_ {_ [db3 f3] [eb3 g3] [db3 f3]} {[f3 ab3] [eb3 g3] [db3 f3] e3}"
+    violas-2:
+      wait: 17
+      play:
+        - "forte, arco"
+        - "~ ~ {~ ~ ~ c3}"
+    cellos:
+      play:
+        - 2x: "[c2 g2 e3 c4] ~ ~"
+        - "bb4 {_ a4 g4 f4} {bb4 c5 a4 g4}"
+        - "{bb4 _ a4 g4} bb4 {a4 bb4 a4 g4}"
+        - "_ {_ f4 e4 d4} e4"
+        - "_ {~ bb4} {c5 db5}"
+        - "{_ db5} {_ db5} {db5 db5}"
+        - "{db5 db5 db5} {db5 _ c5 bb4} {db5 _ c5 bb4}"
+        - "{db5 c5 bb4 ab4} {g4 f4 e4 _} _"
+        - "_ _ {_ ~}"
+        - "d4 {_ e4} {d4 e4 f4 _}"
+        - "_ {g4 ab4} {f4 g4 e4}"
+        - "{d4 e4 d4 c4} {_ bb3} _"
+        - "{_ c4 bb3 c4} {d4 e4 d4 c4} {d4 c4 bb3 ab3}"
+        - "{bb3 ab3 g3 _} {_ [f3 ab3]} _"
+        - "_ {_ [g3 bb3] [f3 ab3] [eb3 g3]} _"
+        - "_ {[f3 ab3] [eb3 g3] [f3 ab3] [db3 f3]} _"
+        - "_ {_ [db3 f3] [eb3 g3] [db3 f3]} {[f3 ab3] [eb3 g3] [db3 f3] e3}"
+    cellos-2:
+      wait: 17
+      play:
+        - "forte, pizzicato"
+        - "~ ~ {~ ~ ~ c3}"
+    basses:
+      play:
+        - "arco"
+        - 3x: "{[c2 c3] ~} {c3 ~} {[g1 g2] ~}"
+        - 7x: ["{[c2 c3] ~} {c3 ~} {[g1 g2] g2}", "{[c2 c3] ~} {c3 ~} {[g1 g2] ~}"]
+        - "{[c2 c3] ~} {c3 ~} {[g1 g2] g2}"
+    bassoon:
+      play:
+        - 9x: ["{c2 ~} {c3 ~} {c3 ~}", "{c2 ~} {c3 ~} {c3 c3}"]
+    horn:
+      play:
+        - 9x: ["{[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] [g3 g4]}", "{[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] {[g3 g4] [g3 g4] [g3 g4]}} {[g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4]}"]
+    soprano-sax:
+      wait: 2
+      play:
+        - "bb5 {_ a5 g5 f5} {bb5 c6 a5 g5}"
+        - "{bb5 _ a5 g5} bb5 {a5 bb5 a5 g5}"
+        - "_ {_ f5 e5 d5} e5"
+        - "_ {~ bb5} {c6 db6}"
+        - "{_ db6} {_ db6} {db6 db6}"
+        - "{db6 db6 db6} {db6 _ c6 bb5} {db6 _ c6 bb5}"
+        - "{db6 c6 bb5 ab5} {g5 f5 e5 _} _"
+        - "_ _ {_ ~}"
+        - "d5 {_ e5} {d5 e5 f5 _}"
+        - "_ {g5 ab5} {f5 g5 e5}"
+        - "{d5 e5 d5 c5} {_ bb4} _"
+        - "{_ c5 bb4 c5} {d5 e5 d5 c5} {d5 c5 bb4 ab4}"
+        - "{bb4 ab4 g4 _} {_ ~} ~"
+    trombone:
+      play:
+        - "forte"
+        - 2x: "~ {e4 ~} {d4 ~}"
+        - "bb4 {_ a4 g4 f4} {bb4 c5 a4 g4}"
+        - "{[e4 bb4] _ a4 g4} bb4 {a4 bb4 a4 g4}"
+        - "_ {_ f4 e4 d4} e4"
+        - "_ {e4 bb4} {[d4 c5] db5}"
+        - "{_ db5} {_ db5} {[d4 db5] db5}"
+        - "{db5 db5 db5} {[e4 db5] _ c5 bb4} {[d4 db5] _ c5 bb4}"
+        - "{db5 c5 bb4 ab4} {g4 f4 e4 _} _"
+        - "_ _ {_ ~}"
+        - "{f4 ~} {f4 e4} {d4 e4 f4 _}"
+        - "_ {[f4 g4] ab4} {f4 g4 e4}"
+        - "{d4 e4 d4 c4} {_ bb3} _"
+        - "{_ c4 bb3 c4} {e4 _ d4 c4} {d4 c4 bb3 ab3}"
+        - "{e4 g3} {_ f3} _"
+        - "_ {_ g3 f3 eb3} _"
+        - "_ {c4 _ f3 db3} _"
+        - "_ {_ db3 eb3 db3} {b3 _ db3 c3}"
+    trombone-2:
+      wait: 2
+      play:
+        - "forte"
+        - "{e4 ~} {e4 ~} {d4 ~}"
+        - "~ {e4 ~} {d4 ~}"
+        - "{e4 ~} {e4 ~} {d4 ~}"
+        - "{e4 ~} ~ ~"
+        - "{e4 ~} {e4 ~} ~"
+        - "{e4 ~} ~ ~"
+        - 2x: "{e4 ~} {e4 ~} {d4 ~}"
+        - "d4 {_ ~} {c4 ~}"
+        - "{d4 ~} ~ {d4 ~}"
+        - "{c4 ~} {e4 ~} {d4 ~}"
+        - "{e4 ~} {d4 e4 ~ ~} {c4 ~}"
+        - "{bb3 ab3 ~ ~} {e4 ~} {d4 ~}"
+        - "{d4 ~} {d4 ~} {c4 ~}"
+        - "{c4 ~} {f3 eb3 ~ ~} {c4 ~}"
+        - "{c4 ~} {c4 ~} {f3 eb3 ~ ~}"
+
+  # bars 291-308: theme A, violins, trumpets and saxophones (Ravel adds piccolo trumpet, piccolo and flutes); the second snare drum joins
+  r16-tutti:
+    loop: false
+    snare:
+      play:
+        - "fortissimo"
+        - 9x: ["{sd {sd sd sd}} {sd {sd sd sd}} {sd sd}", "{sd {sd sd sd}} {sd {sd sd sd}} {sd sd sd sd sd sd}"]
+    snare-2:
+      play:
+        - "fortissimo"
+        - "{~ {sd sd sd}} {sd {sd sd sd}} {sd sd}"
+        - 8x: ["{sd {sd sd sd}} {sd {sd sd sd}} {sd sd sd sd sd sd}", "{sd {sd sd sd}} {sd {sd sd sd}} {sd sd}"]
+        - "{sd {sd sd sd}} {sd {sd sd sd}} {sd sd sd sd sd sd}"
+    harp:
+      play:
+        - "fortissimo"
+        - "[c2 c3 g3 c4] [g2 c3 e3 c4 e4 g4 c5 g5] {[g2 d3 g3 b3 d4 g4 b4 g5] [g2 d3 g3 b3 d4 g4 b4 g5]}"
+        - 6x: "[c2 g2 c3 e3 e4 g4 c5 g5] [g2 c3 e3 c4 e4 g4 c5 g5] {[g2 d3 g3 b3 d4 g4 b4 g5] [g2 d3 g3 b3 d4 g4 b4 g5]}"
+        - "[c2 g2 c3 e3 e4 g4 c5 g5] [g2 c3 e3 g3 c4 e4 g4 c5 g5] {[g2 e3 g3 b3 e4 g4 b4 g5] [g2 e3 g3 b3 e4 g4 b4 g5]}"
+        - 9x: "[c2 g2 c3 d3 f4 c5 d5 g5] [g2 d3 g3 c4 f4 c5 d5 g5] {[g2 d3 g3 b3 d4 g4 b4 g5] [g2 d3 g3 b3 d4 g4 b4 g5]}"
+        - "[c2 g2 c3 e3 e4 g4 c5 g5] [g2 c3 e3 c4 e4 g4 c5 g5] {[g2 d3 g3 c4 f4 c5 g5] [g2 d3 g3 c4 f4 c5 g5]}"
+    violins-1:
+      play:
+        - "_ ~ ~"
+        - "~"
+        - "[c5 e5 g5 c6] {_ _ [b4 d5 f#5 b5] [c5 e5 g5 c6]} {[d5 f#5 a5 d6] [c5 e5 g5 c6] [b4 d5 f#5 b5] [a4 c5 e5 a5]}"
+        - "{[c5 e5 g5 c6] _ [c5 e5 g5 c6] [a4 c5 e5 a5]} [c5 e5 g5 c6] {_ _ [b4 d5 f#5 b5] [c5 e5 g5 c6]}"
+        - "{[a4 c5 e5 a5] [g4 b4 d5 g5] [e4 g4 b4 e5] [f4 a4 c5 f5]} [g4 c5 g5] _"
+        - "{_ [f4 a4 c5 f5] [e4 g4 b4 e5] [d4 f4 a4 d5]} {[e4 g4 b4 e5] [f4 a4 c5 f5] [g4 b4 d5 g5] [a4 c5 e5 a5]} [g4 g5]"
+        - "_ {_ [a4 c5 e5 a5] [b4 d5 f#5 b5] [a4 c5 e5 a5]} {[g4 b4 d5 g5] [f4 a4 c5 f5] [e4 g4 b4 e5] [d4 f4 a4 d5]}"
+        - "{[e4 g4 b4 e5] [d4 f4 a4 d5] [c4 e4 g4 c5] _} {_ _ [c4 e4 g4 c5] [d4 f4 a4 d5]} {[e4 g4 b4 e5] [f4 a4 c5 f5]}"
+        - "[d4 f4 a4 d5] [g4 b4 d5 g5] _"
+        - "_ _ {_ ~}"
+        - "[d5 f5 a5 d6] {_ _ _ [c5 e5 g5 c6]} {[b4 d5 f5 b5] [a4 c5 e5 a5] [b4 d5 f5 b5] [c5 e5 g5 c6]}"
+        - "{[d5 f5 a5 d6] [c5 e5 g5 c6] [b4 d5 f5 b5] _} {_ [c5 f5 a5 c6] [b4 e5 g5 b5] [a4 d5 f5 a5]} {[c5 f5 a5 c6] [b4 e5 g5 b5] [a4 d5 f5 a5] [f4 a4 d5 f5]}"
+        - "{_ _ [f4 a4 d5 f5] [f4 a4 d5 f5]} {[f4 a4 d5 f5] [a4 d5 f5 a5]} {[c5 f5 a5 c6] [a4 d5 f5 a5] [b4 e5 g5 b5] [g4 b4 e5 g5]}"
+        - "{[f4 a4 d5 f5] _ [f4 a4 d5 f5] [f4 a4 d5 f5]} {[f4 a4 d5 f5] [a4 d5 f5 a5]} {[b4 e5 g5 b5] [g4 b4 e5 g5] [a4 d5 f5 a5] [f4 a4 d5 f5]}"
+        - "{[d4 f4 a4 d5] _ [d4 f4 a4 d5] [c4 e4 g4 c5]} [d4 f4 a4 d5] {_ _ [d4 f4 a4 d5] [d4 f4 a4 d5]}"
+        - "{[d4 f4 a4 d5] [f4 a4 c5 f5]} {[a4 c5 e5 a5] [f4 a4 c5 f5] [g4 b4 d5 g5] [e4 g4 b4 e5]} {[d4 f4 a4 d5] _ [d4 f4 a4 d5] [c4 e4 g4 c5]}"
+        - "[d4 f4 a4 d5] {_ _ [d4 f4 a4 d5] [c4 e4 g4 c5]} {[d4 f4 a4 d5] _ [e4 g4 b4 e5] [f4 a4 c5 f5]}"
+        - "[g4 c5 e5 g5] _ {_ [f4 a4 c5 f5] [e4 g4 b4 e5] [d4 f4 a4 d5]}"
+    violins-1-2:
+      wait: 4
+      play:
+        - "~ e5 d5"
+        - "{e5 ~ ~ ~} ~ [b4 d5]"
+        - "[c5 e5] {_ ~ ~ ~} ~"
+    violins-2:
+      play:
+        - "fortissimo, pizzicato"
+        - "{_ {[g3 e4 c5 g5] [g3 e4 c5 g5] [g3 e4 c5 g5]}} [g3 e4 c5 g5] {[g3 d4 b4 g5] [g3 d4 b4 g5]}"
+        - 6x: "[g3 e4 c5 g5] [g3 e4 c5 g5] {[g3 d4 b4 g5] [g3 d4 b4 g5]}"
+        - "[g3 e4 c5 g5] [g3 e4 c5 g5] {[g3 e4 b4 g5] [g3 e4 b4 g5]}"
+        - 9x: "[g3 f4 d5 g5] [g3 f4 d5 g5] {[g3 d4 b4 g5] [g3 d4 b4 g5]}"
+        - "[g3 e4 c5 g5] [g3 e4 c5 g5] {[g3 d4 d5 g5] [g3 d4 d5 g5]}"
+    violins-2-2:
+      play:
+        - "fortissimo, pizzicato"
+        - "_ {~ {[g3 e4 c5 g5] [g3 e4 c5 g5] [g3 e4 c5 g5]}} ~"
+        - 3x: ["{~ {[g3 e4 c5 g5] [g3 e4 c5 g5] [g3 e4 c5 g5]}} {~ {[g3 e4 c5 g5] [g3 e4 c5 g5] [g3 e4 c5 g5]}} {~ [g3 d4 b4 g5] [g3 d4 b4 g5] ~ [g3 d4 b4 g5] [g3 d4 b4 g5]}", "{~ {[g3 e4 c5 g5] [g3 e4 c5 g5] [g3 e4 c5 g5]}} {~ {[g3 e4 c5 g5] [g3 e4 c5 g5] [g3 e4 c5 g5]}} ~"]
+        - "{~ {[g3 e4 c5 g5] [g3 e4 c5 g5] [g3 e4 c5 g5]}} {~ {[g3 e4 c5 g5] [g3 e4 c5 g5] [g3 e4 c5 g5]}} {~ [g3 e4 b4 g5] [g3 e4 b4 g5] ~ [g3 e4 b4 g5] [g3 e4 b4 g5]}"
+        - 4x: ["{~ {[g3 f4 d5 g5] [g3 f4 d5 g5] [g3 f4 d5 g5]}} {~ {[g3 f4 d5 g5] [g3 f4 d5 g5] [g3 f4 d5 g5]}} ~", "{~ {[g3 f4 d5 g5] [g3 f4 d5 g5] [g3 f4 d5 g5]}} {~ {[g3 f4 d5 g5] [g3 f4 d5 g5] [g3 f4 d5 g5]}} {~ [g3 d4 b4 g5] [g3 d4 b4 g5] ~ [g3 d4 b4 g5] [g3 d4 b4 g5]}"]
+        - "{~ {[g3 f4 d5 g5] [g3 f4 d5 g5] [g3 f4 d5 g5]}} {~ {[g3 f4 d5 g5] [g3 f4 d5 g5] [g3 f4 d5 g5]}} ~"
+        - "{~ {[g3 e4 c5 g5] [g3 e4 c5 g5] [g3 e4 c5 g5]}} {~ {[g3 e4 c5 g5] [g3 e4 c5 g5] [g3 e4 c5 g5]}} {~ [g3 d4 d5 g5] [g3 d4 d5 g5] ~ [g3 d4 d5 g5] [g3 d4 d5 g5]}"
+    violas:
+      play:
+        - "fortissimo, pizzicato"
+        - "{_ {[c3 c4 g4 e5] [c3 c4 g4 e5] [c3 c4 g4 e5]}} [c3 c4 g4 e5] {[c3 b3 g4 d5] [c3 b3 g4 d5]}"
+        - 6x: "[c3 c4 g4 e5] [c3 c4 g4 e5] {[c3 b3 g4 d5] [c3 b3 g4 d5]}"
+        - "[c3 c4 g4 e5] [c3 c4 g4 e5] {[c3 b3 g4 e5] [c3 b3 g4 e5]}"
+        - 5x: "[c3 g3 g4 f5] [c3 g3 g4 f5] {[c3 b3 g4 d5] [c3 b3 g4 d5]}"
+        - "[c3 g3 g4 f5] [c3 g3 g4 f5] {[c3 b3 g4 f5] [c3 b3 g4 f5]}"
+        - "[c3 g3 g4 f5] [c3 g3 g4 f5] {[c3 b3 g4 d5] [c3 b3 g4 d5]}"
+        - "[c3 g3 g4 f5] [c3 g3 g4 f5] {{f5 [c3 b3 g4 f5] [c3 b3 g4 f5]} [c3 b3 g4 f5]}"
+        - "[c3 g3 g4 f5] [c3 g3 g4 f5] {[c3 b3 g4 d5] [c3 b3 g4 d5]}"
+        - "[c3 c4 g4 e5] [c3 c4 g4 e5] {[c3 g3 g4 c5] [c3 g3 g4 c5]}"
+    violas-2:
+      play:
+        - "fortissimo, pizzicato"
+        - "_ {~ {[c3 c4 g4 e5] [c3 c4 g4 e5] [c3 c4 g4 e5]}} ~"
+        - 3x: ["{~ {[c3 c4 g4 e5] [c3 c4 g4 e5] [c3 c4 g4 e5]}} {~ {[c3 c4 g4 e5] [c3 c4 g4 e5] [c3 c4 g4 e5]}} {~ [c3 b3 g4 d5] [c3 b3 g4 d5] ~ [c3 b3 g4 d5] [c3 b3 g4 d5]}", "{~ {[c3 c4 g4 e5] [c3 c4 g4 e5] [c3 c4 g4 e5]}} {~ {[c3 c4 g4 e5] [c3 c4 g4 e5] [c3 c4 g4 e5]}} ~"]
+        - "{~ {[c3 c4 g4 e5] [c3 c4 g4 e5] [c3 c4 g4 e5]}} {~ {[c3 c4 g4 e5] [c3 c4 g4 e5] [c3 c4 g4 e5]}} {~ [c3 b3 g4 e5] [c3 b3 g4 e5] ~ [c3 b3 g4 e5] [c3 b3 g4 e5]}"
+        - 2x: ["{~ {[c3 g3 g4 f5] [c3 g3 g4 f5] [c3 g3 g4 f5]}} {~ {[c3 g3 g4 f5] [c3 g3 g4 f5] [c3 g3 g4 f5]}} ~", "{~ {[c3 g3 g4 f5] [c3 g3 g4 f5] [c3 g3 g4 f5]}} {~ {[c3 g3 g4 f5] [c3 g3 g4 f5] [c3 g3 g4 f5]}} {~ [c3 b3 g4 d5] [c3 b3 g4 d5] ~ [c3 b3 g4 d5] [c3 b3 g4 d5]}"]
+        - "{~ {[c3 g3 g4 f5] [c3 g3 g4 f5] [c3 g3 g4 f5]}} {~ {[c3 g3 g4 f5] [c3 g3 g4 f5] [c3 g3 g4 f5]}} ~"
+        - "{~ {[c3 g3 g4 f5] [c3 g3 g4 f5] [c3 g3 g4 f5]}} {~ {[c3 g3 g4 f5] [c3 g3 g4 f5] [c3 g3 g4 f5]}} {~ [c3 b3 g4 f5] [c3 b3 g4 f5] d5 [c3 b3 g4 d5] [c3 b3 g4 d5]}"
+        - "{~ {[c3 g3 g4 f5] [c3 g3 g4 f5] [c3 g3 g4 f5]}} {~ {[c3 g3 g4 f5] [c3 g3 g4 f5] [c3 g3 g4 f5]}} ~"
+        - "{~ {[c3 g3 g4 f5] [c3 g3 g4 f5] [c3 g3 g4 f5]}} {~ {[c3 g3 g4 f5] [c3 g3 g4 f5] [c3 g3 g4 f5]}} {[c3 b3 g4 d5] {d5 [c3 b3 g4 d5] [c3 b3 g4 d5]}}"
+        - "{~ {[c3 g3 g4 f5] [c3 g3 g4 f5] [c3 g3 g4 f5]}} {~ {[c3 g3 g4 f5] [c3 g3 g4 f5] [c3 g3 g4 f5]}} ~"
+        - "{~ {[c3 c4 g4 e5] [c3 c4 g4 e5] [c3 c4 g4 e5]}} {~ {[c3 c4 g4 e5] [c3 c4 g4 e5] [c3 c4 g4 e5]}} {~ [c3 g3 g4 c5] [c3 g3 g4 c5] ~ [c3 g3 g4 c5] [c3 g3 g4 c5]}"
+    cellos:
+      play:
+        - "fortissimo"
+        - "{_ {[c2 g2 e3 c4] [c2 g2 e3 c4] [c2 g2 e3 c4]}} [c2 g2 e3 c4] {[c2 g2 d3 c4] [c2 g2 d3 c4]}"
+        - 6x: "[c2 g2 e3 c4] [c2 g2 e3 c4] {[c2 g2 d3 c4] [c2 g2 d3 c4]}"
+        - "[c2 g2 e3 c4] [c2 g2 e3 c4] {[c2 g2 e3 c4] [c2 g2 e3 c4]}"
+        - 9x: "[c2 g2 d3 c4] [c2 g2 d3 c4] {[c2 g2 d3 c4] [c2 g2 d3 c4]}"
+        - "[c2 g2 e3 c4] [c2 g2 e3 c4] {[c2 g2 d3 c4] [c2 g2 d3 c4]}"
+    cellos-2:
+      play:
+        - "fortissimo"
+        - "_ {~ {[c2 g2 e3 c4] [c2 g2 e3 c4] [c2 g2 e3 c4]}} ~"
+        - 3x: ["{~ {[c2 g2 e3 c4] [c2 g2 e3 c4] [c2 g2 e3 c4]}} {~ {[c2 g2 e3 c4] [c2 g2 e3 c4] [c2 g2 e3 c4]}} {~ [c2 g2 d3 c4] [c2 g2 d3 c4] ~ [c2 g2 d3 c4] [c2 g2 d3 c4]}", "{~ {[c2 g2 e3 c4] [c2 g2 e3 c4] [c2 g2 e3 c4]}} {~ {[c2 g2 e3 c4] [c2 g2 e3 c4] [c2 g2 e3 c4]}} ~"]
+        - "{~ {[c2 g2 e3 c4] [c2 g2 e3 c4] [c2 g2 e3 c4]}} {~ {[c2 g2 e3 c4] [c2 g2 e3 c4] [c2 g2 e3 c4]}} {~ [c2 g2 e3 c4] [c2 g2 e3 c4] ~ [c2 g2 e3 c4] [c2 g2 e3 c4]}"
+        - 4x: ["{~ {[c2 g2 d3 c4] [c2 g2 d3 c4] [c2 g2 d3 c4]}} {~ {[c2 g2 d3 c4] [c2 g2 d3 c4] [c2 g2 d3 c4]}} ~", "{~ {[c2 g2 d3 c4] [c2 g2 d3 c4] [c2 g2 d3 c4]}} {~ {[c2 g2 d3 c4] [c2 g2 d3 c4] [c2 g2 d3 c4]}} {~ [c2 g2 d3 c4] [c2 g2 d3 c4] ~ [c2 g2 d3 c4] [c2 g2 d3 c4]}"]
+        - "{~ {[c2 g2 d3 c4] [c2 g2 d3 c4] [c2 g2 d3 c4]}} {~ {[c2 g2 d3 c4] [c2 g2 d3 c4] [c2 g2 d3 c4]}} ~"
+        - "{~ {[c2 g2 e3 c4] [c2 g2 e3 c4] [c2 g2 e3 c4]}} {~ {[c2 g2 e3 c4] [c2 g2 e3 c4] [c2 g2 e3 c4]}} {~ [c2 g2 d3 c4] [c2 g2 d3 c4] ~ [c2 g2 d3 c4] [c2 g2 d3 c4]}"
+    basses:
+      play:
+        - 2x: ["{[c2 c3] ~} {[c2 c3] ~} {[g1 g2] ~}", "{[c2 c3] ~} {[c2 c3] ~} {[g1 g2] g2}"]
+        - 7x: ["{[c2 c3] ~} {[c2 c3] ~} {[g1 g2] ~}", "{[c2 c3] ~} {[c2 c3] ~} {[g1 g2] [g1 g2]}"]
+    clarinet:
+      play:
+        - "fortissimo"
+        - 3x: ["{{c5 d5 c5} c5} {{c5 d5 c5} c5} {c5 c5}", "{{c5 d5 c5} c5} {c5 d5 c5 c5 d5 c5} {{c5 d5 c5} c5}"]
+        - "{{c5 d5 c5} c5} {{c5 d5 c5} c5} {c5 c5}"
+        - 5x: ["{{c5 d5 c5} c5} {c5 d5 c5 b4 c5 b4} {{b4 c5 b4} c5}", "{{c5 d5 c5} c5} {{c5 d5 c5} b4} {b4 c5}"]
+        - "{{c5 d5 c5} c5} {c5 d5 c5 c5 d5 c5} {{c5 d5 c5} c5}"
+    oboe:
+      play:
+        - "fortissimo"
+        - 3x: ["{{e5 g5 e5} e5} {{e5 g5 e5} d5} {d5 e5}", "{{e5 g5 e5} e5} {e5 g5 e5 d5 g5 d5} {{d5 g5 d5} e5}"]
+        - "{{e5 g5 e5} e5} {{e5 g5 e5} d5} {d5 e5}"
+        - "{{e5 g5 e5} e5} {e5 g5 e5 e5 g5 e5} {{e5 g5 e5} f5}"
+        - 4x: ["{{f5 g5 f5} f5} {{f5 g5 f5} d5} {d5 f5}", "{{f5 g5 f5} f5} {f5 g5 f5 d5 g5 d5} {{d5 g5 d5} f5}"]
+        - "{{f5 g5 f5} f5} {{f5 g5 f5} d5} {d5 e5}"
+        - "{{e5 g5 e5} e5} {e5 g5 e5 d5 g5 d5} {{d5 g5 d5} e5}"
+    trumpet:
+      play:
+        - "fortissimo"
+        - 2x: "~ {[d5 e5] ~} {[c5 d5] ~}"
+        - "[e5 g5] {_ _ [d5 f#5] [e5 g5]} {[f#5 a5] [e5 g5] [d5 f#5] [c5 e5]}"
+        - "{[e5 g5] _ [e5 g5] [c5 e5]} [e5 g5] {_ _ [d5 f#5] [e5 g5]}"
+        - "{[c5 e5] [b4 d5] [g4 b4] [a4 c5]} e5 d5"
+        - "{e5 [a4 c5] [g4 b4] [f4 a4]} {[g4 b4] [a4 c5] [b4 d5] [c5 e5]} [b4 d5]"
+        - "[c5 e5] {_ [c5 e5] [d5 f#5] [c5 e5]} {[b4 d5] [a4 c5] [g4 b4] [f4 a4]}"
+        - "{[g4 b4] [f4 a4] [e4 g4] _} {_ _ [e4 g4] [f4 a4]} {[g4 b4] [a4 c5]}"
+        - "[f4 a4] [b4 d5] _"
+        - "_ _ {_ ~}"
+        - "[f5 a5] {_ _ _ [e5 g5]} {[d5 f5] [c5 e5] [d5 f5] [e5 g5]}"
+        - "{[f5 a5] [e5 g5] [d5 f5] _} {_ [f5 a5] [e5 g5] [d5 f5]} {[f5 a5] [e5 g5] [d5 f5] [a4 d5]}"
+        - "{_ _ [a4 d5] [a4 d5]} {[a4 d5] [d5 f5]} {[f5 a5] [d5 f5] [e5 g5] [b4 e5]}"
+        - "{[a4 d5] _ [a4 d5] [a4 d5]} {[a4 d5] [d5 f5]} {[e5 g5] [b4 e5] [d5 f5] [a4 d5]}"
+        - "{[f4 a4] _ [f4 a4] [e4 g4]} [f4 a4] {_ _ [f4 a4] [f4 a4]}"
+        - "{[f4 a4] [a4 c5]} {[c5 e5] [a4 c5] [b4 d5] [g4 b4]} {[f4 a4] _ [f4 a4] [e4 g4]}"
+        - "[f4 a4] {_ _ [f4 a4] [e4 g4]} {[f4 a4] _ [g4 b4] [a4 c5]}"
+        - "[c5 e5] _ {_ [a4 c5] [g4 b4] [f4 a4]}"
+    trumpet-2:
+      wait: 4
+      play:
+        - "fortissimo"
+        - "~ c5 _"
+        - "{_ ~ ~ ~} ~ ~"
+    tenor-sax:
+      wait: 2
+      play:
+        - "c5 {_ _ b4 c5} {d5 c5 b4 a4}"
+        - "{c5 _ c5 a4} c5 {_ _ b4 c5}"
+        - "{a4 g4 e4 f4} g4 _"
+        - "{_ f4 e4 d4} {e4 f4 g4 a4} g4"
+        - "_ {_ a4 b4 a4} {g4 f4 e4 d4}"
+        - "{e4 d4 c4 _} {_ _ c4 d4} {e4 f4}"
+        - "d4 g4 _"
+        - "_ _ {_ ~}"
+        - "d5 {_ _ _ c5} {b4 a4 b4 c5}"
+        - "{d5 c5 b4 _} {_ c5 b4 a4} {c5 b4 a4 f4}"
+        - "{_ _ f4 f4} {f4 a4} {c5 a4 b4 g4}"
+        - "{f4 _ f4 f4} {f4 a4} {b4 g4 a4 f4}"
+        - "{d4 _ d4 c4} d4 {_ _ d4 d4}"
+        - "{d4 f4} {a4 f4 g4 e4} {d4 _ d4 c4}"
+        - "d4 {_ _ d4 c4} {d4 _ e4 f4}"
+        - "g4 _ {_ f4 e4 d4}"
+    soprano-sax:
+      wait: 2
+      play:
+        - "c6 {_ _ b5 c6} {d6 c6 b5 a5}"
+        - "{c6 _ c6 a5} c6 {_ _ b5 c6}"
+        - "{a5 g5 e5 f5} g5 _"
+        - "{_ f5 e5 d5} {e5 f5 g5 a5} g5"
+        - "_ {_ a5 b5 a5} {g5 f5 e5 d5}"
+        - "{e5 d5 c5 _} {_ _ c5 d5} {e5 f5}"
+        - "d5 g5 _"
+        - "_ _ {_ ~}"
+        - "d6 {_ _ _ c6} {b5 a5 b5 c6}"
+        - "{d6 c6 b5 _} {_ c6 b5 a5} {c6 b5 a5 f5}"
+        - "{_ _ f5 f5} {f5 a5} {c6 a5 b5 g5}"
+        - "{f5 _ f5 f5} {f5 a5} {b5 g5 a5 f5}"
+        - "{d5 _ d5 c5} d5 {_ _ d5 d5}"
+        - "{d5 f5} {a5 f5 g5 e5} {d5 _ d5 c5}"
+        - "d5 {_ _ d5 c5} {d5 _ e5 f5}"
+        - "g5 _ {_ f5 e5 d5}"
+    trombone:
+      play:
+        - "_ ~ ~"
+
+  # bars 309-326: theme B, violins, trumpets, saxophones and trombone (Ravel adds piccolo trumpet, piccolo and flutes)
+  r17-tutti:
+    loop: false
+    snare:
+      play:
+        - 9x: ["{sd {sd sd sd}} {sd {sd sd sd}} {sd sd}", "{sd {sd sd sd}} {sd {sd sd sd}} {sd sd sd sd sd sd}"]
+    snare-2:
+      play:
+        - 9x: ["{sd {sd sd sd}} {sd {sd sd sd}} {sd sd}", "{sd {sd sd sd}} {sd {sd sd sd}} {sd sd sd sd sd sd}"]
+    harp:
+      play:
+        - 2x: "[c2 g2 c3 e3 e4 g4 c5 g5] [g2 c3 e3 c4 e4 g4 c5 g5] {[g2 d3 g3 b3 d4 g4 b4 g5] [g2 d3 g3 b3 d4 g4 b4 g5]}"
+        - "[c2 g2 c3 e3 e4 g4 c5 g5] [g2 c3 e3 c4 e4 g4 c5 g5] {[g2 d3 g3 bb3 d4 g4 bb4 g5] [g2 d3 g3 bb3 d4 g4 bb4 g5]}"
+        - "[c2 g2 c3 e3 e4 c5 g5] [g2 c3 e3 c4 e4 c5 g5] {[g2 d3 g3 bb3 d4 g4 bb4 g5] [g2 d3 g3 bb3 d4 g4 bb4 g5]}"
+        - 6x: "[c2 g2 c3 e3 e4 g4 c5 g5] [g2 c3 e3 c4 e4 g4 c5 g5] {[g2 d3 g3 bb3 d4 g4 bb4 g5] [g2 d3 g3 bb3 d4 g4 bb4 g5]}"
+        - 2x: "[c2 g2 c3 d3 f4 c5 d5 g5] [g2 d3 g3 c4 f4 c5 d5 g5] {[g2 d3 g3 b3 d4 g4 b4 g5] [g2 d3 g3 b3 d4 g4 b4 g5]}"
+        - "[c2 g2 c3 g3 e4 g4 c5 g5] [g2 c3 e3 c4 e4 g4 c5 g5] {[g2 d3 g3 bb3 d4 g4 bb4 g5] [g2 d3 g3 bb3 d4 g4 bb4 g5]}"
+        - "[c2 g2 c3 e3 e4 g4 c5 g5] [g2 c3 e3 c4 e4 g4 c5 g5] {[g2 d3 g3 bb3 d4 g4 bb4 g5] [g2 d3 g3 bb3 d4 g4 bb4 g5]}"
+        - 2x: "[c2 g2 c3 e3 e4 g4 c5 g5] [c2 g2 c3 e3 e4 g4 c5 g5] {[g2 d3 g3 c4 d4 g4 d5 g5] [g2 d3 g3 c4 d4 g4 d5 g5]}"
+        - "[c2 g2 c3 d3 f4 c5 d5 g5] [g2 d3 g3 c4 f4 c5 d5 g5] {[g2 d3 g3 b3 d4 g4 b4 g5] [g2 d3 g3 b3 d4 g4 b4 g5]}"
+        - "[c2 g2 c3 d3 f4 c5 d5 g5] [g2 d3 g3 c4 f4 c5 d5 g5] [g2 d3 g3 b3 d4 g4 b4 g5]"
+    violins-1:
+      play:
+        - "{[c4 e4 g4 c5] ~} ~ ~"
+        - "~"
+        - "[bb4 e5 g5 bb5] {_ [a4 d5 f5 a5] [g4 c5 e5 g5] [f4 bb4 d5 f5]} {[bb4 e5 g5 bb5] [c5 f5 a5 c6] [a4 d5 f5 a5] [g4 c5 e5 g5]}"
+        - "{[bb4 e5 g5 bb5] _ [a4 d5 f5 a5] [g4 c5 e5 g5]} [bb4 e5 g5 bb5] {[a4 d5 f5 a5] [bb4 e5 g5 bb5] [a4 d5 f5 a5] [g4 c5 g5]}"
+        - "_ {_ [f4 bb4 d5 f5] [e4 g4 c5 e5] [d4 f4 bb4 d5]} [e4 g4 c5 e5]"
+        - "_ {~ [bb4 d5 g5 bb5]} {[c5 e5 a5 c6] [db5 e5 bb5 db6]}"
+        - "{_ [db5 e5 bb5 db6]} {_ [db5 e5 bb5 db6]} {[db5 e5 bb5 db6] [db5 e5 bb5 db6]}"
+        - "{[db5 e5 bb5 db6] [db5 e5 bb5 db6] [db5 e5 bb5 db6]} {[db5 e5 bb5 db6] _ [c5 eb5 a5 c6] [bb4 db5 g5 bb5]} {[db5 e5 bb5 db6] _ [c5 eb5 a5 c6] [bb4 db5 g5 bb5]}"
+        - "{[db5 e5 bb5 db6] [c5 eb5 a5 c6] [bb4 db5 g5 bb5] [ab4 c5 f5 ab5]} {[g4 bb4 e5 g5] [f4 ab4 d5 f5] [e4 g4 c5 e5] _} _"
+        - "_ _ {_ ~}"
+        - "[d4 f4 a4 d5] {_ [e4 g4 b4 e5]} {[d4 f4 a4 d5] [e4 g4 b4 e5] [f4 a4 c5 f5] _}"
+        - "_ {[g4 b4 d5 g5] [ab4 d5 f5 ab5]} {[f4 ab4 b4 f5] [g4 b4 d5 g5] [e4 g4 b4 e5]}"
+        - "{[d4 g4 a4 d5] [e4 a4 c5 e5] [d4 g4 a4 d5] [c4 e4 g4 c5]} {_ [bb3 d4 g4 bb4]} _"
+        - "{_ [c4 e4 a4 c5] [bb3 d4 g4 bb4] [c4 e4 a4 c5]} {[d4 g4 bb4 d5] [e4 a4 c5 e5] [d4 g4 bb4 d5] [c4 e4 a4 c5]} {[d4 g4 bb4 d5] [c4 e4 a4 c5] [bb3 d4 g4 bb4] [ab3 c4 f4 ab4]}"
+        - "{[bb3 bb4] [ab3 ab4] [g3 c4 e4 g4] _} _ _"
+        - "_ _ {~ [d4 f4 a4 d5]}"
+        - "_ {_ [e4 g4 b4 e5]} _"
+        - "{[d4 f4 a4 d5] [e4 g4 b4 e5] [f4 a4 c5 f5] _} _ {[g4 b4 d5 g5] [b4 e5 g#5 b5]}"
+    violins-1-2:
+      wait: 3
+      play:
+        - "~ ~ {~ ~ ~ e5}"
+        - "_ {e5 ~ ~ ~} ~"
+        - 9x: "~"
+        - "{[e4 g4] ~} ~ ~"
+    violins-2:
+      play:
+        - "arco"
+        - "{[g3 e4 c5 g5] {[g4 d5 e5 g5] [g4 d5 e5 g5] [g4 d5 e5 g5]}} {[g4 d5 e5 g5] {[g4 d5 e5 g5] [g4 d5 e5 g5] [g4 d5 e5 g5]}} {[g4 c5 d5 g5] [g4 c5 d5 g5]}"
+        - 4x: ["{[g4 d5 e5 g5] {[g4 d5 e5 g5] [g4 d5 e5 g5] [g4 d5 e5 g5]}} {[g4 d5 e5 g5] {[g4 d5 e5 g5] [g4 d5 e5 g5] [g4 d5 e5 g5]}} {[g4 c5 d5 g5] [g4 c5 d5 g5] [g4 c5 d5 g5] [g4 c5 d5 g5] [g4 c5 d5 g5] [g4 c5 d5 g5]}", "{[g4 d5 e5 g5] {[g4 d5 e5 g5] [g4 d5 e5 g5] [g4 d5 e5 g5]}} {[g4 d5 e5 g5] {[g4 d5 e5 g5] [g4 d5 e5 g5] [g4 d5 e5 g5]}} {[g4 c5 d5 g5] [g4 c5 d5 g5]}"]
+        - "{[g4 d5 e5 g5] {[g4 d5 e5 g5] [g4 d5 e5 g5] [g4 d5 e5 g5]}} {[g4 d5 e5 g5] {[g4 d5 e5 g5] [g4 d5 e5 g5] [g4 d5 e5 g5]}} {[g4 c5 d5 g5] [g4 c5 d5 g5] [g4 c5 d5 g5] [g4 c5 d5 g5] [g4 c5 d5 g5] [g4 c5 d5 g5]}"
+        - "{[g4 d5 f5 g5] {[g4 d5 f5 g5] [g4 d5 f5 g5] [g4 d5 f5 g5]}} {[g4 d5 f5 g5] {[g4 d5 f5 g5] [g4 d5 f5 g5] [g4 d5 f5 g5]}} {[g4 c5 d5 g5] [g4 c5 d5 g5]}"
+        - "{[g4 d5 f5 g5] {[g4 d5 f5 g5] [g4 d5 f5 g5] [g4 d5 f5 g5]}} {[g4 d5 f5 g5] {[g4 d5 f5 g5] [g4 d5 f5 g5] [g4 d5 f5 g5]}} {[g4 c5 d5 g5] [g4 c5 d5 g5] [g4 c5 d5 g5] [g4 c5 d5 g5] [g4 c5 d5 g5] [g4 c5 d5 g5]}"
+        - 2x: ["{[g4 d5 e5 g5] {[g4 d5 e5 g5] [g4 d5 e5 g5] [g4 d5 e5 g5]}} {[g4 d5 e5 g5] {[g4 d5 e5 g5] [g4 d5 e5 g5] [g4 d5 e5 g5]}} {[g4 c5 d5 g5] [g4 c5 d5 g5]}", "{[g4 d5 e5 g5] {[g4 d5 e5 g5] [g4 d5 e5 g5] [g4 d5 e5 g5]}} {[g4 d5 e5 g5] {[g4 d5 e5 g5] [g4 d5 e5 g5] [g4 d5 e5 g5]}} {[g4 c5 d5 g5] [g4 c5 d5 g5] [g4 c5 d5 g5] [g4 c5 d5 g5] [g4 c5 d5 g5] [g4 c5 d5 g5]}"]
+        - "{[g4 d5 f5 g5] {[g4 d5 f5 g5] [g4 d5 f5 g5] [g4 d5 f5 g5]}} {[g4 d5 f5 g5] {[g4 d5 f5 g5] [g4 d5 f5 g5] [g4 d5 f5 g5]}} {[g4 c5 d5 g5] [g4 c5 d5 g5]}"
+        - "{[g4 d5 f5 g5] {[g4 d5 f5 g5] [g4 d5 f5 g5] [g4 d5 f5 g5]}} {[g4 d5 f5 g5] {[g4 d5 f5 g5] [g4 d5 f5 g5] [g4 d5 f5 g5]}} {[g4 c5 d5 g5] [g4 c5 d5 g5] [g4 c5 d5 g5] [g4 c5 d5 g5] [g4 c5 d5 g5] [g4 c5 d5 g5]}"
+    violas:
+      play:
+        - "arco"
+        - "{[c3 g3 c4 g4 e5] {[c4 d4 e4 c5] [c4 d4 e4 c5] [c4 d4 e4 c5]}} {[c4 d4 e4 c5] {[c4 d4 e4 c5] [c4 d4 e4 c5] [c4 d4 e4 c5]}} {[b3 d4 b4] [b3 d4 b4]}"
+        - "{[c4 d4 e4 c5] {[c4 d4 e4 c5] [c4 d4 e4 c5] [c4 d4 e4 c5]}} {[c4 d4 e4 c5] {[c4 d4 e4 c5] [c4 d4 e4 c5] [c4 d4 e4 c5]}} {[b3 d4 b4] [b3 d4 b4] [b3 d4 b4] [b3 d4 b4] [b3 d4 b4] [b3 d4 b4]}"
+        - 4x: ["{[c4 d4 e4 c5] {[c4 d4 e4 c5] [c4 d4 e4 c5] [c4 d4 e4 c5]}} {[c4 d4 e4 c5] {[c4 d4 e4 c5] [c4 d4 e4 c5] [c4 d4 e4 c5]}} {[bb3 d4 bb4] [bb3 d4 bb4]}", "{[c4 d4 e4 c5] {[c4 d4 e4 c5] [c4 d4 e4 c5] [c4 d4 e4 c5]}} {[c4 d4 e4 c5] {[c4 d4 e4 c5] [c4 d4 e4 c5] [c4 d4 e4 c5]}} {[bb3 d4 bb4] [bb3 d4 bb4] [bb3 d4 bb4] [bb3 d4 bb4] [bb3 d4 bb4] [bb3 d4 bb4]}"]
+        - "{[c4 d4 f4 c5] {[c4 d4 f4 c5] [c4 d4 f4 c5] [c4 d4 f4 c5]}} {[c4 d4 f4 c5] {[c4 d4 f4 c5] [c4 d4 f4 c5] [c4 d4 f4 c5]}} {[b3 d4 b4] [b3 d4 b4]}"
+        - "{[c4 d4 f4 c5] {[c4 d4 f4 c5] [c4 d4 f4 c5] [c4 d4 f4 c5]}} {[c4 d4 f4 c5] {[c4 d4 f4 c5] [c4 d4 f4 c5] [c4 d4 f4 c5]}} {[b3 d4 b4] [b3 d4 b4] [b3 d4 b4] [b3 d4 b4] [b3 d4 b4] [b3 d4 b4]}"
+        - "{[c4 d4 e4 c5] {[c4 d4 e4 c5] [c4 d4 e4 c5] [c4 d4 e4 c5]}} {[c4 d4 e4 c5] {[c4 d4 e4 c5] [c4 d4 e4 c5] [c4 d4 e4 c5]}} {[bb3 d4 bb4] [bb3 d4 bb4]}"
+        - "{[c4 d4 e4 c5] {[c4 d4 e4 c5] [c4 d4 e4 c5] [c4 d4 e4 c5]}} {[c4 d4 e4 c5] {[c4 d4 e4 c5] [c4 d4 e4 c5] [c4 d4 e4 c5]}} {[bb3 d4 bb4] [bb3 d4 bb4] [bb3 d4 bb4] [bb3 d4 bb4] [bb3 d4 bb4] [bb3 d4 bb4]}"
+        - "{[c4 d4 e4 c5] {[c4 d4 e4 c5] [c4 d4 e4 c5] [c4 d4 e4 c5]}} {[c4 d4 e4 c5] {[c4 d4 e4 c5] [c4 d4 e4 c5] [c4 d4 e4 c5]}} {[c4 d4 c5] [c4 d4 c5]}"
+        - "{[c4 d4 e4 c5] {[c4 d4 e4 c5] [c4 d4 e4 c5] [c4 d4 e4 c5]}} {[c4 d4 e4 c5] {[c4 d4 e4 c5] [c4 d4 e4 c5] [c4 d4 e4 c5]}} {[c4 d4 c5] [c4 d4 c5] [c4 d4 c5] [c4 d4 c5] [c4 d4 c5] [c4 d4 c5]}"
+        - "{[c4 d4 f4 c5] {[c4 d4 f4 c5] [c4 d4 f4 c5] [c4 d4 f4 c5]}} {[c4 d4 f4 c5] {[c4 d4 f4 c5] [c4 d4 f4 c5] [c4 d4 f4 c5]}} {[b3 d4 b4] [b3 d4 b4]}"
+        - "{[c4 d4 f4 c5] {[c4 d4 f4 c5] [c4 d4 f4 c5] [c4 d4 f4 c5]}} {[c4 d4 f4 c5] {[c4 d4 f4 c5] [c4 d4 f4 c5] [c4 d4 f4 c5]}} {[b3 d4 b4] [b3 d4 b4] [b3 d4 b4] [b3 d4 b4] [b3 d4 b4] [b3 d4 b4]}"
+    cellos:
+      play:
+        - "arco"
+        - "{[c2 g2 e3 c4] {[c2 c3 g3] [c2 c3 g3] [c2 c3 g3]}} {[c2 c3 g3] {[c2 c3 g3] [c2 c3 g3] [c2 c3 g3]}} {[c2 c3 g3 c4] [c2 c3 g3 c4]}"
+        - 8x: ["{[c2 c3 g3] {[c2 c3 g3] [c2 c3 g3] [c2 c3 g3]}} {[c2 c3 g3] {[c2 c3 g3] [c2 c3 g3] [c2 c3 g3]}} {[c2 c3 g3 c4] [c2 c3 g3 c4] [c2 c3 g3 c4] [c2 c3 g3 c4] [c2 c3 g3 c4] [c2 c3 g3 c4]}", "{[c2 c3 g3] {[c2 c3 g3] [c2 c3 g3] [c2 c3 g3]}} {[c2 c3 g3] {[c2 c3 g3] [c2 c3 g3] [c2 c3 g3]}} {[c2 c3 g3 c4] [c2 c3 g3 c4]}"]
+        - "{[c2 c3 g3] {[c2 c3 g3] [c2 c3 g3] [c2 c3 g3]}} {[c2 c3 g3] {[c2 c3 g3] [c2 c3 g3] [c2 c3 g3]}} {[c2 c3 g3 c4] [c2 c3 g3 c4] [c2 c3 g3 c4] [c2 c3 g3 c4] [c2 c3 g3 c4] [c2 c3 g3 c4]}"
+    basses:
+      play:
+        - 9x: ["{[c2 c3] ~} {[c2 c3] ~} {[g1 g2] ~}", "{[c2 c3] ~} {[c2 c3] ~} {[g1 g2] [g1 g2]}"]
+    clarinet:
+      play:
+        - "{{c5 d5 c5} c5} {{c5 d5 c5} b4} {b4 c5}"
+        - "{{c5 d5 c5} c5} {c5 d5 c5 b4 c5 b4} {{b4 c5 b4} c5}"
+        - 4x: ["{{c5 d5 c5} c5} {{c5 d5 c5} bb4} {bb4 c5}", "{{c5 d5 c5} c5} {c5 d5 c5 bb4 c5 bb4} {{bb4 c5 bb4} c5}"]
+        - "{{c5 d5 c5} c5} {{c5 d5 c5} b4} {b4 c5}"
+        - "{{c5 d5 c5} c5} {c5 d5 c5 b4 c5 b4} {{b4 c5 b4} c5}"
+        - "{{c5 d5 c5} c5} {{c5 d5 c5} bb4} {bb4 c5}"
+        - "{{c5 d5 c5} c5} {c5 d5 c5 bb4 c5 bb4} {{bb4 c5 bb4} c5}"
+        - "{{c5 d5 c5} c5} {{c5 d5 c5} c5} {c5 c5}"
+        - "{{c5 d5 c5} c5} {c5 d5 c5 c5 d5 c5} {{c5 d5 c5} c5}"
+        - "{{c5 d5 c5} c5} {{c5 d5 c5} b4} {b4 c5}"
+        - "{{c5 d5 c5} c5} {c5 d5 c5 b4 c5 b4} {{b4 c5 b4} g#4}"
+    oboe:
+      play:
+        - "{g5 {g5 e5 g5}} {g5 {g5 e5 g5}} {[d5 g5] [e5 g5]}"
+        - "{g5 {g5 e5 g5}} {g5 {[d5 g5] [e5 g5] [d5 g5]}} {[d5 g5] [e5 g5] [d5 g5] g5 e5 g5}"
+        - 4x: ["{g5 {g5 e5 g5}} {g5 {g5 e5 g5}} {[d5 g5] [e5 g5]}", "{g5 {g5 e5 g5}} {g5 {[d5 g5] [e5 g5] [d5 g5]}} {[d5 g5] [d5 g5] [d5 g5] g5 d5 g5}"]
+        - "{g5 {g5 f5 g5}} {g5 {g5 f5 g5}} {[d5 g5] [f5 g5]}"
+        - "{g5 {g5 f5 g5}} {g5 {[d5 g5] [f5 g5] [d5 g5]}} {[d5 g5] [d5 g5] [d5 g5] g5 d5 g5}"
+        - 2x: ["{g5 {g5 e5 g5}} {g5 {g5 e5 g5}} {[d5 g5] [e5 g5]}", "{g5 {g5 e5 g5}} {g5 {[d5 g5] [e5 g5] [d5 g5]}} {[d5 g5] [d5 g5] [d5 g5] g5 d5 g5}"]
+        - "{g5 {g5 f5 g5}} {g5 {g5 f5 g5}} {[d5 g5] [f5 g5]}"
+        - "{g5 {g5 f5 g5}} {g5 {[d5 g5] [f5 g5] [d5 g5]}} {[d5 g5] [d5 g5] [d5 g5] g5 d5 g5}"
+    oboe-2:
+      play:
+        - "fortissimo"
+        - 4x: ["{{e5 g5 e5} e5} {{e5 g5 e5} d5} ~", "{{e5 g5 e5} e5} {{e5 g5 e5} ~} {~ e5}"]
+        - "{{e5 g5 e5} e5} {{e5 g5 e5} d5} ~"
+        - "{{e5 g5 e5} e5} {{e5 g5 e5} ~} {~ f5}"
+        - "{{f5 g5 f5} f5} {{f5 g5 f5} d5} ~"
+        - "{{f5 g5 f5} f5} {{f5 g5 f5} ~} {~ e5}"
+        - "{{e5 g5 e5} e5} {{e5 g5 e5} d5} ~"
+        - "{{e5 g5 e5} e5} {{e5 g5 e5} ~} {~ e5}"
+        - "{{e5 g5 e5} e5} {{e5 g5 e5} d5} ~"
+        - "{{e5 g5 e5} e5} {{e5 g5 e5} ~} {~ f5}"
+        - "{{f5 g5 f5} f5} {{f5 g5 f5} d5} ~"
+        - "{{f5 g5 f5} f5} {{f5 g5 f5} ~} {~ e5}"
+    trumpet:
+      play:
+        - "{[e4 g4] ~} {[d5 e5] ~} {[c5 d5] ~}"
+        - "~ {[d5 e5] ~} {[c5 d5] ~}"
+        - "[e5 g5] {_ [d5 f5] [c5 e5] [bb4 d5]} {[e5 g5] [f5 a5] [d5 f5] [c5 e5]}"
+        - "{[e5 g5] _ [d5 f5] [c5 e5]} [e5 g5] {[d5 f5] [e5 g5] [d5 f5] e5}"
+        - "_ {e5 [bb4 d5] [g4 c5] [f4 bb4]} [g4 c5]"
+        - "_ {~ [d5 g5]} {[e5 a5] [e5 bb5]}"
+        - "{_ [e5 bb5]} {_ [e5 bb5]} {[e5 bb5] [e5 bb5]}"
+        - "{[e5 bb5] [e5 bb5] [e5 bb5]} {[e5 bb5] _ [eb5 a5] [db5 g5]} {[e5 bb5] _ [eb5 a5] [db5 g5]}"
+        - "{[e5 bb5] [eb5 a5] [db5 g5] [c5 f5]} {[bb4 e5] [ab4 d5] [g4 c5] _} _"
+        - "_ _ {_ ~}"
+        - "[f4 a4] {_ [g4 b4]} {[f4 a4] [g4 b4] [a4 c5] _}"
+        - "_ {[b4 d5] [d5 f5]} {[ab4 b4] [b4 d5] [g4 b4]}"
+        - "{[g4 a4] [a4 c5] [g4 a4] [e4 g4]} {_ [d4 g4]} _"
+        - "{_ [e4 a4] [d4 g4] [e4 a4]} {[g4 bb4] [a4 c5] [g4 bb4] [e4 a4]} {[g4 bb4] [e4 a4] [d4 g4] [c4 f4]}"
+        - "{[e4 g4] [c4 e4]} _ _"
+        - "_ _ {~ [f4 a4]}"
+        - "_ {_ [g4 b4]} _"
+        - "{[f4 a4] [g4 b4] [a4 c5] _} _ {[b4 d5] [e5 g#5]}"
+    trumpet-2:
+      wait: 3
+      play:
+        - "~ ~ {~ ~ ~ c5}"
+        - "_ {_ ~ ~ ~} ~"
+    tenor-sax:
+      play:
+        - "{c4 ~} {g4 ~} {g4 ~}"
+        - "~ {g4 ~} {g4 ~}"
+        - "bb4 {_ a4 g4 f4} {bb4 c5 a4 g4}"
+        - "{bb4 _ a4 g4} bb4 {a4 bb4 a4 g4}"
+        - "_ {_ f4 e4 d4} e4"
+        - "_ {~ bb4} {c5 db5}"
+        - "{_ db5} {_ db5} {db5 db5}"
+        - "{db5 db5 db5} {db5 _ c5 bb4} {db5 _ c5 bb4}"
+        - "{db5 c5 bb4 ab4} {g4 f4 e4 _} _"
+        - "_ _ {_ ~}"
+        - "d4 {_ e4} {d4 e4 f4 _}"
+        - "_ {g4 ab4} {f4 g4 e4}"
+        - "{d4 e4 d4 c4} {_ bb3} _"
+        - "{_ c4 bb3 c4} {d4 e4 d4 c4} {d4 c4 bb3 ab3}"
+        - "{bb3 ab3 g3 _} _ _"
+        - "_ _ {~ d4}"
+        - "_ {_ e4} _"
+        - "{d4 e4 f4 _} _ {g4 b4}"
+    soprano-sax:
+      play:
+        - "{c5 ~} {g5 ~} {g5 ~}"
+        - "~ {g5 ~} {g5 ~}"
+        - "bb5 {_ a5 g5 f5} {bb5 c6 a5 g5}"
+        - "{bb5 _ a5 g5} bb5 {a5 bb5 a5 g5}"
+        - "_ {_ f5 e5 d5} e5"
+        - "_ {~ bb5} {c6 db6}"
+        - "{_ db6} {_ db6} {db6 db6}"
+        - "{db6 db6 db6} {db6 _ c6 bb5} {db6 _ c6 bb5}"
+        - "{db6 c6 bb5 ab5} {g5 f5 e5 _} _"
+        - "_ _ {_ ~}"
+        - "d5 {_ e5} {d5 e5 f5 _}"
+        - "_ {g5 ab5} {f5 g5 e5}"
+        - "{d5 e5 d5 c5} {_ bb4} _"
+        - "{_ c5 bb4 c5} {d5 e5 d5 c5} {d5 c5 bb4 ab4}"
+        - "{bb4 ab4 g4 _} _ _"
+        - "_ _ {~ d5}"
+        - "_ {_ e5} _"
+        - "{d5 e5 f5 _} _ {g5 b5}"
+    trombone:
+      play:
+        - "{e4 ~} {e4 ~} {d4 ~}"
+        - "{e4 ~} {e4 ~} {d4 d4}"
+        - "fortissimo"
+        - "bb4 {_ a4 g4 f4} {bb4 c5 a4 g4}"
+        - "{bb4 _ a4 g4} bb4 {a4 bb4 a4 g4}"
+        - "_ {_ f4 e4 d4} e4"
+        - "_ {~ bb4} {c5 db5}"
+        - "{_ db5} {_ db5} {db5 db5}"
+        - "{db5 db5 db5} {db5 _ c5 bb4} {db5 _ c5 bb4}"
+        - "{db5 c5 bb4 ab4} {g4 f4 e4 _} _"
+        - "_ _ {_ ~}"
+        - "d4 {_ e4} {d4 e4 f4 _}"
+        - "_ {g4 ab4} {f4 g4 e4}"
+        - "{d4 e4 d4 c4} {_ bb3} _"
+        - "{_ c4 bb3 c4} {d4 e4 d4 c4} {d4 c4 bb3 ab3}"
+        - "{bb3 ab3 g3 _} _ _"
+        - "_ _ {~ d4}"
+        - "_ {_ e4} _"
+        - "{d4 e4 f4 _} _ {g4 b4}"
+
+  # bars 327-340: the turn to E major (bar 327), back to C (bar 335) and the collapse
+  r18-e-major-and-collapse:
+    loop: false
+    snare:
+      play:
+        - 6x: ["{sd {sd sd sd}} {sd {sd sd sd}} {sd sd}", "{sd {sd sd sd}} {sd {sd sd sd}} {sd sd sd sd sd sd}"]
+        - "{sd sd} ~ {~ sd sd sd sd sd}"
+        - "{sd ~} ~ ~"
+    snare-2:
+      play:
+        - 6x: ["{sd {sd sd sd}} {sd {sd sd sd}} {sd sd}", "{sd {sd sd sd}} {sd {sd sd sd}} {sd sd sd sd sd sd}"]
+        - "{sd sd} ~ {~ sd sd sd sd sd}"
+        - "{sd ~} ~ ~"
+    harp:
+      play:
+        - 7x: "[e2 b2 e3 g#3 g#4 b4 e5 g#5] [e2 b2 e3 g#3 g#4 b4 e5 g#5] {[b2 d3 f#3 b3 f#4 b4 d5 f#5] [b2 d3 f#3 b3 f#4 b4 d5 f#5]}"
+        - "[e2 b2 e3 g#3 g#4 b4 e5 g#5] [e2 b2 e3 g#3 g#4 b4 e5 g#5] {[g2 d3 g3 b3 d4 g4 b4 g5] [g2 d3 g3 b3 d4 g4 b4 g5]}"
+        - 4x: "[c2 g2 c3 e3 e4 g4 c5 g5] [c2 g2 c3 e3 e4 g4 c5 g5] {[g2 d3 g3 b3 d4 g4 b4 g5] [g2 d3 g3 b3 d4 g4 b4 g5]}"
+        - "{[f1 f2 c3 ab3 c4] [b3 c4 b4 c5 b5 c6]} ~ ~"
+        - "{[c3 e3 g3 c4 c5 e5 g5 c6] ~} ~ ~"
+    violins-1:
+      play:
+        - "_ {_ [a4 d5 f#5 a5] [g#4 b4 e5 g#5] [f#4 a4 d5 f#5]} {[g#4 b4 e5 g#5] [a4 d5 f#5 a5] [b4 e5 g#5 b5] [c5 f5 a5 c6]}"
+        - "[b4 e5 g#5 b5] {_ [c5 f5 a5 c6] [d5 g5 b5 d6] [c5 f5 a5 c6]} {[b4 e5 g#5 b5] [a4 d5 f#5 a5] [g#4 b4 e5 g#5] [f#4 a4 d5 f#5]}"
+        - "{[g#4 b4 e5 g#5] [a4 d5 f#5 a5] [b4 e5 g#5 b5] _} {_ [c5 f5 a5 c6] [d5 g5 b5 d6] [c5 f5 a5 c6]} {[b4 e5 g#5 b5] [a4 c5 f#5 a5] [g#4 b4 e5 g#5] [f#4 a4 d5 f#5]}"
+        - "{[g#4 b4 e5 g#5] [f#4 a4 d5 f#5] [e4 g#4 b4 e5] _} _ {[d4 f#4 a4 d5] [c4 e4 g4 c5] [d4 f#4 a4 d5] [e4 g#4 b4 e5]}"
+        - "_ _ {[f4 a4 c5 f5] [g4 b4 d5 g5] [f4 a4 c5 f5] [e4 g#4 b4 e5]}"
+        - "_ _ {[d4 f#4 a4 d5] [c4 e4 g#4 c5] [d4 f#4 a4 d5] [e4 g#4 b4 e5]}"
+        - "_ _ {[f#4 a4 c#5 f#5] [g#4 b4 d#5 g#5] [f#4 a4 c#5 f#5] [e4 g#4 b4 e5]}"
+        - "_ _ {[d4 f4 a4 d5] [e4 g4 b4 e5] [d4 f4 a4 d5] [c4 e4 g4 c5]}"
+        - "{_ {[c5 d5 e5 g5] [c5 d5 e5 g5] [c5 d5 e5 g5]}} {[c5 d5 e5 g5] {[c5 d5 e5 g5] [c5 d5 e5 g5] [c5 d5 e5 g5]}} {[d4 b4 d5 g5] [d4 b4 d5 g5]}"
+        - "{[c5 d5 e5 g5] {[c5 d5 e5 g5] [c5 d5 e5 g5] [c5 d5 e5 g5]}} {[c5 d5 e5 g5] {[c5 d5 e5 g5] [c5 d5 e5 g5] [c5 d5 e5 g5]}} {[d4 b4 d5 g5] [d4 b4 d5 g5] [d4 b4 d5 g5] [d4 b4 d5 g5] [d4 b4 d5 g5] [d4 b4 d5 g5]}"
+        - "{[c5 d5 e5 g5] {[c5 d5 e5 g5] [c5 d5 e5 g5] [c5 d5 e5 g5]}} {[c5 d5 e5 g5] {[c5 d5 e5 g5] [c5 d5 e5 g5] [c5 d5 e5 g5]}} {[d4 b4 d5 g5] [d4 b4 d5 g5]}"
+        - "{[c5 d5 e5 g5] {[c5 d5 e5 g5] [c5 d5 e5 g5] [c5 d5 e5 g5]}} {[c5 d5 e5 g5] {[c5 d5 e5 g5] [c5 d5 e5 g5] [c5 d5 e5 g5]}} {[d4 b4 d5 g5] [d4 b4 d5 g5] [d4 b4 d5 g5] [d4 b4 d5 g5] [d4 b4 d5 g5] [d4 b4 d5 g5]}"
+        - "{~ {[c5 c6] [b4 b5] [bb4 bb5]}} _ {_ [ab4 ab5] [g4 g5] [f4 f5] [eb4 eb5] [db4 db5]}"
+        - "{[g3 e4 c5] ~} ~ ~"
+    violins-2:
+      play:
+        - 3x: ["{[g#4 b4 e5 g#5] {[g#4 b4 e5 g#5] [g#4 b4 e5 g#5] [g#4 b4 e5 g#5]}} {[g#4 b4 e5 g#5] {[g#4 b4 e5 g#5] [g#4 b4 e5 g#5] [g#4 b4 e5 g#5]}} {[b4 d5 e5 f#5] [b4 d5 e5 f#5]}", "{[g#4 b4 e5 g#5] {[g#4 b4 e5 g#5] [g#4 b4 e5 g#5] [g#4 b4 e5 g#5]}} {[g#4 b4 e5 g#5] {[g#4 b4 e5 g#5] [g#4 b4 e5 g#5] [g#4 b4 e5 g#5]}} {[b4 d5 e5 f#5] [b4 d5 e5 f#5] [b4 d5 e5 f#5] [b4 d5 e5 f#5] [b4 d5 e5 f#5] [b4 d5 e5 f#5]}"]
+        - "{[g#4 b4 e5 g#5] {[g#4 b4 e5 g#5] [g#4 b4 e5 g#5] [g#4 b4 e5 g#5]}} {[g#4 b4 e5 g#5] {[g#4 b4 e5 g#5] [g#4 b4 e5 g#5] [g#4 b4 e5 g#5]}} {[b4 d5 e5 f#5] [b4 d5 e5 f#5]}"
+        - "{[g#4 b4 e5 g#5] {[g#4 b4 e5 g#5] [g#4 b4 e5 g#5] [g#4 b4 e5 g#5]}} {[g#4 b4 e5 g#5] {[g#4 b4 e5 g#5] [g#4 b4 e5 g#5] [g#4 b4 e5 g#5]}} {[g4 b4 d5 g5] [g4 b4 d5 g5] [g4 b4 d5 g5] [g4 b4 d5 g5] [g4 b4 d5 g5] [g4 b4 d5 g5]}"
+        - 2x: ["{[g4 d5 e5 g5] {[g4 d5 e5 g5] [g4 d5 e5 g5] [g4 d5 e5 g5]}} {[g4 d5 e5 g5] {[g4 d5 e5 g5] [g4 d5 e5 g5] [g4 d5 e5 g5]}} {[g4 c5 d5 g5] [g4 c5 d5 g5]}", "{[g4 d5 e5 g5] {[g4 d5 e5 g5] [g4 d5 e5 g5] [g4 d5 e5 g5]}} {[g4 d5 e5 g5] {[g4 d5 e5 g5] [g4 d5 e5 g5] [g4 d5 e5 g5]}} {[g4 c5 d5 g5] [g4 c5 d5 g5] [g4 c5 d5 g5] [g4 c5 d5 g5] [g4 c5 d5 g5] [g4 c5 d5 g5]}"]
+        - "{~ {[f5 ab5] [e5 g5] [db5 f5]}} _ {_ [c5 eb5] [bb4 db5] [ab4 c5] [g4 bb4] [f4 ab4]}"
+        - "{[g3 e4 g4 c5] ~} ~ ~"
+    violas:
+      play:
+        - 3x: ["{[g#3 b3 e4] {[g#3 b3 e4] [g#3 b3 e4] [g#3 b3 e4]}} {[g#3 b3 e4] {[g#3 b3 e4] [g#3 b3 e4] [g#3 b3 e4]}} {[b3 e4 f#4] [b3 e4 f#4]}", "{[g#3 b3 e4] {[g#3 b3 e4] [g#3 b3 e4] [g#3 b3 e4]}} {[g#3 b3 e4] {[g#3 b3 e4] [g#3 b3 e4] [g#3 b3 e4]}} {[b3 e4 f#4] [b3 e4 f#4] [b3 e4 f#4] [b3 e4 f#4] [b3 e4 f#4] [b3 e4 f#4]}"]
+        - "{[g#3 b3 e4] {[g#3 b3 e4] [g#3 b3 e4] [g#3 b3 e4]}} {[g#3 b3 e4] {[g#3 b3 e4] [g#3 b3 e4] [g#3 b3 e4]}} {[b3 e4 f#4] [b3 e4 f#4]}"
+        - "{[g#3 b3 e4] {[g#3 b3 e4] [g#3 b3 e4] [g#3 b3 e4]}} {[g#3 b3 e4] {[g#3 b3 e4] [g#3 b3 e4] [g#3 b3 e4]}} {[g3 d4 b4] [g3 d4 b4] [g3 d4 b4] [g3 d4 b4] [g3 d4 b4] [g3 d4 b4]}"
+        - 2x: ["{[c4 d4 e4 c5] {[c4 d4 e4 c5] [c4 d4 e4 c5] [c4 d4 e4 c5]}} {[c4 d4 e4 c5] {[c4 d4 e4 c5] [c4 d4 e4 c5] [c4 d4 e4 c5]}} {[b3 d4 b4] [b3 d4 b4]}", "{[c4 d4 e4 c5] {[c4 d4 e4 c5] [c4 d4 e4 c5] [c4 d4 e4 c5]}} {[c4 d4 e4 c5] {[c4 d4 e4 c5] [c4 d4 e4 c5] [c4 d4 e4 c5]}} {[b3 d4 b4] [b3 d4 b4] [b3 d4 b4] [b3 d4 b4] [b3 d4 b4] [b3 d4 b4]}"]
+        - "{[c3 c4] [c4 c5]} _ {_ [c4 c5] [c4 c5] [c4 c5] [c4 c5] [c4 c5]}"
+        - "{[c3 g3 e4 c5] ~} ~ ~"
+    cellos:
+      play:
+        - 3x: ["{[e2 b2 g#3] {[e2 b2 g#3] [e2 b2 g#3] [e2 b2 g#3]}} {[e2 b2 g#3] {[e2 b2 g#3] [e2 b2 g#3] [e2 b2 g#3]}} {[b2 f#3 d4] [b2 f#3 d4]}", "{[e2 b2 g#3] {[e2 b2 g#3] [e2 b2 g#3] [e2 b2 g#3]}} {[e2 b2 g#3] {[e2 b2 g#3] [e2 b2 g#3] [e2 b2 g#3]}} {[b2 f#3 d4] [b2 f#3 d4] [b2 f#3 d4] [b2 f#3 d4] [b2 f#3 d4] [b2 f#3 d4]}"]
+        - "{[e2 b2 g#3] {[e2 b2 g#3] [e2 b2 g#3] [e2 b2 g#3]}} {[e2 b2 g#3] {[e2 b2 g#3] [e2 b2 g#3] [e2 b2 g#3]}} {[b2 f#3 d4] [b2 f#3 d4]}"
+        - "{[e2 b2 g#3] {[e2 b2 g#3] [e2 b2 g#3] [e2 b2 g#3]}} {[e2 b2 g#3] {[e2 b2 g#3] [e2 b2 g#3] [e2 b2 g#3]}} {[g2 d3 g3 b3] [g2 d3 g3 b3] [g2 d3 g3 b3] [g2 d3 g3 b3] [g2 d3 g3 b3] [g2 d3 g3 b3]}"
+        - 2x: ["{[c2 c3 g3] {[c2 c3 g3] [c2 c3 g3] [c2 c3 g3]}} {[c2 c3 g3] {[c2 c3 g3] [c2 c3 g3] [c2 c3 g3]}} {[c2 c3 g3 c4] [c2 c3 g3 c4]}", "{[c2 c3 g3] {[c2 c3 g3] [c2 c3 g3] [c2 c3 g3]}} {[c2 c3 g3] {[c2 c3 g3] [c2 c3 g3] [c2 c3 g3]}} {[c2 c3 g3 c4] [c2 c3 g3 c4] [c2 c3 g3 c4] [c2 c3 g3 c4] [c2 c3 g3 c4] [c2 c3 g3 c4]}"]
+        - "{[f2 c3 ab3] [f2 c3 ab3]} _ {_ [f2 c3 ab3] [f2 c3 ab3] [f2 c3 ab3] [f2 c3 ab3] [f2 c3 ab3]}"
+        - "{[c2 g2 e3 c4] ~} ~ ~"
+    basses:
+      play:
+        - 3x: ["{[e1 e2] ~} {e2 ~} {b1 ~}", "{[e1 e2] ~} {e2 ~} {b1 b1}"]
+        - "{[e1 e2] ~} {e2 ~} {b1 ~}"
+        - "{[e1 e2] ~} {e2 ~} {[g1 g2] [g1 g2]}"
+        - 2x: ["{[c2 c3] ~} {[c2 c3] ~} {[g1 g2] ~}", "{[c2 c3] ~} {[c2 c3] ~} {[g1 g2] [g1 g2]}"]
+        - "{f1 f1} _ {_ f1 f1 f1 f1 f1}"
+        - "{[c1 c2] ~} ~ ~"
+    clarinet:
+      play:
+        - 3x: ["{g#4 g#4} {g#4 {g#4 b4 g#4}} {f#4 [f#4 g#4]}", "{g#4 g#4} {g#4 {[f#4 g#4] b4 [f#4 g#4]}} {{f#4 b4 f#4} g#4}"]
+        - "{g#4 g#4} {g#4 {g#4 b4 g#4}} {f#4 [f#4 g#4]}"
+        - "{g#4 g#4} {g#4 {[g4 g#4] b4 [g4 g#4]}} {{g4 b4 g4} g4}"
+        - "{g4 c5} {c5 b4} {b4 [b4 c5]}"
+        - 2x: "{c5 c5} {c5 b4} {b4 [b4 c5]}"
+        - "{c5 c5} {c5 b4} {b4 b4}"
+        - "b5 {_ {_ b5 b5}} {b5 b5 b5 b5 b5 b5}"
+        - "{e5 ~} ~ ~"
+    clarinet-2:
+      play:
+        - "fortissimo"
+        - 3x: ["{~ b4 g#4 ~ b4 g#4} {{~ b4 g#4} f#4} ~", "{~ b4 g#4 ~ b4 g#4} {{~ b4 g#4} ~} {~ {f#4 b4 f#4}}"]
+        - "{~ b4 g#4 ~ b4 g#4} {{~ b4 g#4} f#4} ~"
+        - "{~ b4 g#4 ~ b4 g#4} {{~ b4 g#4} ~} {~ {~ b4 g4}}"
+        - 4x: "~"
+        - "{~ b5} _ {{_ ~ ~} e5}"
+    oboe:
+      play:
+        - 3x: ["{e5 e5} {e5 {e5 g#5 e5}} {d5 [d5 e5]}", "{e5 e5} {e5 {[d5 e5] [f#5 g#5] [d5 e5]}} {{d5 f#5 d5} e5}"]
+        - "{e5 e5} {e5 {e5 g#5 e5}} {d5 [d5 e5]}"
+        - "{e5 e5} {e5 {[d5 e5] [g5 g#5] [d5 e5]}} {{d5 g5 d5} e5}"
+        - "{e5 c6} {c6 c6} {c6 c6}"
+        - 3x: "{c6 c6} {c6 c6} {c6 c6}"
+        - "b5 {_ {_ b5 b5}} {b5 b5 b5 b5 b5 b5}"
+        - "{g5 ~} ~ ~"
+    oboe-2:
+      play:
+        - 3x: ["{~ g#5 e5 ~ g#5 e5} {{~ g#5 e5} d5} ~", "{~ g#5 e5 ~ g#5 e5} {{~ g#5 e5} ~} {~ {d5 f#5 d5}}"]
+        - "{~ g#5 e5 ~ g#5 e5} {{~ g#5 e5} d5} ~"
+        - "{~ g#5 e5 ~ g#5 e5} {{~ g#5 e5} ~} {~ {d5 g5 d5}}"
+        - 4x: "~"
+        - "{~ b5} _ {{_ ~ ~} g5}"
+    trumpet:
+      play:
+        - "_ {_ ~ ~ ~} ~"
+    horn:
+      play:
+        - 3x: ["{[g#3 g#4] {[g#3 g#4] [g#3 g#4] [g#3 g#4]}} {[g#3 g#4] {[g#3 g#4] [g#3 g#4] [g#3 g#4]}} {[f#3 f#4] [f#3 f#4]}", "{[g#3 g#4] {[g#3 g#4] [g#3 g#4] [g#3 g#4]}} {[g#3 g#4] {[g#3 g#4] [g#3 g#4] [g#3 g#4]}} {[f#3 f#4] [f#3 f#4] [f#3 f#4] [f#3 f#4] [f#3 f#4] [f#3 f#4]}"]
+        - "{[g#3 g#4] {[g#3 g#4] [g#3 g#4] [g#3 g#4]}} {[g#3 g#4] {[g#3 g#4] [g#3 g#4] [g#3 g#4]}} {[f#3 f#4] [f#3 f#4]}"
+        - "{[g#3 g#4] {[g#3 g#4] [g#3 g#4] [g#3 g#4]}} {[g#3 g#4] {[g#3 g#4] [g#3 g#4] [g#3 g#4]}} {[g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4] [g3 g4]}"
+        - 2x: ["{[g3 e4] {[g3 e4] [g3 e4] [g3 e4]}} {[g3 e4] {[g3 e4] [g3 e4] [g3 e4]}} {[g3 d4] [g3 d4]}", "{[g3 e4] {[g3 e4] [g3 e4] [g3 e4]}} {[g3 e4] {[g3 e4] [g3 e4] [g3 e4]}} {[g3 d4] [g3 d4] [g3 d4] [g3 d4] [g3 d4] [g3 d4]}"]
+        - "{~ [b3 b4]} _ {_ [b3 b4] [b3 b4] [b3 b4] [b3 b4] [b3 b4]}"
+        - "{[c4 g4] ~} ~ ~"
+    tenor-sax:
+      play:
+        - "_ {_ a4 g#4 f#4} {g#4 a4 b4 c5}"
+        - "b4 {_ c5 d5 c5} {b4 a4 g#4 f#4}"
+        - "{g#4 a4 b4 _} {_ c5 d5 c5} {b4 a4 g#4 f#4}"
+        - "{g#4 f#4 e4 _} _ {d4 c4 d4 e4}"
+        - "_ _ {f4 g4 f4 e4}"
+        - "_ _ {d4 c4 d4 e4}"
+        - "_ _ {f#4 g#4 f#4 e4}"
+        - "_ _ {d4 e4 d4 c4}"
+        - "_ {{a#3 b3 c4} _} {{a3 a#3 b3} _}"
+        - 3x: "~ {{a#3 b3 c4} _} {{a3 a#3 b3} _}"
+        - "{~ {c5 b4 bb4}} _ {_ ab4 g4 f4 eb4 db4}"
+        - "{c4 ~} ~ ~"
+    soprano-sax:
+      play:
+        - "_ {_ a5 g#5 f#5} {g#5 a5 b5 c6}"
+        - "b5 {_ c6 d6 c6} {b5 a5 g#5 f#5}"
+        - "{g#5 a5 b5 _} {_ c6 d6 c6} {b5 a5 g#5 f#5}"
+        - "{g#5 f#5 e5 _} _ {d5 c5 d5 e5}"
+        - "_ _ {f5 g5 f5 e5}"
+        - "_ _ {d5 c5 d5 e5}"
+        - "_ _ {f#5 g#5 f#5 e5}"
+        - "_ _ {d5 e5 d5 c5}"
+        - "_ {{f#5 g5 ab5} _} {{e5 e#5 f#5} _}"
+        - 3x: "~ {{f#5 g5 ab5} _} {{e5 e#5 f#5} _}"
+        - "{~ {c6 b5 bb5}} _ {_ ab5 g5 f5 eb5 db5}"
+        - "{c5 ~} ~ ~"
+    trombone:
+      play:
+        - "_ {_ a4 g#4 f#4} {g#4 a4 b4 c5}"
+        - "b4 {_ c5 d5 c5} {b4 a4 g#4 f#4}"
+        - "{g#4 a4 b4 _} {_ c5 d5 c5} {b4 a4 g#4 f#4}"
+        - "{g#4 f#4 e4 _} _ {d4 c4 d4 e4}"
+        - "_ _ {f4 g4 f4 e4}"
+        - "_ _ {d4 c4 d4 e4}"
+        - "_ _ {f#4 g#4 f#4 e4}"
+        - "_ _ {[f3 d4] [g3 e4] [f3 d4] [e3 c4]}"
+        - "_ {{[d4 f#4] [d#4 g4] [e4 ab4]} _} {{[c4 e4] [c#4 f4] [d4 f#4]} _}"
+        - 3x: "[g3 e4] {{[d4 f#4] [d#4 g4] [e4 ab4]} _} {{[c4 e4] [c#4 f4] [d4 f#4]} _}"
+        - "{[c3 ab3] db4} _ {_ d4 eb4 [a3 e4] [bb3 f4] [b3 f#4]}"
+        - "{[c4 g4] ~} ~ ~"
+    trombone-2:
+      play:
+        - "fortissimo"
+        - 3x: ["{g#3 ~} {g#3 ~} {f#3 ~}", "{g#3 ~} {g#3 ~} {f#3 f#3}"]
+        - "{g#3 ~} {g#3 ~} {a3 ~}"
+        - "g#3 _ ~"
+        - 4x: "~"
+        - "{~ ab3} _ {_ ~}"
+    percussion:
+      wait: 8
+      play:
+        - "fortissimo"
+        - 4x: "bd cy china"
+        - "bd ~ ~"
+        - "{[bd china] ~} ~ ~"
+    percussion-2:
+      wait: 12
+      play:
+        - "fortissimo"
+        - "{~ cy} _ ~"
