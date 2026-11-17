@@ -10,13 +10,14 @@ import { GRUVBOX as g } from './palette';
  */
 const chrome = EditorView.theme(
   {
-    '&': { color: g.fg, backgroundColor: g.bg0 },
+    // The same dark as the harmony tab's stage, so the tabs feel like one surface.
+    '&': { color: g.fg, backgroundColor: g.bg0H },
     '.cm-content': { caretColor: g.fg },
     '.cm-cursor, .cm-dropCursor': { borderLeftColor: g.fg },
     '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection':
       { backgroundColor: g.bg3 },
     '.cm-activeLine': { backgroundColor: g.bg0S },
-    '.cm-gutters': { backgroundColor: g.bg0, color: g.bg4, border: 'none' },
+    '.cm-gutters': { backgroundColor: g.bg0H, color: g.bg4, border: 'none' },
     '.cm-activeLineGutter': { backgroundColor: g.bg0S, color: g.fg3 },
     '.cm-lineNumbers .cm-gutterElement': { padding: '0 10px 0 14px' },
     '.cm-foldPlaceholder': { backgroundColor: g.bg1, color: g.fg4, border: 'none' },
