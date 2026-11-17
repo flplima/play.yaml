@@ -137,6 +137,12 @@
     "lengthBeats": 447,
     "sha256": "e08e791aa9c9c93e1d438cb6ae323dc56464d5572be07446fb9781290d8b761d"
   },
+  "songs/nazareth-odeon/nazareth-odeon.play.yaml": {
+    "tracks": 2,
+    "notes": 2487,
+    "lengthBeats": 320.75,
+    "sha256": "e4a1d72f99cafd7a2ed0f16b93535c684a263af14651cac7b1229124277ff091"
+  },
   "songs/pachelbel-canon-in-d/pachelbel-canon-in-d.play.yaml": {
     "tracks": 4,
     "notes": 1956,

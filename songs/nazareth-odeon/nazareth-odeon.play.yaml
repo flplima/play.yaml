@@ -1,0 +1,360 @@
+# Ernesto Nazareth: "Odeon", tango brasileiro (1909)
+# Public domain. Transcribed by hand from the first edition, Rio de Janeiro:
+# E. Bevilacqua & Cia. (Casa Mozart), ca. 1909, plate 6602 (IMSLP #600163).
+# The scan, public domain, is from the IMS site ernestonazareth150anos.com.br.
+# Every bar checked a second time against Musica Brasilis's engraving (2020).
+#
+# C# minor (A) and E major (B, trio); 2/4 with a three-16th pickup. The left
+# hand carries the tune of A while the right hand answers off the beat.
+# Form as printed: A A B B A trio trio, then "D.C. al segno": the segno is on
+# bar 1 and FINE ends the written-out return of A, so the da capo plays A B A
+# once more (repeats not taken), the ABACABA form of Nazareth's own recording.
+# Grace notes are played as 64ths taken from the note or rest before them.
+
+title: "Odeon"
+composer: "Ernesto Nazareth"
+key: c# minor
+tempo: 88          # no metronome mark in the print: a relaxed "gingando" pace
+tempo text: Gingando
+measure: 2/4
+
+tracks:
+  rh: { preset: piano, dynamic: mezzoforte }
+  lh: { preset: piano, dynamic: mezzoforte }
+
+sections:
+  pickup:
+    loop: false
+    rh: { measure: 3/16, play: ["~ ~ ~", "2/4"] }
+    lh: { measure: 3/16, play: ["g#3 g3 f#3", "2/4"] }
+
+  # A: C# minor, played twice (volta endings)
+  a:
+    loop: 2
+    rh:
+      play:
+        - "{~ [g#3 c#4 e4 g#4]} {~ [g#3 b#3 f#4]}"   # 1
+        - "{~ [g#3 c#4 e4]} {~ [e#3 g#3 c#4]}"   # 2
+        - "{~ [f#3 a3 c#4]} {~ [e#3 b3 c#4]}"   # 3
+        - "{~ [f#3 a3 c#4]} ~"   # 4
+        - "{~ [a4 c#5]} {~ [f#4 a4 c#5]}"   # 5
+        - "{~ [f#4 a4]} {~ [e4 g4 a4]}"   # 6
+        - "{~ [d#4 f#4 g#4]} {~ g#4 e5 b#4}"   # 7
+        - "{d#5 c#5 e5 c#5} {g#4 e4 c#4 [b#3 d#4]}"   # 8: sec.
+        - "{~ [g#3 c#4 e4 g#4]} {~ [g#3 b#3 f#4]}"   # 9
+        - "{~ [g#3 c#4 e4]} {~ [e#3 g#3 c#4]}"   # 10
+        - "{~ [f#3 a3 c#4]} {~ [e#3 b3 c#4]}"   # 11
+        - "{~ [f#3 a3 c#4]} {~ [f#3 a3 c4]}"   # 12
+        - "{~ [b#3 f#4 a4] _ [b#3 f#4 g#4]} {~ [f#4 b#4 e5] _ [f#4 b#4 d#5]}"   # 13
+        - "{~ [e4 g#4 d#5] _ [e4 g#4 c#5]} {~ [c#4 f#4 b4] _ [c#4 f#4 a4]}"   # 14
+        - "{~ [c#4 e4 a4] _ [c#4 e4 g#4]} {~ [f#3 b#3 e4] _ [f#3 b#3 d#4]}"   # 15
+        - alternate:   # 16: first ending back to bar 1, second ending on to B
+            - "{[e3 c#4] [g#3 e4]} [e3 c#4]"
+            - "[e3 c#4] {{~ {b4 d#5}} c#5 _ b4}"
+    lh:
+      play:
+        - "{e3 _ _ e3} {d#3 _ _ d#3}"   # 1: the tune, in tango rhythm: E, D#, C#, B, A, G#, F#, E
+        - "{c#3 _ _ c#3} {b2 _ _ b2}"   # 2
+        - "{a2 _ _ a2} {g#2 _ _ g#2}"   # 3
+        - "{f#2 _ _ a2} {c#3 f#3 a3 c#4}"   # 4: up an F# minor arpeggio
+        - "{f#4 _ _ f#4} {e4 _ _ e4}"   # 5: the tune an octave up
+        - "{d#4 _ _ d#4} {c#4 _ _ c#4}"   # 6
+        - "{b#3 _ _ b#3} {[d#3 f#3 g#3] b#3}"   # 7
+        - "[c#3 e3 g#3 c#4] {~ g#3 g3 f#3}"   # 8
+        - "{e3 _ _ e3} {d#3 _ _ d#3}"   # 9
+        - "{c#3 _ _ c#3} {b2 _ _ b2}"   # 10
+        - "{a2 _ _ a2} {g#2 _ _ g#2}"   # 11
+        - "{f#2 _ _ f#2} {e2 _ _ e2}"   # 12
+        - "{d#2 _ _ d#2} {g#2 _ _ g#2}"   # 13
+        - "{c#2 _ _ c#2} {f#2 _ _ f##2}"   # 14: f##2 is the print's F double sharp
+        - "{g#2 _ _ g#2} {g#1 _ _ g#1}"   # 15
+        - alternate:   # 16: first ending back to bar 1, second ending on to B
+            - "c#2 {~ g#3 g3 f#3}"
+            - "{c#2 g#2} [c#2 c#3]"
+
+  # B: E major, f, expressivo, played twice
+  b:
+    loop: 2
+    rh:
+      play:
+        - "forte"
+        - "{a#4> [e5 g#5] _ [e5 f#5]} {a4> [d#5 g#5] _ [d#5 f#5]}"   # 1: expressivo
+        - "{g#4> [b4 f#5] _ [b4 e5]} {{~ {e5 g#5}} f#5 _ e5}"   # 2: the small notes before F#5 are the print's grace notes
+        - "{d#5> [a5 c#6] _ [a5 b5]} {d#5> [a5 c#6] _ [a5 b5]}"   # 3
+        - "{d5> [g#5 c#6] _ [g#5 b5]} {~ [d5 g#5 c#6] _ [d5 g#5 b5]}"   # 4
+        - "diminuendo to mezzoforte over 2"
+        - "{~ [c#5 f#5 b5] _ [c#5 f#5 a5]} {~ [a4 c5 g#5] _ [a4 c5 f#5]}"   # 5: dim.
+        - "{~ [g#4 b4 f#5] _ [g#4 b4 e5]} {~ [e4 g4 d#5] _ [e4 g4 c#5]}"   # 6
+        - "{~ [d#4 f#4 c#5] _ [d#4 f#4 b4]} {~ [d#4 f#4] _ [d#4 f##4]}"   # 7: f##4 is the print's F double sharp
+        - "{{g#4 _ d#4 f#4} e4 _ c#4} {{b3 _ b4 d#5} c#5 _ b4}"   # 8: grace notes before E4 and before C#5
+        - "forte"
+        - "{a#4> [e5 g#5] _ [e5 f#5]} {a4> [d#5 g#5] _ [d#5 f#5]}"   # 9: the same eight bars again, with a new close
+        - "{g#4> [b4 f#5] _ [b4 e5]} {{~ {e5 g#5}} f#5 _ e5}"   # 10
+        - "{d#5> [a5 c#6] _ [a5 b5]} {d#5> [a5 c#6] _ [a5 b5]}"   # 11
+        - "diminuendo to mezzoforte over 2"
+        - "{d5> [g#5 c#6] _ [g#5 b5]} {~ [d5 g#5 c#6] _ [d5 g#5 b5]}"   # 12: dim.
+        - "{~ [c#5 f#5 b5] _ [c#5 f#5 a5]} {~ [a4 c5 g#5] _ [a4 c5 f#5]}"   # 13
+        - "{~ [g#4 b4 f#5] _ [g#4 b4 e5]} {~ [e4 g4 d#5] _ [e4 g4 c#5]}"   # 14
+        - "{~ [d#4 b4] _ [d#4 a#4]} {[d#4 a4] [d#4 g#4] _ [d#4 f#4]}"   # 15
+        - alternate:   # 16: first ending back to bar 1, second ending on to A
+            - "{e4 [e4 g#4 b4 e5]} {{~ {b4 d#5}} c#5 _ b4}"
+            - "{e4 [e4 g#4 b4 e5]} ~"
+    lh:
+      play:
+        - "forte"
+        - "{c#3> [f#3 a#3 e4] _ [f#3 a#3 e4]} {d#3> [a3 b3 f#4]}"   # 1
+        - "{e3 [g#3 b3 e4] _ [g#3 b3 e4]} {g#3> [b3 e4]}"   # 2
+        - "{f#3> [a3 b3 d#4] _ [a3 b3 d#4]} {f#3 [a3 b3 d#4]}"   # 3
+        - "{f3 [g#3 b3 d4] _ [g#3 b3 d4]} {f3 [g#3 b3 d4]}"   # 4: the print's F natural, under a diminished seventh
+        - "diminuendo to mezzoforte over 2"
+        - "{a3 [c#4 f#4] _ [c#4 f#4]} {[a2 a3] [a#2 a#3]}"   # 5
+        - "{[b2 b3] _ _ [b2 b3]} {[b2 a#3] [b2 a#3]}"   # 6
+        - "{[b2 a3] _ _ [b2 a3]} {[b2 a3] [b2 a3]}"   # 7
+        - "{e3 [g#3 b3] _ [g#3 b3]} {b2 [e3 g#3 b3]}"   # 8
+        - "forte"
+        - "{c#3> [f#3 a#3 e4] _ [f#3 a#3 e4]} {d#3> [a3 b3 f#4]}"   # 9
+        - "{e3 [g#3 b3 e4] _ [g#3 b3 e4]} {g#3> [b3 e4]}"   # 10
+        - "{f#3> [a3 b3 d#4] _ [a3 b3 d#4]} {f#3> [a3 b3 d#4]}"   # 11
+        - "diminuendo to mezzoforte over 2"
+        - "{f3> [g#3 b3 d4] _ [g#3 b3 d4]} {f3 [g#3 b3 d4]}"   # 12
+        - "{a3 [c#4 f#4] _ [c#4 f#4]} {[a2 a3] [a#2 a#3]}"   # 13
+        - "{[b2 b3] _ _ [b2 b3]} {[b2 a#3] [b2 a#3]}"   # 14
+        - "{[b2 a3] _ _ [b2 a3]} {[b2 a3] [b2 a3]}"   # 15
+        - alternate:   # 16: first ending back to bar 1, second ending on to A
+            - "{[e3 g#3] e2} ~"
+            - "{[e3 g#3] e2} {~ g#3 g3 f#3}"
+
+  # A written out again (mezzoforte), its last bar leading into the trio
+  a_return:
+    loop: false
+    rh:
+      play:
+        - "mezzoforte"
+        - "{~ [g#3 c#4 e4 g#4]} {~ [g#3 b#3 f#4]}"   # 1
+        - "{~ [g#3 c#4 e4]} {~ [e#3 g#3 c#4]}"   # 2
+        - "{~ [f#3 a3 c#4]} {~ [e#3 b3 c#4]}"   # 3
+        - "{~ [f#3 a3 c#4]} ~"   # 4
+        - "{~ [a4 c#5]} {~ [f#4 a4 c#5]}"   # 5
+        - "{~ [f#4 a4]} {~ [e4 g4 a4]}"   # 6
+        - "{~ [d#4 f#4 g#4]} {~ g#4 e5 b#4}"   # 7
+        - "{d#5 c#5 e5 c#5} {g#4 e4 c#4 [b#3 d#4]}"   # 8
+        - "{~ [g#3 c#4 e4 g#4]} {~ [g#3 b#3 f#4]}"   # 9
+        - "{~ [g#3 c#4 e4]} {~ [e#3 g#3 c#4]}"   # 10
+        - "{~ [f#3 a3 c#4]} {~ [e#3 b3 c#4]}"   # 11
+        - "{~ [f#3 a3 c#4]} {~ [f#3 a3 c4]}"   # 12
+        - "{~ [b#3 f#4 a4] _ [b#3 f#4 g#4]} {~ [f#4 b#4 e5] _ [f#4 b#4 d#5]}"   # 13
+        - "{~ [e4 g#4 d#5] _ [e4 g#4 c#5]} {~ [c#4 f#4 b4] _ [c#4 f#4 a4]}"   # 14
+        - "{~ [c#4 e4 a4] _ [c#4 e4 g#4]} {~ [f#3 b#3 e4] _ [f#3 b#3 d#4]}"   # 15
+        - "{[e3 c#4] [g#3 e4]} {[e3 c#4] b4 b4 b4}"   # 16: the bar that leads into the trio
+    lh:
+      play:
+        - "mezzoforte"
+        - "{e3 _ _ e3} {d#3 _ _ d#3}"   # 1
+        - "{c#3 _ _ c#3} {b2 _ _ b2}"   # 2
+        - "{a2 _ _ a2} {g#2 _ _ g#2}"   # 3
+        - "{f#2 _ _ a2} {c#3 f#3 a3 c#4}"   # 4
+        - "{f#4 _ _ f#4} {e4 _ _ e4}"   # 5
+        - "{d#4 _ _ d#4} {c#4 _ _ c#4}"   # 6
+        - "{b#3 _ _ b#3} {[d#3 f#3 g#3] b#3}"   # 7
+        - "[c#3 e3 g#3 c#4] {~ g#3 g3 f#3}"   # 8
+        - "{e3 _ _ e3} {d#3 _ _ d#3}"   # 9
+        - "{c#3 _ _ c#3} {b2 _ _ b2}"   # 10
+        - "{a2 _ _ a2} {g#2 _ _ g#2}"   # 11
+        - "{f#2 _ _ f#2} {e2 _ _ e2}"   # 12
+        - "{d#2 _ _ d#2} {g#2 _ _ g#2}"   # 13
+        - "{c#2 _ _ c#2} {f#2 _ _ f##2}"   # 14
+        - "{g#2 _ _ g#2} {g#1 _ _ g#1}"   # 15
+        - "c#2 ~"   # 16: the bar that leads into the trio
+
+  # Trio: E major, ff com brilho, played twice
+  trio:
+    loop: 2
+    rh:
+      play:
+        - "a tempo"   # after the first ending's rit.
+        - "fortissimo"
+        - "{[d4 g#4 b4] b3 b3 [d4 g#4 b4]} {~ b4 b4 b4}"   # 1
+        - "{[d#4 a4 b4] b3 b3 [d#4 a4 b4]} {~ b4 b4 b4}"   # 2
+        - "forte"
+        - "{~ [a4 d#5] [a4 d#5] [a4 d#5]} {~ [a4 c#5] [a4 c#5] [a4 c#5]}"   # 3: menos
+        - "{~ [g#4 b4] [g#4 b4] [g#4 b4]} {~ b4 b4 b4}"   # 4
+        - "fortissimo"
+        - "{[d4 g#4 b4] b3 b3 [d4 g#4 b4]} {~ b4 b4 b4}"   # 5
+        - "{[d#4 a4 b4] b3 b3 [d#4 a4 b4]} {~ b4 b4 b4}"   # 6
+        - "{~ [a4 d#5 g#5] [a4 d#5 g#5] [a4 d#5 g#5]} {~ [a4 d#5 f#5] [a4 d#5 f#5] [a4 d#5 f#5]}"   # 7
+        - "{~ [g#4 b4] [g#4 b4] [g#4 b4]} {~ g#5 g#5 g#5}"   # 8
+        - "mezzoforte"
+        - "{~ [b4 d5 a5] [b4 d5 a5] [b4 d5 a5]} {~ [b4 d5 g#5] [b4 d5 g#5] [b4 d5 g#5]}"   # 9: mimoso (tender): the print gives no new dynamic, so mezzoforte
+        - "{~ [a4 c#5 g#5] [a4 c#5 g#5] [a4 c#5 g#5]} {~ [a4 c#5 f#5] [a4 c#5 f#5] [a4 c#5 f#5]}"   # 10
+        - "{~ [g#4 b#4 g#5] [g#4 b#4 g#5] [g#4 b#4 g#5]} {~ [g#4 b#4 f#5] [g#4 b#4 f#5] [g#4 b#4 f#5]}"   # 11
+        - "{~ [g#4 c#5 f#5] [g#4 c#5 f#5] [g#4 c#5 f#5]} {~ [g#4 c#5 e5] [g#4 c#5 e5] [g#4 c#5 e5]}"   # 12
+        - "{~ [e4 g4 d#5] [e4 g4 d#5] [e4 g4 d#5]} {~ [e4 g4 c#5] [e4 g4 c#5] [e4 g4 c#5]}"   # 13
+        - alternate:   # 14: first ending / second ending (8va from the G#)
+            - "{~ [e4 g#4 b4] [e4 g#4 b4] [e4 g#4 b4]} {~ [e4 g#4] [e4 g#4] [e4 g#4]}"
+            - "{g#4 b4 e5 g#5} {b5 e6 g#6 b#6}"
+        - alternate:   # 15: "f e ret." in the first ending only
+            - "||forte, ritardando over 2|| {~ [c#4 e4 g#4] [c#4 e4 g#4] [c#4 e4 g#4]} {~ [c#4 e4 f#4] [c#4 e4 f#4] [c#4 e4 f#4]}"
+            - "{d#7 c#7 g#6 b6} {a6 d#6 g#6 f#6}"
+        - alternate:   # 16: the second ending ends on the D.C. and its G# G F# pickup
+            - "{~ [d#4 f#4] [d#4 f#4] [d#4 f#4 b4]} {~ b4 b4 b4}"
+            - "{e6 [g#6 b6 e7]} ~"
+    lh:
+      play:
+        - "fortissimo"
+        - "{f2 _ _ f3} f2"   # 1: F natural: a diminished seventh over the dominant
+        - "{f#2 _ _ f#3} f#2"   # 2
+        - "forte"
+        - "{[b1 b2] _ _ [b3 d#4]} {a3 [b3 d#4]}"   # 3
+        - "{e3 _ _ [b3 e4]} {g#3 [b3 e4]}"   # 4
+        - "fortissimo"
+        - "{f2 _ _ f3} f2"   # 5
+        - "{f#2 _ _ f#3} f#2"   # 6
+        - "{[b1 b2] _ _ [b3 d#4]} {a3 [b3 d#4]}"   # 7
+        - "{e3 _ _ [b3 e4]} {g#3 [b3 e4]}"   # 8
+        - "mezzoforte"
+        - "{f3 _ _ [g#3 b3 d4]} {f3 [g#3 b3 d4]}"   # 9
+        - "{f#3 _ _ [a3 c#4]} {f#3 [a3 c#4]}"   # 10
+        - "{d#3 _ _ [g#3 b#3]} {f#3 [g#3 b#3]}"   # 11
+        - "{c#3 _ _ [g#3 c#4]} {e3 [g#3 c#4]}"   # 12
+        - "{a#2 _ _ [e3 g3 c#4]} {a#2 [e3 g3 c#4]}"   # 13
+        - alternate:   # 14: first ending / second ending (8va from the G#)
+            - "{b2 _ _ [e3 g#3 b3]} {b2 [e3 g#3 b3]}"
+            - "{b2 _ _ [e3 g#3 b3]} {g#3 [b3 e4]}"
+        - alternate:   # 15: "f e ret." in the first ending only
+            - "||forte|| {[b2 a#3] _ _ [b2 a#3]} {[b2 a#3] [b2 a#3]}"
+            - "{a3 [c#4 f#4] _ [a#2 a#3]} {[b2 b3] [a3 b3 d#4]}"
+        - alternate:   # 16: the second ending ends on the D.C. and its G# G F# pickup
+            - "{[b2 a3] _ _ [b2 a3]} b2"
+            - "{e3 [g#3 b3 e4]} {~ g#3 g3 f#3}"
+
+  # D.C. al segno: A once, second ending
+  a_da_capo:
+    loop: false
+    rh:
+      play:
+        - "mezzoforte"
+        - "{~ [g#3 c#4 e4 g#4]} {~ [g#3 b#3 f#4]}"   # 1
+        - "{~ [g#3 c#4 e4]} {~ [e#3 g#3 c#4]}"   # 2
+        - "{~ [f#3 a3 c#4]} {~ [e#3 b3 c#4]}"   # 3
+        - "{~ [f#3 a3 c#4]} ~"   # 4
+        - "{~ [a4 c#5]} {~ [f#4 a4 c#5]}"   # 5
+        - "{~ [f#4 a4]} {~ [e4 g4 a4]}"   # 6
+        - "{~ [d#4 f#4 g#4]} {~ g#4 e5 b#4}"   # 7
+        - "{d#5 c#5 e5 c#5} {g#4 e4 c#4 [b#3 d#4]}"   # 8
+        - "{~ [g#3 c#4 e4 g#4]} {~ [g#3 b#3 f#4]}"   # 9
+        - "{~ [g#3 c#4 e4]} {~ [e#3 g#3 c#4]}"   # 10
+        - "{~ [f#3 a3 c#4]} {~ [e#3 b3 c#4]}"   # 11
+        - "{~ [f#3 a3 c#4]} {~ [f#3 a3 c4]}"   # 12
+        - "{~ [b#3 f#4 a4] _ [b#3 f#4 g#4]} {~ [f#4 b#4 e5] _ [f#4 b#4 d#5]}"   # 13
+        - "{~ [e4 g#4 d#5] _ [e4 g#4 c#5]} {~ [c#4 f#4 b4] _ [c#4 f#4 a4]}"   # 14
+        - "{~ [c#4 e4 a4] _ [c#4 e4 g#4]} {~ [f#3 b#3 e4] _ [f#3 b#3 d#4]}"   # 15
+        - "[e3 c#4] {{~ {b4 d#5}} c#5 _ b4}"   # 16: second ending
+    lh:
+      play:
+        - "mezzoforte"
+        - "{e3 _ _ e3} {d#3 _ _ d#3}"   # 1
+        - "{c#3 _ _ c#3} {b2 _ _ b2}"   # 2
+        - "{a2 _ _ a2} {g#2 _ _ g#2}"   # 3
+        - "{f#2 _ _ a2} {c#3 f#3 a3 c#4}"   # 4
+        - "{f#4 _ _ f#4} {e4 _ _ e4}"   # 5
+        - "{d#4 _ _ d#4} {c#4 _ _ c#4}"   # 6
+        - "{b#3 _ _ b#3} {[d#3 f#3 g#3] b#3}"   # 7
+        - "[c#3 e3 g#3 c#4] {~ g#3 g3 f#3}"   # 8
+        - "{e3 _ _ e3} {d#3 _ _ d#3}"   # 9
+        - "{c#3 _ _ c#3} {b2 _ _ b2}"   # 10
+        - "{a2 _ _ a2} {g#2 _ _ g#2}"   # 11
+        - "{f#2 _ _ f#2} {e2 _ _ e2}"   # 12
+        - "{d#2 _ _ d#2} {g#2 _ _ g#2}"   # 13
+        - "{c#2 _ _ c#2} {f#2 _ _ f##2}"   # 14
+        - "{g#2 _ _ g#2} {g#1 _ _ g#1}"   # 15
+        - "{c#2 g#2} [c#2 c#3]"   # 16: second ending
+
+  # B once, second ending
+  b_da_capo:
+    loop: false
+    rh:
+      play:
+        - "forte"
+        - "{a#4> [e5 g#5] _ [e5 f#5]} {a4> [d#5 g#5] _ [d#5 f#5]}"   # 1
+        - "{g#4> [b4 f#5] _ [b4 e5]} {{~ {e5 g#5}} f#5 _ e5}"   # 2
+        - "{d#5> [a5 c#6] _ [a5 b5]} {d#5> [a5 c#6] _ [a5 b5]}"   # 3
+        - "{d5> [g#5 c#6] _ [g#5 b5]} {~ [d5 g#5 c#6] _ [d5 g#5 b5]}"   # 4
+        - "diminuendo to mezzoforte over 2"
+        - "{~ [c#5 f#5 b5] _ [c#5 f#5 a5]} {~ [a4 c5 g#5] _ [a4 c5 f#5]}"   # 5
+        - "{~ [g#4 b4 f#5] _ [g#4 b4 e5]} {~ [e4 g4 d#5] _ [e4 g4 c#5]}"   # 6
+        - "{~ [d#4 f#4 c#5] _ [d#4 f#4 b4]} {~ [d#4 f#4] _ [d#4 f##4]}"   # 7
+        - "{{g#4 _ d#4 f#4} e4 _ c#4} {{b3 _ b4 d#5} c#5 _ b4}"   # 8
+        - "forte"
+        - "{a#4> [e5 g#5] _ [e5 f#5]} {a4> [d#5 g#5] _ [d#5 f#5]}"   # 9
+        - "{g#4> [b4 f#5] _ [b4 e5]} {{~ {e5 g#5}} f#5 _ e5}"   # 10
+        - "{d#5> [a5 c#6] _ [a5 b5]} {d#5> [a5 c#6] _ [a5 b5]}"   # 11
+        - "diminuendo to mezzoforte over 2"
+        - "{d5> [g#5 c#6] _ [g#5 b5]} {~ [d5 g#5 c#6] _ [d5 g#5 b5]}"   # 12
+        - "{~ [c#5 f#5 b5] _ [c#5 f#5 a5]} {~ [a4 c5 g#5] _ [a4 c5 f#5]}"   # 13
+        - "{~ [g#4 b4 f#5] _ [g#4 b4 e5]} {~ [e4 g4 d#5] _ [e4 g4 c#5]}"   # 14
+        - "{~ [d#4 b4] _ [d#4 a#4]} {[d#4 a4] [d#4 g#4] _ [d#4 f#4]}"   # 15
+        - "{e4 [e4 g#4 b4 e5]} ~"   # 16: second ending
+    lh:
+      play:
+        - "forte"
+        - "{c#3> [f#3 a#3 e4] _ [f#3 a#3 e4]} {d#3> [a3 b3 f#4]}"   # 1
+        - "{e3 [g#3 b3 e4] _ [g#3 b3 e4]} {g#3> [b3 e4]}"   # 2
+        - "{f#3> [a3 b3 d#4] _ [a3 b3 d#4]} {f#3 [a3 b3 d#4]}"   # 3
+        - "{f3 [g#3 b3 d4] _ [g#3 b3 d4]} {f3 [g#3 b3 d4]}"   # 4
+        - "diminuendo to mezzoforte over 2"
+        - "{a3 [c#4 f#4] _ [c#4 f#4]} {[a2 a3] [a#2 a#3]}"   # 5
+        - "{[b2 b3] _ _ [b2 b3]} {[b2 a#3] [b2 a#3]}"   # 6
+        - "{[b2 a3] _ _ [b2 a3]} {[b2 a3] [b2 a3]}"   # 7
+        - "{e3 [g#3 b3] _ [g#3 b3]} {b2 [e3 g#3 b3]}"   # 8
+        - "forte"
+        - "{c#3> [f#3 a#3 e4] _ [f#3 a#3 e4]} {d#3> [a3 b3 f#4]}"   # 9
+        - "{e3 [g#3 b3 e4] _ [g#3 b3 e4]} {g#3> [b3 e4]}"   # 10
+        - "{f#3> [a3 b3 d#4] _ [a3 b3 d#4]} {f#3> [a3 b3 d#4]}"   # 11
+        - "diminuendo to mezzoforte over 2"
+        - "{f3> [g#3 b3 d4] _ [g#3 b3 d4]} {f3 [g#3 b3 d4]}"   # 12
+        - "{a3 [c#4 f#4] _ [c#4 f#4]} {[a2 a3] [a#2 a#3]}"   # 13
+        - "{[b2 b3] _ _ [b2 b3]} {[b2 a#3] [b2 a#3]}"   # 14
+        - "{[b2 a3] _ _ [b2 a3]} {[b2 a3] [b2 a3]}"   # 15
+        - "{[e3 g#3] e2} {~ g#3 g3 f#3}"   # 16: second ending
+
+  # A once more, closing on the "Somente para finalizar" bar: FINE
+  a_fine:
+    loop: false
+    rh:
+      play:
+        - "mezzoforte"
+        - "{~ [g#3 c#4 e4 g#4]} {~ [g#3 b#3 f#4]}"   # 1
+        - "{~ [g#3 c#4 e4]} {~ [e#3 g#3 c#4]}"   # 2
+        - "{~ [f#3 a3 c#4]} {~ [e#3 b3 c#4]}"   # 3
+        - "{~ [f#3 a3 c#4]} ~"   # 4
+        - "{~ [a4 c#5]} {~ [f#4 a4 c#5]}"   # 5
+        - "{~ [f#4 a4]} {~ [e4 g4 a4]}"   # 6
+        - "{~ [d#4 f#4 g#4]} {~ g#4 e5 b#4}"   # 7
+        - "{d#5 c#5 e5 c#5} {g#4 e4 c#4 [b#3 d#4]}"   # 8
+        - "{~ [g#3 c#4 e4 g#4]} {~ [g#3 b#3 f#4]}"   # 9
+        - "{~ [g#3 c#4 e4]} {~ [e#3 g#3 c#4]}"   # 10
+        - "{~ [f#3 a3 c#4]} {~ [e#3 b3 c#4]}"   # 11
+        - "{~ [f#3 a3 c#4]} {~ [f#3 a3 c4]}"   # 12
+        - "{~ [b#3 f#4 a4] _ [b#3 f#4 g#4]} {~ [f#4 b#4 e5] _ [f#4 b#4 d#5]}"   # 13
+        - "{~ [e4 g#4 d#5] _ [e4 g#4 c#5]} {~ [c#4 f#4 b4] _ [c#4 f#4 a4]}"   # 14
+        - "{~ [c#4 e4 a4] _ [c#4 e4 g#4]} {~ [f#3 b#3 e4] _ [f#3 b#3 d#4]}"   # 15
+        - "[e3 c#4] [c#5 e5 g#5 c#6]"   # 16: "Somente para finalizar" (only to finish): FINE
+    lh:
+      play:
+        - "mezzoforte"
+        - "{e3 _ _ e3} {d#3 _ _ d#3}"   # 1
+        - "{c#3 _ _ c#3} {b2 _ _ b2}"   # 2
+        - "{a2 _ _ a2} {g#2 _ _ g#2}"   # 3
+        - "{f#2 _ _ a2} {c#3 f#3 a3 c#4}"   # 4
+        - "{f#4 _ _ f#4} {e4 _ _ e4}"   # 5
+        - "{d#4 _ _ d#4} {c#4 _ _ c#4}"   # 6
+        - "{b#3 _ _ b#3} {[d#3 f#3 g#3] b#3}"   # 7
+        - "[c#3 e3 g#3 c#4] {~ g#3 g3 f#3}"   # 8
+        - "{e3 _ _ e3} {d#3 _ _ d#3}"   # 9
+        - "{c#3 _ _ c#3} {b2 _ _ b2}"   # 10
+        - "{a2 _ _ a2} {g#2 _ _ g#2}"   # 11
+        - "{f#2 _ _ f#2} {e2 _ _ e2}"   # 12
+        - "{d#2 _ _ d#2} {g#2 _ _ g#2}"   # 13
+        - "{c#2 _ _ c#2} {f#2 _ _ f##2}"   # 14
+        - "{g#2 _ _ g#2} {g#1 _ _ g#1}"   # 15
+        - "{c#2 g#2} [c#2 c#3]"   # 16: "Somente para finalizar" (only to finish): FINE
