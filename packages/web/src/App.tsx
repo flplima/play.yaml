@@ -25,6 +25,7 @@ import RoutingPanel, { SampleEntry } from './RoutingPanel';
 import TrackMonitor from './TrackMonitor';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { playSong, PlaybackHandle } from './player';
 import { loadRoutes, routeKey, saveRoutes, MidiRoute, RouteMap } from './routes';
@@ -493,33 +494,35 @@ export default function App() {
       </header>
 
       <main className="flex min-h-0 flex-1">
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <Tabs
+          value={mainTab}
+          onValueChange={(v) => setMainTab(v as typeof mainTab)}
+          className="min-w-0 flex-1 gap-0 overflow-hidden"
+        >
           {/*
-            Three views of the same score. The editor is what it says; the roll
-            is what it does; the score is how a musician would read it. All stay mounted — CodeMirror is expensive to
-            rebuild and would lose its scroll and selection, and the roll's
-            canvas is cheap to leave sitting there — so the hidden one is
-            hidden with CSS rather than unmounted.
+            Four views of the same score. The editor is what it says; the roll
+            is what it does; the score is how a musician would read it; the
+            harmony tab is the chords under it. All stay mounted (forceMount):
+            CodeMirror is expensive to rebuild and would lose its scroll and
+            selection, and the canvases are cheap to leave sitting there, so
+            the inactive ones are hidden with CSS rather than unmounted.
           */}
-          <div role="tablist" aria-label="Main view" className="flex shrink-0 border-b border-border bg-card">
+          <TabsList
+            variant="line"
+            aria-label="Main view"
+            className="h-auto w-full shrink-0 justify-start gap-0 rounded-none border-b border-border bg-card p-0"
+          >
             {([['editor', 'Editor'], ['roll', 'Piano roll'], ['score', 'Score'], ['harmony', 'Harmony']] as const).map(([id, label]) => (
-              <button
+              <TabsTrigger
                 key={id}
-                role="tab"
-                aria-selected={mainTab === id}
-                onClick={() => setMainTab(id)}
-                className={
-                  'px-4 py-1.5 text-xs font-medium transition-colors ' +
-                  (mainTab === id
-                    ? 'border-b-2 border-primary text-foreground'
-                    : 'border-b-2 border-transparent text-muted-foreground hover:text-foreground')
-                }
+                value={id}
+                className="h-auto flex-none rounded-none px-4 py-1.5 text-xs group-data-[orientation=horizontal]/tabs:after:bottom-0 after:bg-primary data-[state=active]:text-foreground"
               >
                 {label}
-              </button>
+              </TabsTrigger>
             ))}
-          </div>
-          <div className={`min-h-0 flex-1 overflow-hidden ${mainTab === 'editor' ? '' : 'hidden'}`}>
+          </TabsList>
+          <TabsContent value="editor" forceMount className="min-h-0 overflow-hidden data-[state=inactive]:hidden">
             <CodeMirror
               value={text}
               onChange={handleEdit}
@@ -529,17 +532,17 @@ export default function App() {
               style={{ height: '100%' }}
               extensions={[yaml(), playingNoteExtension]}
             />
-          </div>
-          <div className={`min-h-0 flex-1 ${mainTab === 'roll' ? '' : 'hidden'}`}>
+          </TabsContent>
+          <TabsContent value="roll" forceMount className="min-h-0 data-[state=inactive]:hidden">
             <PianoRoll song={song} currentBeat={currentBeat} />
-          </div>
-          <div className={`min-h-0 flex-1 ${mainTab === 'harmony' ? '' : 'hidden'}`}>
+          </TabsContent>
+          <TabsContent value="harmony" forceMount className="min-h-0 data-[state=inactive]:hidden">
             <HarmonyView song={song} currentBeat={currentBeat} />
-          </div>
-          <div className={`min-h-0 flex-1 ${mainTab === 'score' ? '' : 'hidden'}`}>
+          </TabsContent>
+          <TabsContent value="score" forceMount className="min-h-0 data-[state=inactive]:hidden">
             <ScoreView text={text} visible={mainTab === 'score'} playing={playing} currentBeat={currentBeat} />
-          </div>
-        </div>
+          </TabsContent>
+        </Tabs>
         {showPanel && (
           <aside className="flex w-80 shrink-0 flex-col overflow-y-auto border-l border-border bg-card">
             <OutputPanel

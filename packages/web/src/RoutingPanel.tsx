@@ -1,6 +1,7 @@
 import type { MidiState } from './useMidi';
 import { sendTestNote, type MidiRoute, type RouteMap } from './routes';
 import { cn } from '@/lib/utils';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -39,10 +40,12 @@ export default function RoutingPanel({ samples, midi, routes, onRouteChange, dis
         </p>
         {status && !disabled && <p className="mt-2 text-xs text-warning">{status}</p>}
         {disabled && (
-          <p className="mt-2 rounded-md border border-primary/40 bg-primary/10 px-2 py-1.5 text-xs text-primary">
-            Output is set to Built-in — everything plays on the bundled sampler
-            &amp; synth. Switch the toggle above to Web MIDI to use these routes.
-          </p>
+          <Alert className="mt-2 border-primary/40 bg-primary/10 px-2 py-1.5 text-xs text-primary">
+            <AlertDescription className="text-xs text-primary">
+              Output is set to Built-in — everything plays on the bundled sampler
+              &amp; synth. Switch the toggle above to Web MIDI to use these routes.
+            </AlertDescription>
+          </Alert>
         )}
       </div>
 

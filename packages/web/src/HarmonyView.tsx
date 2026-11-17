@@ -13,6 +13,7 @@
  * pure function of (song, beat), including the trail, so seeking or looping
  * never leaves a stale picture behind.
  */
+import { Toggle } from '@/components/ui/toggle';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { GRUVBOX, QUALITY_COLORS, fgAlpha, trackColor, withAlpha } from './palette';
 import { DRUM_CHANNEL, type CompiledSong } from '@play.yaml/core';
@@ -215,12 +216,15 @@ export default function HarmonyView({ song, currentBeat }: Props) {
   return (
     <div ref={wrapRef} className="relative h-full w-full overflow-hidden bg-stage">
       <canvas ref={canvasRef} className="block h-full w-full" />
-      <button
-        onClick={() => setFifths((f) => !f)}
-        className="absolute left-3 top-3 rounded border border-border bg-card/80 px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground"
+      <Toggle
+        pressed={fifths}
+        onPressedChange={setFifths}
+        variant="outline"
+        size="sm"
+        className="absolute left-3 top-3 h-auto min-w-0 bg-card/80 px-2 py-1 text-[11px] font-normal text-muted-foreground"
       >
         Order: {fifths ? 'circle of fifths' : 'chromatic'}
-      </button>
+      </Toggle>
     </div>
   );
 }
