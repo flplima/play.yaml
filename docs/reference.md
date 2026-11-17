@@ -595,10 +595,21 @@ What gets printed:
 - **The notes as written**: full note values, with no `gate`, `humanize`, `rubato` or strum. Ties, dots, tuplets, rests, beams and up to four voices per staff.
 - **Key**: `key: g major` names the key signature. Without it, the first `scale:` gives the key, and a score with neither prints with no key signature. A `scale:` set mid-piece changes what the degrees mean, never the printed key. To print real key changes, give `key:` the bars where they happen: `key: { 1: db major, 37: e major, 43: db major }`.
 - **Sharps and flats**: a note named by letter prints as written, so `d#4` is D sharp and `eb4` E flat in any key. A note named by degree is spelled from the `scale:` in force; a chromatic one follows its line, rising with sharps and falling with flats (the turn `{12# 12 11# 12}` in G major prints E flat, D, C sharp, D).
-- **Meter and tempo**: changes are printed where they happen.
+- **Meter and tempo**: meter changes print where they happen, and so does every tempo change, a gradual one as rit. or accel. When those come from the performance rather than the text, `metronome marks: opening` prints only the opening mark and `metronome marks: none` prints none; either way the tempo still plays. `tempo text: Andante semplice` prints the tempo word over the first bar, with the opening mark or, under `metronome marks: none`, instead of it.
 - **Keyboards**: tracks that share a keyboard `sample:` (piano, organ, harp and friends) print as one part on a grand staff. A track named `rh`, `right` or `upper` goes on the upper staff, and `lh`, `left` or `lower` on the lower one. Other names are split around middle C. A track named `pedal` gets a staff of its own.
 - **Drums**: a `kit:` track prints on a percussion staff, with x noteheads for hats and cymbals.
 - **Sections and repeats**: written out in full, with no repeat signs.
+
+`composer:`, `key:`, `tempo text:` and `metronome marks:` only change the page, never what plays. Together, a header that prints the way an edition does:
+
+```yaml
+title: "Ave Maria (Bach / Gounod)"
+composer: "Johann Sebastian Bach / Charles Gounod"
+key: c major
+tempo: 72
+tempo text: Andante semplice
+metronome marks: opening
+```
 
 What is not printed yet: dynamics and technique words, slurs, lyrics, chord symbols and repeat signs. Transposing instruments are written at sounding pitch.
 

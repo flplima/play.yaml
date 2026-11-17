@@ -4,6 +4,7 @@
 title: "BWV 106: I. Sonatina (Actus tragicus)"
 composer: "Johann Sebastian Bach"
 tempo: 50           # Molto adagio: no metronome mark survives
+tempo text: Molto adagio
 measure: 4/4
 scale: eb major
 dynamic: piano

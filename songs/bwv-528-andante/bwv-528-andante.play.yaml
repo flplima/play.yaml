@@ -4,6 +4,7 @@
 title: "BWV 528: II. Andante (Trio Sonata No. 4)"
 composer: "Johann Sebastian Bach"
 tempo: 39           # Mutopia's marking for the Andante
+tempo text: Andante
 measure: 4/4
 scale: b minor
 dynamic: mezzopiano

@@ -205,13 +205,21 @@ function writeTempo(w: Writer, mark: TempoMark): void {
     w.leaf('words', mark.words);
     w.close('direction-type');
   } else {
-    w.open('direction-type');
-    w.open('metronome');
-    w.leaf('beat-unit', mark.beatUnit);
-    if (mark.dotted) w.leaf('beat-unit-dot');
-    w.leaf('per-minute', mark.perMinute);
-    w.close('metronome');
-    w.close('direction-type');
+    // Tempo words read before the number, in bold as editions set them.
+    if (mark.text) {
+      w.open('direction-type');
+      w.leaf('words', mark.text, ' font-weight="bold"');
+      w.close('direction-type');
+    }
+    if (!mark.hideMetronome) {
+      w.open('direction-type');
+      w.open('metronome');
+      w.leaf('beat-unit', mark.beatUnit);
+      if (mark.dotted) w.leaf('beat-unit-dot');
+      w.leaf('per-minute', mark.perMinute);
+      w.close('metronome');
+      w.close('direction-type');
+    }
   }
   // The direction sits before the first voice, at the measure's start; the
   // offset moves it (and its playback tempo) to where it belongs.
