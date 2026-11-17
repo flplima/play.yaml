@@ -265,7 +265,7 @@ export const summary = (pcm, sampleRate) => ({
 /** A score with one `set:` line, so a modifier can be measured in isolation. */
 const score = (modifier, { sample = 'strings', notes = '"c4 e4 g4 c5"', tempo = 120, bars = 1 } = {}) => `tempo: ${tempo}
 controls: { bow: 74, pressure: 71, vibrato: 1, sordino: 22, expression: 11 }
-tracks: { main: { sample: ${sample} } }
+tracks: { main: { instrument: ${sample} } }
 sections:
   a:
     main:

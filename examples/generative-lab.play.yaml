@@ -39,7 +39,7 @@ tracks:
     play:
       - 9x: "ph ph ph ph ph ph ph ph"
   keys:
-    sample: piano
+    instrument: piano
     humanize: 0.4
     gate: 0.9
     play:
@@ -49,7 +49,7 @@ tracks:
       - arp: {chord: A7, mode: random, steps: 8, seed: 4}
       - arp: {notes: [d3, f3, a3, c4], mode: downup, steps: 8}
   lead:
-    sample: flute
+    instrument: flute
     octave: 5
     set: chance 0.9, humanize 0.3
     play:

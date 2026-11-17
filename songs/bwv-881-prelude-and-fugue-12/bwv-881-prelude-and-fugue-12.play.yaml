@@ -13,14 +13,14 @@ articulation: legato
 # a hand keeps sounding while it moves on (a suspension, an inner voice),
 # so each staff shows its own voices. The fugue keeps a track per voice.
 tracks:
-  rh: { sample: piano }
-  rh2: { sample: piano }
-  lh: { sample: piano }
-  lh2: { sample: piano }
-  soprano: { sample: piano }
-  mezzo: { sample: piano }
-  tenor: { sample: piano }
-  bass: { sample: piano }
+  rh: { instrument: piano }
+  rh2: { instrument: piano }
+  lh: { instrument: piano }
+  lh2: { instrument: piano }
+  soprano: { instrument: piano }
+  mezzo: { instrument: piano }
+  tenor: { instrument: piano }
+  bass: { instrument: piano }
 
 sections:
   prelude:

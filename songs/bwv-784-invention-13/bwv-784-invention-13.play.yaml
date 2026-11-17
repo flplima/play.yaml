@@ -10,8 +10,8 @@ dynamic: mezzopiano
 articulation: legato
 
 tracks:
-  rh: { sample: piano }
-  lh: { sample: piano }
+  rh: { instrument: piano }
+  lh: { instrument: piano }
 
 sections:
   piece:

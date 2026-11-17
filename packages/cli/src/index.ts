@@ -9,7 +9,7 @@ import { createChunkedRender, playChunks } from '@play.yaml/node-audio';
 export async function playSong(song: CompiledSong, opts: { fromBeat?: number } = {}): Promise<void> {
   console.log(`Starting playback of "${song.title || 'Untitled'}" at ${song.bpm} BPM...`);
   for (const track of song.tracks) {
-    const instrument = track.kit ? `Kit: [${track.kit}]` : `Sample: [${track.sample}]`;
+    const instrument = track.kit ? `Kit: [${track.kit}]` : `Instrument: [${track.sample}]`;
     console.log(`  Track: "${track.name}" | ${instrument} | ${track.timeline.length} notes, ${track.controls.length} CCs`);
   }
 

@@ -325,7 +325,7 @@ function importMidi(bytes: Uint8Array, args: ImportOptions): ImportResult {
     'tracks:',
   ];
   for (const t of tracks) {
-    L.push(`  ${t.key}: { ${t.drums ? 'kit: acoustic' : `sample: ${t.sample}`} }`);
+    L.push(`  ${t.key}: { ${t.drums ? 'kit: acoustic' : `instrument: ${t.sample}`} }`);
   }
   L.push('', 'sections:', '  piece:', '    loop: false');
   for (const t of tracks) {

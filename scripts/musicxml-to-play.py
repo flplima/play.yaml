@@ -8,7 +8,7 @@ How it works
   emitted line is monophonic-with-chords. This is what lets sustained inner
   voices ring under moving ones (e.g. the held bass + tenor under the running
   16ths of BWV 846) instead of being clobbered — exactly how the pedal holds
-  them. Same-instrument tracks all get `sample: piano` by default.
+  them. Same-instrument tracks all get `instrument: piano` by default.
 - Each measure is divided into `numerator` equal beat-slots (one per 1/denominator
   note); each beat is laid out on the finest grid its notes need (gcd of the
   onsets/offsets inside it), filled with note/chord tokens, `_` holds (ties and
@@ -232,7 +232,7 @@ def to_yaml(root, title, tempo, snap=1, header=''):
     if header:
         L.append('')
     L += [f'title: "{title}"', f'tempo: {tempo}', f'measure: {first[0]}/{first[1]}', '', 'tracks:']
-    L += [f'  {n}: {{ sample: piano }}' for n in names]
+    L += [f'  {n}: {{ instrument: piano }}' for n in names]
     L += ['', 'sections:', '  piece:', '    loop: false']
     for n in names:
         L.append(f'    {n}:')

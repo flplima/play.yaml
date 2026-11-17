@@ -11,11 +11,11 @@ dynamic: piano
 articulation: legato
 
 tracks:
-  recorder1: { sample: flute }
-  recorder2: { sample: flute }
-  gamba1: { sample: cello }
-  gamba2: { sample: cello }
-  continuo: { sample: keys }
+  recorder1: { instrument: flute }
+  recorder2: { instrument: flute }
+  gamba1: { instrument: cello }
+  gamba2: { instrument: cello }
+  continuo: { instrument: keys }
 
 sections:
   piece:

@@ -271,6 +271,8 @@ export type PlayInput =
 
 export interface TrackNode extends TrackProps {
   title?: string; // meaningful at the root
+  /** The sound this track plays on: the documented name for `sample:`. */
+  instrument?: string;
   /**
    * Bars of silence before this track's music starts. A child adds its own
    * wait to its parent's, so a group of tracks can enter together.
@@ -1511,7 +1513,7 @@ const _everyPropInherits: Exclude<keyof TrackProps, (typeof INHERITED)[number]> 
 void _everyPropInherits;
 
 /** Keys a track may hold besides the inherited props. */
-const TRACK_KEYS = new Set<string>([...INHERITED, 'title', 'wait', 'set', 'play', 'tracks']);
+const TRACK_KEYS = new Set<string>([...INHERITED, 'instrument', 'title', 'wait', 'set', 'play', 'tracks']);
 /** Keys only the root may hold: the printed header and the song form. */
 const ROOT_KEYS = new Set<string>(['composer', 'key', 'tempo text', 'metronome marks', 'sections']);
 
@@ -1639,6 +1641,12 @@ function effectiveProps(
   for (const key of INHERITED) {
     if (node[key] !== undefined) (props as Record<string, unknown>)[key] = node[key];
   }
+  if (node.instrument !== undefined) {
+    if (node.sample !== undefined) {
+      throw new Error(`${where}: "instrument:" and "sample:" are the same key. Keep one.`);
+    }
+    props.sample = String(node.instrument);
+  }
   let opening: ControlEvent[] = [];
   if (node.set !== undefined) {
     const patch = parseSet(node.set, props.controls);
@@ -1747,7 +1755,7 @@ export function compileDoc(doc: SongDoc, options: CompileOptions = {}): Compiled
         if (child == null) continue; // `name:` with nothing under it: an empty slot
         if (typeof child !== 'object' || Array.isArray(child)) {
           throw new Error(
-            `Track "${childName}" must be a mapping (sample:, play:…), not ${JSON.stringify(child)}.`,
+            `Track "${childName}" must be a mapping (instrument:, play:…), not ${JSON.stringify(child)}.`,
           );
         }
         walk(child, childName, props, node === doc ? undefined : name, wait);

@@ -11,9 +11,9 @@ dynamic: mezzopiano
 articulation: legato
 
 tracks:
-  manual1: { sample: keys }
-  manual2: { sample: keys }
-  pedal: { sample: keys }
+  manual1: { instrument: keys }
+  manual2: { instrument: keys }
+  pedal: { instrument: keys }
 
 sections:
   piece:

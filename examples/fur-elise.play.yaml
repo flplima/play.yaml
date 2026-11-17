@@ -8,8 +8,8 @@ tempo text: Poco moto
 measure: 3/8
 
 tracks:
-  rh: { sample: piano }
-  lh: { sample: piano }
+  rh: { instrument: piano }
+  lh: { instrument: piano }
 
 sections:
   piece:

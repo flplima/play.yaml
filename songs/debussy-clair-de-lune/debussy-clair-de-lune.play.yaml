@@ -10,12 +10,12 @@ dynamic: pianissimo
 articulation: legato
 
 tracks:
-  upper1: { sample: piano }
-  upper2: { sample: piano }
-  upper3: { sample: piano }
-  lower1: { sample: piano }
-  lower2: { sample: piano }
-  lower3: { sample: piano }
+  upper1: { instrument: piano }
+  upper2: { instrument: piano }
+  upper3: { instrument: piano }
+  lower1: { instrument: piano }
+  lower2: { instrument: piano }
+  lower3: { instrument: piano }
 
 sections:
   piece:

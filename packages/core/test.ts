@@ -2614,6 +2614,15 @@ check('wait: takes whole bars, and stays inside sections when a song has them', 
   assert.throws(() => compileYaml('tracks:\n  v:\n    wait: 2\nsections:\n  a:\n    v:\n      play: c'), /inside a section/);
 });
 
+console.log('\ninstrument: names the sound:');
+check('instrument: is sample: under its documented name', () => {
+  assert.strictEqual(compileYaml('instrument: cello\nplay: c').tracks[0].sample, 'cello');
+  assert.strictEqual(compileYaml('sample: cello\nplay: c').tracks[0].sample, 'cello');
+  assert.strictEqual(compileYaml('instrument: cello\ntracks:\n  a:\n    play: c').tracks[0].sample, 'cello');
+  assert.throws(() => compileYaml('instrument: cello\nsample: flute\nplay: c'), /same key/);
+  assert.throws(() => compileYaml('instrumnet: cello\nplay: c'), /Did you mean "instrument"/);
+});
+
 if (failed.length > 0) {
   console.error(`\n${passed} passed, ${failed.length} FAILED:\n  ${failed.join('\n  ')}`);
   process.exit(1);
