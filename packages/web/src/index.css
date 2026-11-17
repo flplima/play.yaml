@@ -17,9 +17,9 @@
  * hardcodes a colour: components reference the tokens, so a theme swap is a
  * change to this file alone.
  *
- * The accent is the green-blue the studio has always used for "sounding" and
- * for the play button, kept as `--primary` so the shadcn components inherit it
- * rather than fighting it.
+ * The accent is gruvbox bright yellow, kept as `--primary` so the shadcn
+ * components inherit it rather than fighting it. Warnings are orange so the two
+ * never read as the same thing.
  */
 :root {
   --radius: 0.5rem;
@@ -53,8 +53,8 @@
   --popover: var(--gb-bg1);
   --popover-foreground: var(--foreground);
 
-  --primary: var(--gb-aqua);                /* the "sounding" accent */
-  --primary-foreground: var(--gb-bg0-h);
+  --primary: var(--gb-yellow);              /* the accent */
+  --primary-foreground: var(--gb-bg0);      /* text that sits on it */
   --secondary: var(--gb-bg1);
   --secondary-foreground: var(--foreground);
   --muted: var(--gb-bg1);
@@ -66,10 +66,10 @@
 
   --border: var(--gb-bg2);
   --input: var(--gb-bg2);
-  --ring: color-mix(in srgb, var(--gb-aqua) 55%, transparent);
+  --ring: color-mix(in srgb, var(--gb-yellow) 60%, transparent);
 
   /* Studio-specific accents, so panels stop inventing their own scale. */
-  --warning: var(--gb-yellow);              /* compile warnings, unsaved dot */
+  --warning: var(--gb-orange);              /* compile warnings, unsaved dot */
   --stage: var(--gb-bg0-h);                 /* piano roll, keys and harmony canvases */
 }
 
@@ -178,4 +178,44 @@
 /* CodeMirror sets its own monospace stack on the scroller; the editor uses the studio font. */
 .cm-editor.cm-editor .cm-scroller {
   font-family: 'Paper Mono', ui-monospace, monospace;
+}
+
+/*
+ * The notes sounding in the editor (highlight.ts). A mark is an inline span, so
+ * transforms and layout are off the table: the animation is colour and glow
+ * only. A note fades in as it starts; when it ends the same range lingers for a
+ * moment with `-leaving` and fades out.
+ */
+@keyframes note-in {
+  from {
+    background-color: transparent;
+    outline-color: transparent;
+    box-shadow: 0 0 10px 2px color-mix(in srgb, var(--mark) 70%, transparent);
+  }
+}
+@keyframes note-out {
+  to {
+    background-color: transparent;
+    outline-color: transparent;
+    box-shadow: none;
+  }
+}
+.cm-playing-note,
+.cm-playing-subnote {
+  animation: note-in 110ms ease-out;
+}
+.cm-playing-note.cm-note-leaving,
+.cm-playing-subnote.cm-note-leaving {
+  animation: note-out 140ms ease-in forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cm-playing-note,
+  .cm-playing-subnote,
+  .cm-playing-note.cm-note-leaving,
+  .cm-playing-subnote.cm-note-leaving {
+    animation: none;
+  }
+  .cm-note-leaving {
+    display: none;
+  }
 }
