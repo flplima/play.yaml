@@ -10,9 +10,9 @@ Make some music with YAML.
 I wanted to write music the way I write code: in a text file that I can read and keep in git.
 **play.yaml** is a score format for that. You write the measures in YAML, and it compiles to MIDI.
 
-- **Musician-friendly**: Each string is one measure, split equally among its notes. Dynamics and techniques are the words a score already uses, like `dolce` or `sul ponticello`.
+- **Musician-friendly**: Each line is one measure, split equally among its notes. Dynamics and techniques are the words a score already uses, like `dolce` or `sul ponticello`.
 - **Git-friendly**: A score is plain text, and the same file always compiles to the same MIDI bytes. Even the random parts are seeded.
-- **Agent-friendly**: One bar per string, so an agent can fix bar 12 without breaking bar 13. `play-yaml-import --verify` proves a transcription kept every note, and `play-yaml-fidelity` grades it against a reference MIDI.
+- **Agent-friendly**: One bar per line, so an agent can fix bar 12 without breaking bar 13. `play-yaml-import --verify` proves a transcription kept every note, and `play-yaml-fidelity` grades it against a reference MIDI.
 - **Instrument-friendly**: It plays in the browser, on a synth or on a free sampled orchestra. Or it sends plain MIDI to your hardware synth, your DAW or a virtual instrument.
 
 ## a taste
@@ -20,14 +20,14 @@ I wanted to write music the way I write code: in a text file that I can read and
 The smallest score is just something to play. This is Twinkle, Twinkle Little Star:
 
 ```yaml
-play:
-  - "c c g g"
-  - "a a g ~"
-  - "f f e e"
-  - "d d c ~"
+play: |
+  c c g g
+  a a g ~
+  f f e e
+  d d c ~
 ```
 
-Four tokens in a 4/4 measure are four quarter notes, and `~` is a rest. It plays at 80 bpm on a piano, because nothing says otherwise.
+Each line is one bar. Four notes in a 4/4 bar are four quarter notes, and `~` is a rest. It plays at 80 bpm on a piano, because nothing says otherwise.
 
 A bit more of the language:
 
@@ -39,15 +39,15 @@ tracks:
     sample: cello
     octave: 3
     dynamic: piano
-    play:
-      - "1 3 5 8"                            # scale degrees: D F A D
-      - "dolce, crescendo to forte over 2"   # a marking, written like in a score
-      - "{5 4} 3 [1 5] _"                    # {} splits a beat, [] is a chord, _ holds it
-      - "8 _ _ ~"
+    play: |
+      1 3 5 8                            # scale degrees: D F A D
+      dolce, crescendo to forte over 2   # a marking, written like in a score
+      {5 4} 3 [1 5] _                    # {} splits a beat, [] is a chord, _ holds it
+      8 _ _ ~
   drums:
     kit: acoustic
     play:
-      - 3x: "bd hh sd hh"                    # the same bar, three times
+      - 3x: "bd hh sd hh"                # a list item can repeat: the same bar, three times
 ```
 
 There is a lot more: sections and song form, rubato, bow and pedal techniques, drum rolls, euclidean rhythms. The full tour is in [docs/reference.md](docs/reference.md).

@@ -15,18 +15,18 @@ The whole format, plus the studio and the command line. New here? Start with the
 A score is a YAML document, and **the document itself is a track**. The smallest possible score is just something to play:
 
 ```yaml
-play:
-  - "c c g g"
-  - "a a g ~"
-  - "f f e e"
-  - "d d c ~"
+play: |
+  c c g g
+  a a g ~
+  f f e e
+  d d c ~
 ```
 
 That's Twinkle, Twinkle Little Star — 80 bpm, 4/4, piano by default (the built-in synth piano).
 
 ### Measures & equal division
 
-Each string in the `play` array (or each line of a `play: |` multiline string) is **one measure**. A measure's duration is divided **equally** among its whitespace-separated tokens: 4 tokens in 4/4 are quarter notes, 8 tokens are eighth notes, 3 tokens are a half-note triplet.
+Each line of a `play: |` block is **one measure**. The same bars can also be a YAML list (`- "c c g g"`): the list form is what repeats (`- 2x:`), numbered bars and generators need, so a score switches to it when it wants structure. In a list, quote any bar that holds `[`, `{` or `:`. A measure's duration is divided **equally** among its whitespace-separated tokens: 4 tokens in 4/4 are quarter notes, 8 tokens are eighth notes, 3 tokens are a half-note triplet.
 
 A `#` after a space starts a comment, in a `play: |` line as anywhere else in YAML, so you can write the words or the bar number next to the music. A line that is only a comment takes no bar. A sharp is attached to its note (`c#`, `4#`), so it never starts one.
 
