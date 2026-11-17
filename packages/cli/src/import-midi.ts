@@ -22,7 +22,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import {
-  NOTATE_TICKS, PRESET_PROGRAMS, compileDoc, decodeMidi, drumName, notateMeasures,
+  NOTATE_TICKS, PRESET_PROGRAMS, compileDoc, decodeMidi, drumName, notateMeasures, rawNoteOns,
   parseYaml, separateVoices, MidiNote, NotateNote, ParsedMidi,
 } from '@play.yaml/core';
 import { parseFlags, run, usage } from './shared';
@@ -139,7 +139,10 @@ function buildSpans(midi: ParsedMidi, lengthBeats: number): Span[] {
     const c = changes[i];
     const measureBeats = c.numerator * (4 / c.denominator);
     const endBeat = i + 1 < changes.length ? changes[i + 1].beat : lengthBeats;
-    const measures = Math.max(0, Math.round((endBeat - c.beat) / measureBeats));
+    // The last span runs to the end of the notes, so a short final bar still
+    // counts (round() dropped a lone closing chord on the downbeat).
+    const bars = (endBeat - c.beat) / measureBeats;
+    const measures = Math.max(0, i + 1 < changes.length ? Math.round(bars) : Math.ceil(bars - 1e-9));
     if (measures > 0) {
       spans.push({ startBeat: c.beat, measures, numerator: c.numerator, denominator: c.denominator, measureBeats });
     }
@@ -223,7 +226,7 @@ function importMidi(bytes: Uint8Array, args: ImportOptions): ImportResult {
 
   // Total length has to cover held notes, and the last bar even if it is
   // short, or the final span loses a measure.
-  const lastBeat = midi.notes.reduce((m, n) => Math.max(m, n.startBeat + n.durBeat), 0);
+  const lastBeat = midi.notes.reduce((m, n) => Math.max(m, n.startBeat + Math.max(n.durBeat, 1e-6)), 0);
   let spans = override
     ? [{
         startBeat: 0,
@@ -379,6 +382,11 @@ function verify(
   trackFilter?: string,
 ): VerifyReport {
   const midi = decodeMidi(bytes);
+  // Raw note-on count from the track bytes, filtered the same way as below,
+  // so notes the decoder itself lost still show up as missing.
+  let raw = rawNoteOns(bytes);
+  if (trackFilter) raw = raw.filter((n) => trackWanted(trackFilter, n.track, midi.trackNames[n.track] ?? ''));
+  if (window) raw = raw.filter((n) => n.beat >= window.fromBeat - 1e-9 && n.beat < window.toBeat - 1e-9);
   const song = compileDoc(parseYaml(yamlText));
   if (trackFilter) {
     midi.notes = midi.notes.filter((n) => trackWanted(trackFilter, n.track, midi.trackNames[n.track] ?? ''));
@@ -450,7 +458,10 @@ function verify(
   missing += Math.max(0, drumSource - drumScore);
   extra += Math.max(0, drumScore - drumSource);
 
-  const sourceNotes = midi.notes.length;
+  // Anything the decoder dropped before it got here.
+  missing += Math.max(0, raw.length - midi.notes.length);
+
+  const sourceNotes = Math.max(raw.length, midi.notes.length);
   const scoreNotes = song.tracks.reduce(
     (n, t) => n + t.timeline.length, 0);
 
