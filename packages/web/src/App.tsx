@@ -18,7 +18,7 @@ import {
   Square,
   TriangleAlert,
 } from 'lucide-react';
-import { DEFAULT_EXAMPLE, EXAMPLES } from './examples';
+import { DEFAULT_EXAMPLE, EXAMPLES, LISTED_EXAMPLES } from './examples';
 import SongPicker from './SongPicker';
 import PianoRoll from './PianoRoll';
 import HarmonyView from './HarmonyView';
@@ -102,7 +102,8 @@ export default function App() {
   // The last selected example survives reloads. (Opened files can't — the
   // File System Access handle doesn't fit in localStorage.)
   const [exampleName, setExampleName] = usePersisted('example', DEFAULT_EXAMPLE?.name ?? '', String);
-  const firstExample = EXAMPLES.find((e) => e.name === exampleName) ?? DEFAULT_EXAMPLE;
+  // A stored pointer to a score the picker no longer lists falls back to the default.
+  const firstExample = LISTED_EXAMPLES.find((e) => e.name === exampleName) ?? DEFAULT_EXAMPLE;
   const [source, setSource] = useState<Source>({ kind: 'example', name: firstExample?.name ?? '' });
   const [text, setText] = useState(firstExample?.content ?? '');
   const [dirty, setDirty] = useState(false);
