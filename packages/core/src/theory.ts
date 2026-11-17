@@ -170,6 +170,21 @@ export function noteToMidi(token: string, defaultOctave: number = DEFAULT_OCTAVE
   return (octave + 1) * 12 + pc + 12 * octaveShift(m[4]);
 }
 
+/**
+ * How a note name spells the pitch it sounds: `d#4` is D sharp, `eb4` E
+ * flat, `b#3` B sharp. Undefined when the token is not a note name, or when
+ * `midi` is no longer that pitch class (a transposition by other than whole
+ * octaves keeps the sound and loses the letter).
+ */
+export function letterSpelling(token: string, midi: number): { letter: string; alter: number } | undefined {
+  const m = /^([a-gA-G])(#{1,2}|b{1,2})?(-?\d)?[+^-]*$/.exec(token.trim());
+  if (!m) return undefined;
+  const alter = m[2] ? (m[2][0] === '#' ? 1 : -1) * m[2].length : 0;
+  const natural = PITCH_CLASSES[m[1].toLowerCase()];
+  if ((((natural + alter - midi) % 12) + 12) % 12 !== 0) return undefined;
+  return { letter: m[1].toUpperCase(), alter };
+}
+
 /** Pitch class (any integer; wraps) → sharp name ("G#"). */
 export function pitchClassName(pc: number): string {
   return NAMES_SHARP[((pc % 12) + 12) % 12];

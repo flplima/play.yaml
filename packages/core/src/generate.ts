@@ -11,7 +11,7 @@
  * of (seed, position), so a score always compiles to the same MIDI.
  */
 
-import { chordToScale, degreeToMidi, midiToName, noteToMidi, parseScale } from './theory';
+import { chordToScale, degreeToMidi, letterSpelling, midiToName, noteToMidi, parseScale } from './theory';
 
 // ---------------------------------------------------------------------------
 // Seeded determinism
@@ -138,10 +138,15 @@ export function expandArp(spec: ArpSpec): string {
   }
 
   let pool: number[];
+  // How each pitch class is written, so sheet music spells the arpeggio the
+  // way its notes or its chord are written (Gm7: G Bb D F, not G A# D F).
+  const spelled = new Map<number, { letter: string; alter: number }>();
   if (spec.notes) {
     pool = spec.notes.map((n) => {
       const midi = noteToMidi(String(n));
       if (midi === null) throw new Error(`"arp:" — "${n}" is not a note.`);
+      const spelling = letterSpelling(String(n), midi);
+      if (spelling) spelled.set(((midi % 12) + 12) % 12, spelling);
       return midi;
     });
   } else if (spec.chord) {
@@ -151,9 +156,23 @@ export function expandArp(spec: ArpSpec): string {
       (/6/.test(quality) ? [1, 3, 5, 6] : /7|9|11|13/.test(quality) ? [1, 3, 5, 7] : [1, 3, 5]);
     const octave = spec.octave ?? 4;
     pool = tones.map((t) => degreeToMidi(String(t), scale, octave)!);
+    // A chord's nth degree takes the letter n - 1 steps above its root's.
+    const root = LETTERS.indexOf(spec.chord.trim()[0].toUpperCase());
+    tones.forEach((t, i) => {
+      const letter = LETTERS[(root + Math.max(0, Number(t) - 1)) % 7];
+      const pc = ((pool[i] % 12) + 12) % 12;
+      let alter = (((pc - NATURAL_PC[letter]) % 12) + 12) % 12;
+      if (alter > 6) alter -= 12;
+      if (root >= 0 && Math.abs(alter) <= 1 && !spelled.has(pc)) spelled.set(pc, { letter, alter });
+    });
   } else {
     throw new Error('"arp:" needs a "chord:" (e.g. Dm7) or explicit "notes:".');
   }
+  const name = (midi: number): string => {
+    const s = spelled.get(((midi % 12) + 12) % 12);
+    if (!s) return midiToName(midi);
+    return `${s.letter}${s.alter > 0 ? '#' : s.alter < 0 ? 'b' : ''}${Math.floor((midi - s.alter) / 12) - 1}`;
+  };
   const octaves = spec.octaves ?? 1;
   const base = [...pool];
   for (let o = 1; o < octaves; o++) pool.push(...base.map((m) => m + 12 * o));
@@ -186,11 +205,14 @@ export function expandArp(spec: ArpSpec): string {
     default: { // random — seeded pick per step
       const seed = spec.seed ?? DEFAULT_SEED;
       return Array.from({ length: steps }, (_, i) =>
-        midiToName(asc[Math.floor(hash01(seed, i, 6151) * asc.length)])).join(' ');
+        name(asc[Math.floor(hash01(seed, i, 6151) * asc.length)])).join(' ');
     }
   }
-  return Array.from({ length: steps }, (_, i) => midiToName(seq[i % seq.length])).join(' ');
+  return Array.from({ length: steps }, (_, i) => name(seq[i % seq.length])).join(' ');
 }
+
+const LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+const NATURAL_PC: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 
 // ---------------------------------------------------------------------------
 // Random walks — `walk:`

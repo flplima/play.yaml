@@ -8,7 +8,7 @@
 
 import {
   DEFAULT_MEASURE, DEFAULT_OCTAVE, ScaleInfo, degreeToMidi, isDegreeToken, measureToBeats,
-  notatedMeter, midiToName, noteToMidi, parseScale,
+  letterSpelling, notatedMeter, midiToName, noteToMidi, parseScale,
 } from './theory';
 import {
   ACCENT_STEP, ControlSpec, DEFAULT_GATE, DEFAULT_STRUM, DRUM_CHANNEL, PedalPattern,
@@ -36,6 +36,12 @@ export interface TimelineEvent {
    * and never sets this.
    */
   roll?: number;
+  /**
+   * Written compile only: the letter and alteration a note named by letter
+   * was written with (`d#4` is D sharp, `eb4` E flat), so sheet music prints
+   * it as written. Degrees leave it unset; notation spells those itself.
+   */
+  spelling?: { letter: string; alter: number };
 }
 
 /** Properties a track passes down to its children. */
@@ -669,6 +675,10 @@ function placeToken(token: string, start: number, span: number, ctx: EmitCtx, bo
     velocity: clampVelocity(velocityAt(ctx, start) + boost + h.dv),
     midi,
   };
+  if (ctx.written && !isDegreeToken(core)) {
+    const spelling = letterSpelling(core, midi);
+    if (spelling) event.spelling = spelling;
+  }
   ctx.events.push(event);
   ctx.held = { events: [event], span };
 }

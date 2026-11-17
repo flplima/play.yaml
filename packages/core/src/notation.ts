@@ -369,12 +369,15 @@ function spellingTable(key: NotationKey, preferFlats: boolean): [Step, number][]
   const table: ([Step, number] | undefined)[] = new Array(12);
   for (const s of STEPS) table[(((NATURAL_PC[s] + alters[s]) % 12) + 12) % 12] = [s, alters[s]];
   // A minor key's raised 6th and 7th are sharpened letters (G# in A minor,
-  // C# and B natural in D minor), whichever side the signature is on.
+  // C# and B natural in D minor), whichever side the signature is on, and
+  // so is its raised 4th, the leading note of the dominant (D# in A minor,
+  // E# in B minor).
   const tonicPc = ((key.fifths * 7) % 12 + 12 + 9) % 12;
   const minorRaised = new Set<Step>();
   if (key.mode === 'minor') {
     const tonic = table[tonicPc]![0];
     const i = STEPS.indexOf(tonic);
+    minorRaised.add(STEPS[(i + 3) % 7]);
     minorRaised.add(STEPS[(i + 5) % 7]);
     minorRaised.add(STEPS[(i + 6) % 7]);
   }
@@ -399,9 +402,114 @@ function spellingTable(key: NotationKey, preferFlats: boolean): [Step, number][]
 }
 
 function spell(midi: number, table: [Step, number][]): SpelledPitch {
-  const [step, alter] = table[((midi % 12) + 12) % 12];
+  return spellAs(midi, table[((midi % 12) + 12) % 12]);
+}
+
+/** A MIDI note written with a given letter and alteration: B#3 is MIDI 60. */
+function spellAs(midi: number, [step, alter]: [Step, number]): SpelledPitch {
   const natural = midi - alter;
   return { step, alter, octave: Math.floor(natural / 12) - 1 };
+}
+
+const pcOf = (midi: number) => ((midi % 12) + 12) % 12;
+const flatSide = (scale: string) => /^[a-gA-G]b/.test(scale.trim());
+
+/** What a note named by degree is spelled from, in one bar. */
+interface SpellContext {
+  /** The scale in force, as a spelling table. */
+  table: [Step, number][];
+  /** Pitch classes of the scale in force: everything else is chromatic. */
+  inScale: Set<number>;
+}
+
+/**
+ * The scale in force spells the notes; a scale no key signature describes
+ * (whole tone, octatonic) leaves that to the printed key.
+ */
+function spellingContext(scale: string, keyText: string): SpellContext {
+  const local = keyFromScale(scale);
+  const table = local.mode === 'none'
+    ? spellingTable(keyFromScale(keyText), flatSide(keyText))
+    : spellingTable(local, flatSide(scale));
+  let inScale = new Set<number>();
+  try {
+    const info = parseScale(scale);
+    inScale = new Set(info.intervals.map((i) => pcOf(info.rootPc + i)));
+  } catch {
+    // An unreadable scale already failed the compile; nothing is diatonic.
+  }
+  return { table, inScale };
+}
+
+/** `pc` written with `letter`, when one sharp or flat at most does it. */
+function withLetter(pc: number, letter: Step): [Step, number] | undefined {
+  let alter = pcOf(pc - NATURAL_PC[letter]);
+  if (alter > 6) alter -= 12;
+  return Math.abs(alter) <= 1 ? [letter, alter] : undefined;
+}
+
+/**
+ * Spell the notes of one voice that the score named by degree; a note named
+ * by letter keeps its letter. A note of the scale in force takes the scale's
+ * spelling. A chromatic one follows the line. Moving a semitone to the next
+ * pitch, it takes the letter beside that note's, so a line rises with sharps
+ * and falls with flats (the turn D Eb D C# D, not D D# D C# D). Else, reached
+ * by a semitone from the pitch before, it keeps that note's letter where the
+ * table would spell it against the line (G G#, not G Ab). Else the table of
+ * the scale in force decides.
+ */
+function spellLine(line: TickNote[], at: (tick: number) => SpellContext): void {
+  const onsets: TickNote[][] = [];
+  for (const n of line) {
+    const last = onsets[onsets.length - 1];
+    if (last && last[0].start === n.start) last.push(n);
+    else onsets.push([n]);
+  }
+  const spelled = (n: TickNote): [Step, number] => n.spelling ?? at(n.start).table[pcOf(n.midi)];
+  // The nearest pitch other than `n`'s own (a repeated note says nothing),
+  // when that onset holds exactly one note a semitone away.
+  const neighbour = (n: TickNote, i: number, step: 1 | -1): TickNote | undefined => {
+    for (let j = i + step; j >= 0 && j < onsets.length; j += step) {
+      const others = onsets[j].filter((m) => m.midi !== n.midi);
+      if (!others.length) continue;
+      const near = others.filter((m) => Math.abs(m.midi - n.midi) === 1);
+      return near.length === 1 ? near[0] : undefined;
+    }
+    return undefined;
+  };
+  // Right to left, so the note a chromatic one moves to is already spelled.
+  for (let i = onsets.length - 1; i >= 0; i--) {
+    for (const n of onsets[i]) {
+      if (n.spelling) continue;
+      const { table, inScale } = at(n.start);
+      const pc = pcOf(n.midi);
+      const base = table[pc];
+      if (inScale.has(pc)) {
+        n.spelling = base;
+        continue;
+      }
+      const next = neighbour(n, i, 1);
+      if (next) {
+        const [letter] = spelled(next);
+        const beside = STEPS[(STEPS.indexOf(letter) + (next.midi > n.midi ? 6 : 1)) % 7];
+        // E E#: the same letter, when the one beside would need a double accidental.
+        const fit = withLetter(pc, beside) ?? withLetter(pc, letter);
+        if (fit) {
+          n.spelling = fit;
+          continue;
+        }
+      }
+      const prev = neighbour(n, i, -1);
+      if (prev && (prev.midi < n.midi ? base[1] < 0 : base[1] > 0)) {
+        const fit = withLetter(pc, spelled(prev)[0]);
+        if (fit) {
+          n.spelling = fit;
+          continue;
+        }
+      }
+      n.spelling = base;
+    }
+  }
 }
 
 const ACCIDENTALS: Record<number, Accidental> = { 2: 'double-sharp', 1: 'sharp', 0: 'natural', [-1]: 'flat', [-2]: 'flat-flat' };
@@ -649,6 +757,8 @@ interface Segment {
   tieIn: boolean;
   tieOut: boolean;
   roll?: number;
+  /** How each of `midis` is spelled, where known. */
+  spellings?: Map<number, [Step, number]>;
 }
 
 interface TupletGroup {
@@ -781,7 +891,10 @@ function buildVoiceEvents(
         duration: piece.value.length,
         type: piece.value.type,
         dots: piece.value.dots,
-        notes: seg.midis.map((midi) => ({ midi })),
+        notes: seg.midis.map((midi) => {
+          const spelling = seg.spellings?.get(midi);
+          return spelling ? { midi, pitch: spellAs(midi, spelling) } : { midi };
+        }),
       };
       if (isNote) {
         if (i > 0 || seg.tieIn) event.tieStop = true;
@@ -929,6 +1042,8 @@ interface TickNote {
   end: number;
   midi: number;
   roll?: number;
+  /** Letter and alteration: as written for a note named by letter, else from `spellLine`. */
+  spelling?: [Step, number];
 }
 
 /** A note handed to separateVoices, carrying what it needs back. */
@@ -1099,9 +1214,10 @@ function splitGrandStaff(notes: TickNote[]): TickNote[][] {
 }
 
 /**
- * Spell one staff of one measure and decide its accidentals. An accidental
- * holds for the rest of the bar on its line, across the staff's voices; a
- * note tied over the bar line carries its accidental with it and prints none.
+ * Decide the accidentals of one staff of one measure, its notes spelled by
+ * `spellLine` (the table is a fallback). An accidental holds for the rest of
+ * the bar on its line, across the staff's voices; a note tied over the bar
+ * line carries its accidental with it and prints none.
  */
 function spellStaff(voices: NotationVoice[], key: NotationKey, table: [Step, number][]): void {
   const alters = keyAlters(key.fifths);
@@ -1111,7 +1227,7 @@ function spellStaff(voices: NotationVoice[], key: NotationKey, table: [Step, num
     .sort((a, b) => a.offset - b.offset);
   for (const e of events) {
     for (const n of e.notes) {
-      const pitch = spell(n.midi, table);
+      const pitch: SpelledPitch = n.pitch ? { step: n.pitch.step, alter: n.pitch.alter, octave: n.pitch.octave } : spell(n.midi, table);
       const line = `${pitch.step}${pitch.octave}`;
       const current = state.get(line) ?? alters[pitch.step];
       if ((!e.tieStop || e.offset > 0) && pitch.alter !== current) {
@@ -1200,6 +1316,7 @@ function buildPart(tracks: CompiledTrack[], indices: number[], index: number, na
         continue;
       }
       const note: TickNote = { start, end, midi: e.midi, roll: e.roll };
+      if (e.spelling) note.spelling = [e.spelling.letter as Step, e.spelling.alter];
       struck.set(key, note);
       (hand === undefined ? unhinted : hinted[hand]).push(note);
     }
@@ -1249,18 +1366,39 @@ function buildPart(tracks: CompiledTrack[], indices: number[], index: number, na
           partWarn(measureAt(n.start), 'more than four voices on a staff; a held note is cut short');
         }
         if (n.duration <= 0) continue;
-        out.push({ start: n.start, end: n.start + n.duration, midi: n.midi, roll: n.roll });
+        out.push({ start: n.start, end: n.start + n.duration, midi: n.midi, roll: n.roll, spelling: byStaff[s][n.id].spelling });
       }
       return out;
     })));
   }
 
+  // ── Keys and spelling ──
+  // The printed key, per measure: the score's `key:` where it says, else the
+  // part's opening `scale:`, held to the end. The scale in force, which may
+  // change every bar, is what a note named by degree is spelled from.
+  const printed: string[] = [];
+  const contexts: SpellContext[] = [];
+  {
+    const scaleAt = (mi: number) => tracks.map((t) => t.bars?.[mi]?.scale).find((x) => x !== undefined);
+    let keyText = keys[0] ?? scaleAt(0) ?? 'c major';
+    let scale = scaleAt(0) ?? 'c major';
+    const cache = new Map<string, SpellContext>();
+    measures.forEach((_, mi) => {
+      keyText = keys[mi] ?? keyText;
+      scale = scaleAt(mi) ?? scale;
+      printed.push(keyText);
+      const id = `${scale}|${keyText}`;
+      if (!cache.has(id)) cache.set(id, spellingContext(scale, keyText));
+      contexts.push(cache.get(id)!);
+    });
+  }
+  if (!percussion) {
+    for (const staff of voicesByStaff) for (const line of staff) spellLine(line, (t) => contexts[measureAt(t)]);
+  }
+
   // ── Measures ──
   const instruments = new Map<number, PartInstrument>();
   let lastKey: NotationKey | undefined;
-  // The printed key: the score's `key:` where it says, else the part's
-  // opening `scale:`, held to the end.
-  let keyText = keys[0] ?? tracks.map((t) => t.bars?.[0]?.scale).find((x) => x !== undefined) ?? 'c major';
   const partMeasures: PartMeasure[] = measures.map((measure, mi) => {
     const m0 = measure.start;
     const m1 = m0 + measure.length;
@@ -1287,6 +1425,7 @@ function buildPart(tracks: CompiledTrack[], indices: number[], index: number, na
             const last = segments[segments.length - 1];
             if (last && last.from === from) {
               last.midis.push(n.midi);
+              if (n.spelling) last.spellings!.set(n.midi, n.spelling);
               continue;
             }
             segments.push({
@@ -1296,6 +1435,7 @@ function buildPart(tracks: CompiledTrack[], indices: number[], index: number, na
               tieIn: n.start < m0,
               tieOut: n.end > m1,
               roll: n.roll,
+              spellings: new Map(n.spelling ? [[n.midi, n.spelling]] : []),
             });
           }
           for (const seg of segments) seg.midis.sort((a, b) => a - b);
@@ -1314,8 +1454,7 @@ function buildPart(tracks: CompiledTrack[], indices: number[], index: number, na
     if (mi === 0 && !keys[0] && scales.length > 1 && keyFromScale(scales[0]).fifths !== keyFromScale(scales[1]).fifths) {
       partWarn(mi, `its tracks are in different keys (${scales.join(', ')}); written in ${scales[0]}`);
     }
-    keyText = keys[mi] ?? keyText;
-    const key = percussion ? { fifths: 0, mode: 'none' } : keyFromScale(keyText);
+    const key = percussion ? { fifths: 0, mode: 'none' } : keyFromScale(printed[mi]);
     const pm: PartMeasure = { voices };
     if (!percussion) {
       for (let st = 1; st <= staves; st++) {
@@ -1343,8 +1482,7 @@ function buildPart(tracks: CompiledTrack[], indices: number[], index: number, na
       }
       for (const v of voices) for (const e of v.events) if (e.kind === 'note') e.stem = v.voice === 1 ? 'up' : 'down';
     } else {
-      const table = spellingTable(key, /^[a-gA-G]b/.test(keyText));
-      for (let st = 1; st <= staves; st++) spellStaff(voices.filter((v) => v.staff === st), key, table);
+      for (let st = 1; st <= staves; st++) spellStaff(voices.filter((v) => v.staff === st), key, contexts[mi].table);
     }
     return pm;
   });
