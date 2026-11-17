@@ -65,6 +65,12 @@
     "lengthBeats": 156,
     "sha256": "90cf3bd0bf04927c27c12caa50b0dedfe150c748f79b04fb934c0034747f02db"
   },
+  "songs/beethoven-moonlight-sonata-1/beethoven-moonlight-sonata-1.play.yaml": {
+    "tracks": 6,
+    "notes": 1168,
+    "lengthBeats": 276,
+    "sha256": "ab9168e63598381e9bd31cb1511325b5bb931a85d46604581e188339d46cc437"
+  },
   "songs/bwv-106-gottes-zeit/bwv-106-gottes-zeit.play.yaml": {
     "tracks": 9,
     "notes": 1759,
