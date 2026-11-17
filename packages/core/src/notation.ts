@@ -638,6 +638,15 @@ function displayName(sample: string): string {
   return sample.split(/[-_\s]+/).filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
 }
 
+/**
+ * The instrument a part is named for: its sample's name, except that the
+ * electric piano is a piano on the page (a score played on `epiano` reads
+ * "Piano", as an edition of it would).
+ */
+function instrumentName(sample: string): string {
+  return /^e?piano$/i.test(sample.trim()) ? 'Piano' : displayName(sample);
+}
+
 // ---------------------------------------------------------------------------
 // Meter
 // ---------------------------------------------------------------------------
@@ -1168,8 +1177,8 @@ function scoreFromWritten(song: CompiledSong, doc: SongDoc): Score {
     // for the instrument.
     const parents = new Set(tracks.map((t) => t.parent));
     const name = tracks.length === 1
-      ? (tracks[0] === rootTrack ? displayName(tracks[0].sample) : tracks[0].name)
-      : parents.size === 1 && tracks[0].parent !== undefined ? tracks[0].parent : displayName(tracks[0].sample);
+      ? (tracks[0] === rootTrack ? instrumentName(tracks[0].sample) : tracks[0].name)
+      : parents.size === 1 && tracks[0].parent !== undefined ? tracks[0].parent : instrumentName(tracks[0].sample);
     return buildPart(tracks, indices, index, name, env);
   });
 
