@@ -28,6 +28,14 @@ That's Twinkle, Twinkle Little Star — 80 bpm, 4/4, piano by default (the built
 
 Each string in the `play` array (or each line of a `play: |` multiline string) is **one measure**. A measure's duration is divided **equally** among its whitespace-separated tokens: 4 tokens in 4/4 are quarter notes, 8 tokens are eighth notes, 3 tokens are a half-note triplet.
 
+A `#` after a space starts a comment, in a `play: |` line as anywhere else in YAML, so you can write the words or the bar number next to the music. A line that is only a comment takes no bar. A sharp is attached to its note (`c#`, `4#`), so it never starts one.
+
+```yaml
+play: |
+  e _ _ _   # A-
+  f _ _ _   # ve
+```
+
 ### Tokens (recursive)
 
 - `c` — a note: letter `a`–`g`, optional `#`/`b`, optional octave digit (`eb3`, `f#2`); default octave is 4

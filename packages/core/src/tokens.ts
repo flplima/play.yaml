@@ -34,6 +34,32 @@ export function setTokenBody(token: string): string {
   return token.slice(2, token.endsWith(closer) ? -2 : undefined).trim();
 }
 
+/**
+ * Where a `#` comment starts in a bar line, or -1. A comment is a `#` at the
+ * start of the line or after a space, outside a `||…||` or `==…==` fence:
+ * `e _ _ _   # A-` is the bar `e _ _ _`. A sharp is attached to its letter
+ * or degree (`c#`, `4#`), so it never starts a comment.
+ */
+export function commentStart(text: string): number {
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if ((ch === '|' && text[i + 1] === '|') || (ch === '=' && text[i + 1] === '=')) {
+      const close = text.indexOf(ch + ch, i + 2);
+      if (close === -1) return -1;
+      i = close + 1;
+      continue;
+    }
+    if (ch === '#' && (i === 0 || /\s/.test(text[i - 1]))) return i;
+  }
+  return -1;
+}
+
+/** A bar line without its `#` comment. */
+export function stripComment(text: string): string {
+  const at = commentStart(text);
+  return at === -1 ? text : text.slice(0, at).trimEnd();
+}
+
 /** A token with its character range in the string it was split from. */
 export interface TokenSpan {
   text: string;
@@ -48,6 +74,8 @@ export interface TokenSpan {
  */
 export function tokenSpans(text: string): TokenSpan[] {
   const out: TokenSpan[] = [];
+  const comment = commentStart(text);
+  if (comment !== -1) text = text.slice(0, comment);
   let depth = 0;
   let start = -1;
   const flush = (end: number) => {

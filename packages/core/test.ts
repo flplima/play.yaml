@@ -2569,6 +2569,19 @@ check('unknown keys are errors, with a hint for a typo', () => {
   assert.throws(() => compileYaml('play:\n  - c\n  - scael: d major'), /Did you mean "scale"/);
 });
 
+console.log('\n# comments in bar lines:');
+check('a # after a space ends the bar, so a lyric note plays nothing', () => {
+  const song = compileYaml('play: |\n  e _ _ _   # A-\n  f _ _ _   # ve\n  # a whole-line comment takes no bar\n  g');
+  assert.deepStrictEqual(song.tracks[0].timeline.map((n) => n.pitch), ['E4', 'F4', 'G4']);
+  assert.deepStrictEqual(song.warnings, []);
+  assert.strictEqual(song.lengthBeats, 12);
+});
+check('sharps stay sharps: c# 4# and fences are not comments', () => {
+  assert.deepStrictEqual(midis(parsePlay(['c# 4# ||velocity 60|| d # x'])), [61, 66, 62]);
+  assert.deepStrictEqual(tokenSpans('c d # e').map((t) => t.text), ['c', 'd']);
+  assert.deepStrictEqual(parsePlay(['dolce  # soft']).length, 0);
+});
+
 if (failed.length > 0) {
   console.error(`\n${passed} passed, ${failed.length} FAILED:\n  ${failed.join('\n  ')}`);
   process.exit(1);

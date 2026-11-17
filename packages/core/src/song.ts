@@ -16,7 +16,7 @@ import {
 } from './vocabulary';
 import { SetPatch, isDirectiveString, parseSet } from './set';
 import {
-  HOLD, REST, divideByWeight, isMarkToken, isScaleToken, peelSuffix, setTokenBody, splitTopLevel,
+  HOLD, REST, commentStart, divideByWeight, isMarkToken, isScaleToken, peelSuffix, setTokenBody, splitTopLevel, stripComment,
 } from './tokens';
 import {
   ArpSpec, DEFAULT_SEED, HumanizeSpec, SpreadSpec, WalkSpec, WalkState,
@@ -785,7 +785,7 @@ function playItems(play: PlayInput, pass = 0, gen?: GenState): (string | PlayDir
       }
       const chosen = entries[((pass % entries.length) + entries.length) % entries.length];
       if (typeof chosen === 'string') {
-        out.push(chosen);
+        out.push(stripComment(chosen));
       } else if (chosen && typeof chosen === 'object' &&
         Object.keys(chosen).some((k) => (GENERATOR_KEYS as readonly string[]).includes(k))) {
         out.push(expandGenerator(chosen, gen));
@@ -799,9 +799,23 @@ function playItems(play: PlayInput, pass = 0, gen?: GenState): (string | PlayDir
       out.push(expandGenerator(item as PlayGenerator, gen));
       continue;
     }
-    out.push(item as string | PlayDirective);
+    out.push(withoutComments(item as string | PlayDirective));
   }
   return out;
+}
+
+/** A play item with the `#` comments taken off its bar strings. */
+function withoutComments(item: string | PlayDirective): string | PlayDirective {
+  if (typeof item === 'string') return stripComment(item);
+  if (!item || typeof item !== 'object') return item;
+  let copy: PlayDirective | undefined;
+  for (const [key, value] of Object.entries(item)) {
+    if (/^\d+$/.test(key) && typeof value === 'string' && commentStart(value) !== -1) {
+      copy ??= { ...item };
+      (copy as Record<string, unknown>)[key] = stripComment(value);
+    }
+  }
+  return copy ?? item;
 }
 
 /** Does this measure string occupy a bar slot (vs a directive that takes none)? */
