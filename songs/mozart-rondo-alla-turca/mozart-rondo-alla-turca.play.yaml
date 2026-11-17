@@ -1,0 +1,626 @@
+# Wolfgang Amadeus Mozart: Rondo alla turca, Piano Sonata No. 11 in A major, K. 331, III (1783)
+# Public domain (Mozart d. 1791). Transcribed from the LilyPond source of the Mutopia
+# Project's edition (KV331_3_RondoAllaTurca, typeset by Rune Zedeler and Chris Sawer,
+# Mutopia-2015/08/13-108, from IMSLP), marked Public Domain by the typesetters.
+# Bars follow the printed ones: a one-beat pickup (1/4), then 2/4 bars. Where a
+# section ends on a one-beat bar, the next pickup completes it on the repeat.
+# Grace notes are written out as short notes at the end of the slot before their
+# main note, so every main note falls on the printed beat. Trills are the main note.
+# Every repeat of the edition is written out, and the closing march has its first
+# and second endings. Right hand voices that cross are split into right and right2.
+
+title: "Rondo alla turca"
+composer: "Wolfgang Amadeus Mozart"
+tempo: 120
+tempo text: Allegretto
+measure: 2/4
+scale: a minor
+dynamic: piano
+
+tracks:
+  right: { preset: piano }
+  right2: { preset: piano }
+  left: { preset: piano }
+
+sections:
+  a:   # A minor tune, repeated
+    loop: 2
+    right:
+      play:
+        - set: piano
+        - "1/4"
+        - "{b4 a4 g#4 a4}"
+        - "2/4"
+        - "{c5 ~} {d5 c5 b4 c5}"
+        - "{e5 ~} {f5 e5 d#5 e5}"
+        - "{b5 a5 g#5 a5} {b5 a5 g#5 a5}"
+        - "c6> {a5 {c6 _ _ _ _ _ g5 a5}}"
+        - "b5> [f#5 a5] [e5 g5] {[f#5 a5] _ _ _ _ _ g5 a5}"
+        - "b5> [f#5 a5] [e5 g5] {[f#5 a5] _ _ _ _ _ g5 a5}"
+        - "b5> [f#5 a5] [e5 g5] [d#5 f#5]"
+        - "1/4"
+        - "e5"
+    right2:
+      play:
+        - set: piano
+        - "1/4"
+        - "~"
+        - "2/4"
+        - 7x: "~"
+        - "1/4"
+        - "~"
+    left:
+      play:
+        - set: piano
+        - "1/4"
+        - "~"
+        - "2/4"
+        - "a3 [c4 e4] [c4 e4] [c4 e4]"
+        - "a3 [c4 e4] [c4 e4] [c4 e4]"
+        - "a3 [c4 e4] a3 [c4 e4]"
+        - "a3 [c4 e4] [c4 e4] [c4 e4]"
+        - "e3> [b3 e4] [b3 e4] [b3 e4]"
+        - "e3> [b3 e4] [b3 e4] [b3 e4]"
+        - "e3> [b3 e4] b2 b3"
+        - "1/4"
+        - "e3"
+  b:   # second A minor tune, repeated
+    loop: 2
+    right:
+      play:
+        - set: mezzopiano
+        - "1/4"
+        - "{[c5 e5] [d5 f5]}"
+        - "2/4"
+        - "{[e5 g5] [e5 g5]} {a5 g5 f5 e5}"
+        - "d5> {[c5 e5] [d5 f5]}"
+        - "{[e5 g5] [e5 g5]} {a5 g5 f5 e5}"
+        - "[b4 d5]> {[a4 c5] [b4 d5]}"
+        - "{[c5 e5] [c5 e5]} {f5 e5 d5 c5}"
+        - "b4> {[a4 c5] [b4 d5]}"
+        - "{[c5 e5] [c5 e5]} {f5 e5 d5 c5}"
+        - set: piano
+        - "[g#4 b4]> {b4 a4 g#4 a4}"
+        - "{c5 ~} {d5 c5 b4 c5}"
+        - "{e5 ~} {f5 e5 d#5 e5}"
+        - set: crescendo to forte over 1
+        - "{b5 a5 g#5 a5} {b5 a5 g#5 a5}"
+        - set: piano
+        - "{c6>> ~} {a5 b5}"
+        - "c6 b5 a5 g#5"
+        - "a5 e5 f5 d5"
+        - "c5 {b4 _ _ _ _ _ a4 b4}"
+        - "1/4"
+        - "a4"
+    right2:
+      play:
+        - set: mezzopiano
+        - "1/4"
+        - "~"
+        - "2/4"
+        - "~"
+        - "{b4 g4} ~"
+        - 3x: "~"
+        - "{g#4 e4} ~"
+        - 9x: "~"
+        - "1/4"
+        - "~"
+    left:
+      play:
+        - set: mezzopiano
+        - "1/4"
+        - "~"
+        - "2/4"
+        - "{c3 c4 e3 e4}"
+        - "g3 ~"
+        - "{c3 c4 e3 e4}"
+        - "g3 ~"
+        - "{a2 a3 c3 c4}"
+        - "e3 ~"
+        - "{a2 a3 c3 c4}"
+        - set: piano
+        - "e3 ~"
+        - "a3 [c4 e4] [c4 e4] [c4 e4]"
+        - "a3 [c4 e4] [c4 e4] [c4 e4]"
+        - set: crescendo to forte over 1
+        - "a3 [c4 e4] a3 [c4 e4]"
+        - set: piano
+        - "f3 [a3 d#4] [a3 d#4] [a3 d#4]"
+        - "e3 [a3 e4] d3 [f3 b3]"
+        - "c3 [e3 a3] d3 [f3 b3]"
+        - "[e3 a3] [e3 a3] [e3 g#3] [e3 g#3]"
+        - "1/4"
+        - "[a2 a3]"
+  c:   # A major, the Turkish march, repeated
+    loop: 2
+    right:
+      play:
+        - set: forte
+        - "1/4"
+        - "{[a4 a5] [b4 b5]}"
+        - "2/4"
+        - "[c#5 c#6]> {[a4 a5] [b4 b5]}"
+        - "{[c#5 c#6]> [b4 b5]} {[a4 a5] [g#4 g#5]}"
+        - "{[f#4 f#5] [g#4 g#5]} {[a4 a5] [b4 b5]}"
+        - "{[g#4 g#5] [e4 e5]} {[a4 a5] [b4 b5]}"
+        - "[c#5 c#6]> {[a4 a5] [b4 b5]}"
+        - "{[c#5 c#6]> [b4 b5]} {[a4 a5] [g#4 g#5]}"
+        - "{[f#4 f#5] [b4 b5]} {[g#4 g#5] [e4 e5]}"
+        - "1/4"
+        - "[a4 a5]"
+    right2:
+      play:
+        - set: forte
+        - "1/4"
+        - "~"
+        - "2/4"
+        - 7x: "~"
+        - "1/4"
+        - "~"
+    left:
+      play:
+        - set: forte
+        - "1/4"
+        - "{~ {~ ~ ~ ~ ~ a2 c#3 e3}}"
+        - "2/4"
+        - "{a3> a3} {a3 {a3 _ _ _ _ a2 c#3 e3}}"
+        - "{a3> a3} {a3 {a3 _ _ _ _ d2 f#2 a2}}"
+        - "{d3> {d3 _ _ _ _ d#2 f#2 a2}} {d#3> {d#3 _ _ _ _ e2 g#2 b2}}"
+        - "{e3> e3} {e3 {e3 _ _ _ _ a2 c#3 e3}}"
+        - "{a3> a3} {a3 {a3 _ _ _ _ a2 c#3 e3}}"
+        - "{a3> a3} {a3 {a3 _ _ _ _ d2 f#2 a2}}"
+        - "{d3> {d3 _ _ _ _ e2 g#2 b2}} {e3> e3}"
+        - "1/4"
+        - "a2"
+  d:   # A major, running sixteenths, repeated
+    loop: 2
+    right:
+      play:
+        - set: piano
+        - "1/4"
+        - "{c#6 d6 c#6 b5}"
+        - "2/4"
+        - "{a5 b5 a5 g#5} {f#5 a5 g#5 f#5}"
+        - "{e#5 f#5 g#5 e#5} {c#5 d#5 e#5 c#5}"
+        - set: crescendo to mezzoforte over 1
+        - "{f#5 e#5 f#5 g#5} {a5 g#5 a5 b5}"
+        - set: diminuendo to piano over 1
+        - "{c#6 b#5 c#6 b#5} {c#6 d6 c#6 b5}"
+        - "{a5 b5 a5 g#5} {f#5 a5 g#5 f#5}"
+        - "{e5 f#5 g#5 e5} {c#5 d#5 e5 c#5}"
+        - "{d#5 e5 f#5 d#5} {b#4 c#5 d#5 b#4}"
+        - "1/4"
+        - "c#5"
+    right2:
+      play:
+        - set: piano
+        - "1/4"
+        - "~"
+        - "2/4"
+        - 7x: "~"
+        - "1/4"
+        - "~"
+    left:
+      play:
+        - set: piano
+        - "1/4"
+        - "~"
+        - "2/4"
+        - "f#3 [a3 c#4] [a3 c#4] [a3 c#4]"
+        - "g#3 [b3 c#4] [b3 c#4] [b3 c#4]"
+        - set: crescendo to mezzoforte over 1
+        - "f#3 [a3 c#4] [a3 c#4] [a3 c#4]"
+        - set: diminuendo to piano over 1
+        - "e#3 [g#3 c#4] [g#3 c#4] [g#3 c#4]"
+        - "f#3 [a3 c#4] [a3 c#4] [a3 c#4]"
+        - "g#3 [c#4 e4] [c#4 e4] [c#4 e4]"
+        - "g#3 [d#4 f#4] [d#4 f#4] [d#4 f#4]"
+        - "1/4"
+        - "[c#4 e4]"
+  e:   # the sixteenths climb, repeated
+    loop: 2
+    right:
+      play:
+        - set: forte
+        - "1/4"
+        - "{e5 d5 c#5 b4}"
+        - "2/4"
+        - "{a4 b4 c#5 d5} {e5 f#5 g#5 a5}"
+        - "{a5> g#5 f#5 e5} {e5 d5 c#5 b4}"
+        - "{a4 b4 c#5 d5} {e5 f#5 g#5 a5}"
+        - "{a#5> b5} {e5 d5 c#5 b4}"
+        - "{a4 b4 c#5 d5} {e5 f#5 g#5 a5}"
+        - "{a5> g#5 f#5 e5} {e5 d5 c#5 b4}"
+        - "{c#5 e5 a4 c#5} {b4 d5 g#4 b4}"
+        - set: piano
+        - "a4 {c#6 d6 c#6 b5}"
+        - "{a5 b5 a5 g#5} {f#5 a5 g#5 f#5}"
+        - "{e#5 f#5 g#5 e#5} {c#5 d#5 e#5 c#5}"
+        - set: crescendo to mezzoforte over 1
+        - "{f#5 e#5 f#5 g#5} {a5 g#5 a5 b5}"
+        - set: crescendo to forte over 1
+        - "{c#6 b#5 c#6 b#5} {c#6 b#5 c#6 a#5}"
+        - set: diminuendo to piano over 2
+        - "{d6 c#6 d6 c#6} {d6 c#6 d6 c#6}"
+        - "{d6 c#6 b5 a5} {g#5 a5 b5 g#5}"
+        - set: piano
+        - "{a5 b5 c#6 f#5} {e#5 f#5 g#5 e#5}"
+        - "1/4"
+        - "f#5"
+    right2:
+      play:
+        - set: forte
+        - "1/4"
+        - "~"
+        - "2/4"
+        - 15x: "~"
+        - "1/4"
+        - "~"
+    left:
+      play:
+        - set: forte
+        - "1/4"
+        - "~"
+        - "2/4"
+        - "a3 [c#4 e4] [c#4 e4] [c#4 e4]"
+        - "b3 [d4 e4] g#3 [d4 e4]"
+        - "a3 [c#4 e4] [c#4 e4] [c#4 e4]"
+        - "e3 [g#3 d4] [g#3 d4] [g#3 d4]"
+        - "a3 [c#4 e4] [c#4 e4] [c#4 e4]"
+        - "b3 [d4 e4] g#3 [d4 e4]"
+        - "a3 f#3 d3 e3"
+        - set: piano
+        - "{a2 a3} ~"
+        - "f#3 [a3 c#4] [a3 c#4] [a3 c#4]"
+        - "g#3 [b3 c#4] [b3 c#4] [b3 c#4]"
+        - set: crescendo to mezzoforte over 1
+        - "f#3 [a3 c#4] [a3 c#4] [a3 c#4]"
+        - set: crescendo to forte over 1
+        - "c#3 [g#3 c#4] [g3 c#4] [f#3 c#4]"
+        - set: diminuendo to piano over 2
+        - "b2 [f#3 b3] [f#3 b3] [f#3 b3]"
+        - "b2 [g#3 b3] [g#3 b3] [g#3 b3]"
+        - set: piano
+        - "c#3 [f#3 a3] c#3 [g#3 b3]"
+        - "1/4"
+        - "[f#3 a3]"
+  c-again:   # the march again
+    loop: 2
+    right:
+      play:
+        - set: forte
+        - "1/4"
+        - "{[a4 a5] [b4 b5]}"
+        - "2/4"
+        - "[c#5 c#6]> {[a4 a5] [b4 b5]}"
+        - "{[c#5 c#6]> [b4 b5]} {[a4 a5] [g#4 g#5]}"
+        - "{[f#4 f#5] [g#4 g#5]} {[a4 a5] [b4 b5]}"
+        - "{[g#4 g#5] [e4 e5]} {[a4 a5] [b4 b5]}"
+        - "[c#5 c#6]> {[a4 a5] [b4 b5]}"
+        - "{[c#5 c#6]> [b4 b5]} {[a4 a5] [g#4 g#5]}"
+        - "{[f#4 f#5] [b4 b5]} {[g#4 g#5] [e4 e5]}"
+        - "1/4"
+        - "[a4 a5]"
+    right2:
+      play:
+        - set: forte
+        - "1/4"
+        - "~"
+        - "2/4"
+        - 7x: "~"
+        - "1/4"
+        - "~"
+    left:
+      play:
+        - set: forte
+        - "1/4"
+        - "{~ {~ ~ ~ ~ ~ a2 c#3 e3}}"
+        - "2/4"
+        - "{a3> a3} {a3 {a3 _ _ _ _ a2 c#3 e3}}"
+        - "{a3> a3} {a3 {a3 _ _ _ _ d2 f#2 a2}}"
+        - "{d3> {d3 _ _ _ _ d#2 f#2 a2}} {d#3> {d#3 _ _ _ _ e2 g#2 b2}}"
+        - "{e3> e3} {e3 {e3 _ _ _ _ a2 c#3 e3}}"
+        - "{a3> a3} {a3 {a3 _ _ _ _ a2 c#3 e3}}"
+        - "{a3> a3} {a3 {a3 _ _ _ _ d2 f#2 a2}}"
+        - "{d3> {d3 _ _ _ _ e2 g#2 b2}} {e3> e3}"
+        - "1/4"
+        - "a2"
+  a-again:   # the A minor tune again
+    loop: 2
+    right:
+      play:
+        - set: piano
+        - "1/4"
+        - "{b4 a4 g#4 a4}"
+        - "2/4"
+        - "{c5 ~} {d5 c5 b4 c5}"
+        - "{e5 ~} {f5 e5 d#5 e5}"
+        - "{b5 a5 g#5 a5} {b5 a5 g#5 a5}"
+        - "c6> {a5 {c6 _ _ _ _ _ g5 a5}}"
+        - "b5> [f#5 a5] [e5 g5] {[f#5 a5] _ _ _ _ _ g5 a5}"
+        - "b5> [f#5 a5] [e5 g5] {[f#5 a5] _ _ _ _ _ g5 a5}"
+        - "b5> [f#5 a5] [e5 g5] [d#5 f#5]"
+        - "1/4"
+        - "e5"
+    right2:
+      play:
+        - set: piano
+        - "1/4"
+        - "~"
+        - "2/4"
+        - 7x: "~"
+        - "1/4"
+        - "~"
+    left:
+      play:
+        - set: piano
+        - "1/4"
+        - "~"
+        - "2/4"
+        - "a3 [c4 e4] [c4 e4] [c4 e4]"
+        - "a3 [c4 e4] [c4 e4] [c4 e4]"
+        - "a3 [c4 e4] a3 [c4 e4]"
+        - "a3 [c4 e4] [c4 e4] [c4 e4]"
+        - "e3> [b3 e4] [b3 e4] [b3 e4]"
+        - "e3> [b3 e4] [b3 e4] [b3 e4]"
+        - "e3> [b3 e4] b2 b3"
+        - "1/4"
+        - "e3"
+  b-again:   # the second A minor tune again
+    loop: 2
+    right:
+      play:
+        - set: mezzopiano
+        - "1/4"
+        - "{[c5 e5] [d5 f5]}"
+        - "2/4"
+        - "{[e5 g5] [e5 g5]} {a5 g5 f5 e5}"
+        - "d5> {[c5 e5] [d5 f5]}"
+        - "{[e5 g5] [e5 g5]} {a5 g5 f5 e5}"
+        - "[b4 d5]> {[a4 c5] [b4 d5]}"
+        - "{[c5 e5] [c5 e5]} {f5 e5 d5 c5}"
+        - "b4> {[a4 c5] [b4 d5]}"
+        - "{[c5 e5] [c5 e5]} {f5 e5 d5 c5}"
+        - set: piano
+        - "[g#4 b4]> {b4 a4 g#4 a4}"
+        - "{c5 ~} {d5 c5 b4 c5}"
+        - "{e5 ~} {f5 e5 d#5 e5}"
+        - set: crescendo to forte over 1
+        - "{b5 a5 g#5 a5} {b5 a5 g#5 a5}"
+        - set: piano
+        - "{c6>> ~} {a5 b5}"
+        - "c6 b5 a5 g#5"
+        - "a5 e5 f5 d5"
+        - "c5 {b4 _ _ _ _ _ a4 b4}"
+        - "1/4"
+        - "a4"
+    right2:
+      play:
+        - set: mezzopiano
+        - "1/4"
+        - "~"
+        - "2/4"
+        - "~"
+        - "{b4 g4} ~"
+        - 3x: "~"
+        - "{g#4 e4} ~"
+        - 9x: "~"
+        - "1/4"
+        - "~"
+    left:
+      play:
+        - set: mezzopiano
+        - "1/4"
+        - "~"
+        - "2/4"
+        - "{c3 c4 e3 e4}"
+        - "g3 ~"
+        - "{c3 c4 e3 e4}"
+        - "g3 ~"
+        - "{a2 a3 c3 c4}"
+        - "e3 ~"
+        - "{a2 a3 c3 c4}"
+        - set: piano
+        - "e3 ~"
+        - "a3 [c4 e4] [c4 e4] [c4 e4]"
+        - "a3 [c4 e4] [c4 e4] [c4 e4]"
+        - set: crescendo to forte over 1
+        - "a3 [c4 e4] a3 [c4 e4]"
+        - set: piano
+        - "f3 [a3 d#4] [a3 d#4] [a3 d#4]"
+        - "e3 [a3 e4] d3 [f3 b3]"
+        - "c3 [e3 a3] d3 [f3 b3]"
+        - "[e3 a3] [e3 a3] [e3 g#3] [e3 g#3]"
+        - "1/4"
+        - "[a2 a3]"
+  coda:   # closing A major march, before the first ending
+    loop: false
+    right:
+      play:
+        - set: forte
+        - "1/4"
+        - "{a4 a5 b4 b5}"
+        - "2/4"
+        - "{c#5> c#6 ~:} {a4 a5 b4 b5}"
+        - "{c#5 c#6 b4 b5} {a4 a5 g#4 g#5}"
+        - "{f#4 f#5 g#4 g#5} {a4 a5 b4 b5}"
+        - "{g#4 g#5 e4 e5} {a4 a5 b4 b5}"
+        - "{c#5> c#6 ~:} {a4 a5 b4 b5}"
+        - "{c#5 c#6 b4 b5} {a4 a5 g#4 g#5}"
+        - "{f#4 f#5 b4 b5} {g#4 g#5 e4 e5}"
+    right2:
+      play:
+        - set: forte
+        - "1/4"
+        - "~"
+        - "2/4"
+        - 7x: "~"
+    left:
+      play:
+        - set: forte
+        - "1/4"
+        - "{~ {~ ~ ~ ~ ~ a2 c#3 e3}}"
+        - "2/4"
+        - "{a3> a3} {a3 {a3 _ _ _ _ a2 c#3 e3}}"
+        - "{a3> a3} {a3 {a3 _ _ _ _ d2 f#2 a2}}"
+        - "{d3> {d3 _ _ _ _ d#2 f#2 a2}} {d#3> {d#3 _ _ _ _ e2 g#2 b2}}"
+        - "{e3> e3} {e3 {e3 _ _ _ _ a2 c#3 e3}}"
+        - "{a3> a3} {a3 {a3 _ _ _ _ a2 c#3 e3}}"
+        - "{a3> a3} {a3 {a3 _ _ _ _ d2 f#2 a2}}"
+        - "{d3> {d3 _ _ _ _ e2 g#2 b2}} {e3> e3}"
+  coda-first-ending:   # first ending
+    loop: false
+    right:
+      play:
+        - "1/4"
+        - "[a4 a5]"
+    right2:
+      play:
+        - "1/4"
+        - "~"
+    left:
+      play:
+        - "1/4"
+        - "{a2 {_ _ _ _ _ a2 c#3 e3}}"
+  coda-again:   # the repeat of the closing march
+    loop: false
+    right:
+      play:
+        - set: forte
+        - "1/4"
+        - "{a4 a5 b4 b5}"
+        - "2/4"
+        - "{c#5> c#6 ~:} {a4 a5 b4 b5}"
+        - "{c#5 c#6 b4 b5} {a4 a5 g#4 g#5}"
+        - "{f#4 f#5 g#4 g#5} {a4 a5 b4 b5}"
+        - "{g#4 g#5 e4 e5} {a4 a5 b4 b5}"
+        - "{c#5> c#6 ~:} {a4 a5 b4 b5}"
+        - "{c#5 c#6 b4 b5} {a4 a5 g#4 g#5}"
+        - "{f#4 f#5 b4 b5} {g#4 g#5 e4 e5}"
+    right2:
+      play:
+        - set: forte
+        - "1/4"
+        - "~"
+        - "2/4"
+        - 7x: "~"
+    left:
+      play:
+        - set: forte
+        - "1/4"
+        - "{~ {~ ~ ~ ~ ~ a2 c#3 e3}}"
+        - "2/4"
+        - "{a3> a3} {a3 {a3 _ _ _ _ a2 c#3 e3}}"
+        - "{a3> a3} {a3 {a3 _ _ _ _ d2 f#2 a2}}"
+        - "{d3> {d3 _ _ _ _ d#2 f#2 a2}} {d#3> {d#3 _ _ _ _ e2 g#2 b2}}"
+        - "{e3> e3} {e3 {e3 _ _ _ _ a2 c#3 e3}}"
+        - "{a3> a3} {a3 {a3 _ _ _ _ a2 c#3 e3}}"
+        - "{a3> a3} {a3 {a3 _ _ _ _ d2 f#2 a2}}"
+        - "{d3> {d3 _ _ _ _ e2 g#2 b2}} {e3> e3}"
+  coda-second-ending:   # second ending
+    loop: false
+    right:
+      play:
+        - "2/4"
+        - "[a4 a5] {c#6 _ _ c#6}"
+    right2:
+      play:
+        - "2/4"
+        - "~ c#5"
+    left:
+      play:
+        - "2/4"
+        - "{a3> a3} {a3 {a3 _ _ _ _ a2 c#3 e3}}"
+  finale:   # the last march and the close
+    loop: false
+    right:
+      play:
+        - set: forte
+        - "2/4"
+        - "c#6>"
+        - "c#6>"
+        - "{d6 c#6 b5 c#6} {d6 c#6 b5 c#6}"
+        - "[d6> a5 f#5] {_ _ _ _ _ _ _ d6}"
+        - "{[c#6 a5 e5] _ _ _ _ _ _ d6} {[c#6 a5 e5] _ _ _ _ _ _ d6} {[c#6 a5 e5] _ _ _ _ _ _ d6} [c#6 a5 e5]"
+        - "{b5 _ _ e6}"
+        - "c#6>"
+        - "c#6>"
+        - "{d6 c#6 b5 c#6} {d6 c#6 b5 c#6}"
+        - "[d6> a5 f#5] {_ _ _ _ _ _ _ d6}"
+        - "[c#6 a5 e5] {_ _ _ _ _ _ _ c#6}"
+        - "{[b5 g#5 e5] _ _ _ _ _ _ c#6} {[b5 g#5 e5] _ _ _ _ _ _ c#6} {[b5 g#5 e5] _ _ _ _ _ _ c#6} [b5 g#5 e5]"
+        - set: piano
+        - "{a5 {_ _ _ _ _ _ e5 a5}} {c#6 _ _ {c#6 _ _ _ _ _ e5 a5}}"
+        - "c#6> {_ {_ _ _ _ _ _ e5 a5}}"
+        - "c#6>"
+        - "{d6 c#6 b5 c#6} {d6 c#6 b5 c#6}"
+        - "d6> {_ {_ _ _ _ _ _ _ d6}}"
+        - "{c#6 _ _ _ _ _ _ d6} {c#6 _ _ _ _ _ _ d6} {c#6 _ _ _ _ _ _ d6} c#6"
+        - "{b5 _ _ e6}"
+        - set: forte
+        - "c#6>"
+        - "c#6>"
+        - "{d6 c#6 b5 c#6} {d6 c#6 b5 c#6}"
+        - "[d6> a5 f#5] {_ _ _ _ _ _ _ d6}"
+        - "[c#6 a5 e5] {_ _ _ _ _ _ _ c#6}"
+        - "{[b5 g#5 e5] _ _ _ _ _ _ c#6} {[b5 g#5 e5] _ _ _ _ _ _ c#6} {[b5 g#5 e5] _ _ _ _ _ _ c#6} [b5 g#5 e5]"
+        - "{[a4 c#5 e5 a5] _ _ [c#5 c#6]}"
+        - "{[a4 a5] _ _ [e5 e6]}"
+        - "{[a4 a5] _ _ [c#5 c#6]}"
+        - "[a4 a5] [c#5 c#6] [a4 a5] [e5 e6]"
+        - set: fortissimo
+        - "[a4 a5] [a4 c#5 e5 a5]"
+        - "[a4 c#5 e5 a5] ~"
+    right2:
+      play:
+        - set: forte
+        - "2/4"
+        - "[c#5 e5 a5] ~"
+        - "[c#5 e5 a5] ~"
+        - 3x: "~"
+        - "[g#5 e5]"
+        - "[c#5 e5 a5] ~"
+        - "[c#5 e5 a5] ~"
+        - 11x: "~"
+        - "[c#5 e5 a5] ~"
+        - "[c#5 e5 a5] ~"
+        - 10x: "~"
+    left:
+      play:
+        - set: forte
+        - "2/4"
+        - "{a3> a3} {a3 {a3 _ _ _ _ a2 c#3 e3}}"
+        - "{a3> a3} {a3 {a3 _ _ _ _ a2 c#3 e3}}"
+        - "{a3> a3} {a3 {a3 _ _ _ _ d2 f#2 a2}}"
+        - "{d3> d3} {d3 {d3 _ _ _ _ a2 c#3 e3}}"
+        - "{a3> a3} {a3 {a3 _ _ _ _ e2 g#2 b2}}"
+        - "{e3> e3} {e3 {e3 _ _ _ _ a2 c#3 e3}}"
+        - "{a3> a3} {a3 {a3 _ _ _ _ a2 c#3 e3}}"
+        - "{a3> a3} {a3 {a3 _ _ _ _ a2 c#3 e3}}"
+        - "{a3> a3} {a3 {a3 _ _ _ _ d2 f#2 a2}}"
+        - "{d3> d3} {d3 {d3 _ _ _ _ a2 c#3 e3}}"
+        - "{a3> a3} {a3 {a3 _ _ _ _ e2 g#2 b2}}"
+        - "{e3> e3} {e3 e3}"
+        - set: piano
+        - "{a3 e4 c#4 e4} {a3 e4 c#4 e4}"
+        - "{a3 e4 c#4 e4} {a3 e4 c#4 e4}"
+        - "{a3 e4 c#4 e4} {a3 e4 c#4 e4}"
+        - "{a3 e4 c#4 e4} {a3 e4 c#4 e4}"
+        - "{a3 f#4 d4 f#4} {a3 f#4 d4 f#4}"
+        - "{a3 e4 c#4 e4} {a3 e4 c#4 e4}"
+        - "{e3 e4 g#3 e4} {e3 e4 g#3 {e4 _ _ _ _ a2 c#3 e3}}"
+        - set: forte
+        - "{a3> a3} {a3 {a3 _ _ _ _ a2 c#3 e3}}"
+        - "{a3> a3} {a3 {a3 _ _ _ _ a2 c#3 e3}}"
+        - "{a3> a3} {a3 {a3 _ _ _ _ d2 f#2 a2}}"
+        - "{d3> d3} {d3 {d3 _ _ _ _ a2 c#3 e3}}"
+        - "{a3> a3} {a3 {a3 _ _ _ _ e2 g#2 b2}}"
+        - "{e3> e3} {e3 {e3 _ _ _ _ a2 c#3 e3}}"
+        - "{a3> a3} {a3 {a3 _ _ _ _ a2 c#3 e3}}"
+        - "{a3> a3} {a3 {a3 _ _ _ _ a2 c#3 e3}}"
+        - "{a3> a3} {a3 {a3 _ _ _ _ a2 c#3 e3}}"
+        - set: forte
+        - "{a3> {a3 _ _ _ _ a2 c#3 e3}} {a3> a3}"
+        - set: fortissimo
+        - "a2 [a2 c#3 e3 a3]"
+        - "[a2 c#3 e3 a3] ~"
