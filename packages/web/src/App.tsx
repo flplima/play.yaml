@@ -416,11 +416,11 @@ export default function App() {
     }
   };
 
-  const handleRouteChange = (sample: string, route: MidiRoute | undefined) => {
+  const handleRouteChange = (preset: string, route: MidiRoute | undefined) => {
     setRoutes((prev) => {
       const next = { ...prev };
-      if (route) next[sample] = route;
-      else delete next[sample];
+      if (route) next[preset] = route;
+      else delete next[preset];
       saveRoutes(next);
       return next;
     });

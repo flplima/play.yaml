@@ -143,7 +143,7 @@ function parseScalar(s: string): any {
     const entries = splitFlow(s.slice(1, -1));
     const pairs = entries.filter((e) => /^[^:]+:\s*\S/.test(e));
     if (pairs.length && pairs.length < entries.length) {
-      // `{ instrument: choir, set: legato, cantabile }`: the comma ends "set:"
+      // `{ preset: choir, set: legato, cantabile }`: the comma ends "set:"
       // early and leaves "cantabile" with no key. Read as a string, the
       // whole mapping would vanish without a word.
       const loose = entries.find((e) => !/^[^:]+:\s*\S/.test(e));

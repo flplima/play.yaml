@@ -8,15 +8,15 @@ tempo: 50
 measure: 9/8
 
 tracks:
-  rh1: { instrument: piano }
-  rh2: { instrument: piano }
-  rh3: { instrument: piano }
-  lh1: { instrument: piano }
-  lh2: { instrument: piano }
-  lh3: { instrument: piano }
-  lh4: { instrument: piano }
-  lh5: { instrument: piano }
-  lh6: { instrument: piano }
+  rh1: { preset: piano }
+  rh2: { preset: piano }
+  rh3: { preset: piano }
+  lh1: { preset: piano }
+  lh2: { preset: piano }
+  lh3: { preset: piano }
+  lh4: { preset: piano }
+  lh5: { preset: piano }
+  lh6: { preset: piano }
 
 sections:
   piece:

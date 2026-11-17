@@ -3,7 +3,7 @@
  * (the catalogue itself is vpoCatalogue.ts).
  *
  * VPO (virtualplaying.com, free) is the sample library behind every
- * orchestral `sample:` name. Every `sample:` name a score can use
+ * orchestral `preset:` name. Every `preset:` name a score can use
  * maps here to a family of SFZ programs — a sustain program plus, where the
  * library has them, pizzicato, tremolo and staccato ones, chosen per note
  * from what the control stream says (`pizzicato`, `tremolo`) and how short
@@ -120,7 +120,7 @@ async function loadMelodic(
   // looked. Say so rather than returning an instrument that plays silence:
   // `prepareVpo` then leaves the track to a synth preset.
   if (Object.keys(loaded).length === 0) {
-    throw new Error(`no orchestral program could be loaded for "${track.sample}" (is the VPO library installed?)`);
+    throw new Error(`no orchestral program could be loaded for "${track.preset}" (is the VPO library installed?)`);
   }
 
   // The articulation is what the control stream says at the note's own
@@ -227,7 +227,7 @@ export async function prepareVpo(
           instruments.set(track.name, await loadKit(ctx, assets, track));
           return;
         }
-        const voicing = vpoVoicingFor(track.sample);
+        const voicing = vpoVoicingFor(track.preset);
         if (!voicing) return;
         instruments.set(track.name, await loadMelodic(ctx, assets, song, track, voicing));
       } catch (err) {

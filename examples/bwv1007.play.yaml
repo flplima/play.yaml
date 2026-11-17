@@ -5,7 +5,7 @@ title: "Prelude — Cello Suite No. 1, BWV 1007"
 composer: "Johann Sebastian Bach"
 tempo: 77
 metronome marks: opening   # the rit. and accel. below are the performance, not the text
-instrument: cello
+preset: cello
 articulation: tenuto  # a connected détaché: the default bowing here
 dynamic: mezzoforte   # on a physical model this drives the expression, i.e. the bow speed
 controls: { bow: 74, vibrato: 1 }   # only if your instrument's MIDI map differs

@@ -189,7 +189,7 @@ export interface Part {
    * played by several tracks (see `groupParts`).
    */
   tracks: number[];
-  sample: string;
+  preset: string;
   kit?: string;
   /** 1-based MIDI channel. */
   channel: number;
@@ -603,7 +603,7 @@ export function handOf(name: string): 0 | 1 | undefined {
 
 /**
  * Tracks → parts. Every track is its own part, except keyboards: all tracks
- * playing the same keyboard sample (same `sample:`, case aside) are one part
+ * playing the same keyboard sample (same `preset:`, case aside) are one part
  * on one grand staff, placed where the first of them sits in track order.
  * That is how keyboard music is written in play.yaml, one track per hand or
  * per line, and how it is printed, one instrument. A track named `pedal`
@@ -617,8 +617,8 @@ function groupParts(tracks: CompiledTrack[]): number[][] {
   const groups: number[][] = [];
   const bySample = new Map<string, number[]>();
   tracks.forEach((track, i) => {
-    if (track.kit == null && GRAND_STAFF.test(track.sample) && !PEDAL.test(track.name.trim())) {
-      const key = track.sample.toLowerCase();
+    if (track.kit == null && GRAND_STAFF.test(track.preset) && !PEDAL.test(track.name.trim())) {
+      const key = track.preset.toLowerCase();
       const group = bySample.get(key);
       if (group) {
         group.push(i);
@@ -634,8 +634,8 @@ function groupParts(tracks: CompiledTrack[]): number[][] {
 }
 
 /** "piano" → "Piano", "tubular-bells" → "Tubular Bells". */
-function displayName(sample: string): string {
-  return sample.split(/[-_\s]+/).filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
+function displayName(preset: string): string {
+  return preset.split(/[-_\s]+/).filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
 }
 
 /**
@@ -643,8 +643,8 @@ function displayName(sample: string): string {
  * electric piano is a piano on the page (a score played on `epiano` reads
  * "Piano", as an edition of it would).
  */
-function instrumentName(sample: string): string {
-  return /^e?piano$/i.test(sample.trim()) ? 'Piano' : displayName(sample);
+function instrumentName(preset: string): string {
+  return /^e?piano$/i.test(preset.trim()) ? 'Piano' : displayName(preset);
 }
 
 // ---------------------------------------------------------------------------
@@ -1177,8 +1177,8 @@ function scoreFromWritten(song: CompiledSong, doc: SongDoc): Score {
     // for the instrument.
     const parents = new Set(tracks.map((t) => t.parent));
     const name = tracks.length === 1
-      ? (tracks[0] === rootTrack ? instrumentName(tracks[0].sample) : tracks[0].name)
-      : parents.size === 1 && tracks[0].parent !== undefined ? tracks[0].parent : instrumentName(tracks[0].sample);
+      ? (tracks[0] === rootTrack ? instrumentName(tracks[0].preset) : tracks[0].name)
+      : parents.size === 1 && tracks[0].parent !== undefined ? tracks[0].parent : instrumentName(tracks[0].preset);
     return buildPart(tracks, indices, index, name, env);
   });
 
@@ -1335,7 +1335,7 @@ function buildPart(tracks: CompiledTrack[], indices: number[], index: number, na
   const first = tracks[0];
   const id = `P${index + 1}`;
   const percussion = first.kit != null;
-  const grand = !percussion && GRAND_STAFF.test(first.sample) && !PEDAL.test(first.name.trim());
+  const grand = !percussion && GRAND_STAFF.test(first.preset) && !PEDAL.test(first.name.trim());
   const label = tracks.length === 1 ? first.name : name;
   const partWarn = (bar: number, message: string) => warn(`${label}: bar ${bar + 1}: ${message}`);
 
@@ -1392,7 +1392,7 @@ function buildPart(tracks: CompiledTrack[], indices: number[], index: number, na
     clefs.push(plans[0][0], plans[1][0]);
   } else {
     const mean = meanOf(notes, 67);
-    if (ALTO_CLEF.test(first.sample) && mean >= 50 && mean < 70) clefs.push({ sign: 'C', line: 3 });
+    if (ALTO_CLEF.test(first.preset) && mean >= 50 && mean < 70) clefs.push({ sign: 'C', line: 3 });
     else if (mean < 55) clefs.push({ sign: 'F', line: 4 });
     else clefs.push({ sign: 'G', line: 2 });
   }
@@ -1549,7 +1549,7 @@ function buildPart(tracks: CompiledTrack[], indices: number[], index: number, na
     id,
     name,
     tracks: indices,
-    sample: first.sample,
+    preset: first.preset,
     kit: first.kit,
     channel: first.channel,
     program: first.program,

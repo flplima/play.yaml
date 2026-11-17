@@ -15,7 +15,7 @@ interface Props {
   samples: SampleEntry[];
   midi: MidiState;
   routes: RouteMap;
-  onRouteChange: (sample: string, route: MidiRoute | undefined) => void;
+  onRouteChange: (preset: string, route: MidiRoute | undefined) => void;
   /** When the output selector is on Built-in, routing is parked. */
   disabled: boolean;
 }

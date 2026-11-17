@@ -19,8 +19,8 @@ export type RouteMap = Record<string, MidiRoute | undefined>;
  * per instrument, not per track — several tracks can share one instrument,
  * and that is what a MIDI device stands in for.
  */
-export function routeKey(track: { sample: string; kit?: string }): string {
-  return track.kit ?? track.sample;
+export function routeKey(track: { preset: string; kit?: string }): string {
+  return track.kit ?? track.preset;
 }
 
 const STORAGE_KEY = storageKey('midi-routes');

@@ -59,7 +59,7 @@ function rms(data: Float32Array, fromSec = 0, toSec = SECONDS): number {
 /** One short note at the top of the bar, then two beats of silence to ring into. */
 const score = (set: string) => `
 tempo: 120
-sample: piano
+preset: piano
 play:
   - "c4 ~ ~ ~"
 ${set ? `set: ${set}\n` : ''}`;
@@ -67,7 +67,7 @@ ${set ? `set: ${set}\n` : ''}`;
 /** Something broadband enough to hear a whole room, rather than one pitch. */
 const passage = (set: string) => `
 tempo: 120
-sample: piano
+preset: piano
 play:
   - "[c3 e4 g4] ~ [f3 a4 c5] ~"
   - "[g2 b3 d4] ~ [c3 e4 g4] ~"

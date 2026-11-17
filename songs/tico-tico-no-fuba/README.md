@@ -31,11 +31,11 @@ Picardy-third A major chord:
 **Casting**: Brazilian choro *regional* chamber trio mapped to Virtual Playing
 Orchestra solo samples so it plays with real acoustic recordings in the browser
 studio out of the box:
-- `flute` (`sample: flute`): upper-octave choro melody, Trio lead + 16th-note
+- `flute` (`preset: flute`): upper-octave choro melody, Trio lead + 16th-note
   cascade, and offbeat chord stabs in the second half of Part A.
-- `clarinet` (`sample: clarinet`): syncopated inner choro accompaniment, B7 and
+- `clarinet` (`preset: clarinet`): syncopated inner choro accompaniment, B7 and
   F#7/Bm counter-lines, and the lower-octave (`D#3-D4`) Part A response.
-- `cello` (`sample: cello`): two-beat choro bass and *baixaria* walk-ups.
+- `cello` (`preset: cello`): two-beat choro bass and *baixaria* walk-ups.
 
 **Fidelity & validation**:
 - `play-yaml-fidelity` against the reference `abreu_ticotico.mid`: **97.8 / 100**

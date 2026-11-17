@@ -12,7 +12,7 @@ import {
 } from './theory';
 import {
   ACCENT_STEP, ControlSpec, DEFAULT_GATE, DEFAULT_STRUM, DRUM_CHANNEL, PedalPattern,
-  SAMPLE_PROGRAMS, controlValue, drumName, resolveControl, resolveDrum,
+  PRESET_PROGRAMS, controlValue, drumName, resolveControl, resolveDrum,
 } from './vocabulary';
 import { SetPatch, isDirectiveString, parseSet } from './set';
 import {
@@ -48,7 +48,7 @@ export interface TimelineEvent {
 export interface TrackProps {
   tempo?: number;
   measure?: string | number; // "4/4" or a plain beat count
-  sample?: string;
+  preset?: string;
   scale?: string; // "g major", "a minor" — the key for degree tokens
   octave?: number;
   /**
@@ -271,8 +271,6 @@ export type PlayInput =
 
 export interface TrackNode extends TrackProps {
   title?: string; // meaningful at the root
-  /** The sound this track plays on: the documented name for `sample:`. */
-  instrument?: string;
   /**
    * Bars of silence before this track's music starts. A child adds its own
    * wait to its parent's, so a group of tracks can enter together.
@@ -373,7 +371,7 @@ export interface CompileOptions {
 export interface CompiledTrack {
   name: string;
   channel: number;
-  sample: string;
+  preset: string;
   /** The drum kit this track plays, when it is a `kit:` track. */
   kit?: string;
   program?: number;
@@ -426,7 +424,7 @@ export interface CompiledSong {
 // ---------------------------------------------------------------------------
 
 export const DEFAULT_TEMPO = 80;
-export const DEFAULT_SAMPLE = 'piano';
+export const DEFAULT_PRESET = 'piano';
 export const DEFAULT_VELOCITY = 90;
 
 /** Round to 6 decimals to keep equal-division math (1/3, 1/6…) stable. */
@@ -1387,7 +1385,7 @@ export function expandSections(doc: SongDoc): { doc: SongDoc; loopStartBar: numb
     if (node && typeof node === 'object' && (node.play != null || node.tracks)) {
       throw new Error(
         `With "sections:", the top-level track "${name}" declares the instrument only ` +
-          `(sample, kit, controls…) — its music lives inside the sections.`,
+          `(preset, kit, controls…) — its music lives inside the sections.`,
       );
     }
   }
@@ -1517,7 +1515,7 @@ export function expandSections(doc: SongDoc): { doc: SongDoc; loopStartBar: numb
 
 /** Every TrackProps key: a child track inherits all of them. */
 const INHERITED = [
-  'tempo', 'measure', 'sample', 'scale', 'octave', 'transpose', 'channel', 'program', 'velocity',
+  'tempo', 'measure', 'preset', 'scale', 'octave', 'transpose', 'channel', 'program', 'velocity',
   'gate', 'rubato', 'dynamic', 'articulation', 'release', 'controls', 'strum', 'voices', 'strumTail', 'kit',
   'pedal', 'seed', 'chance', 'humanize', 'velocityRange',
 ] as const satisfies readonly (keyof TrackProps)[];
@@ -1526,7 +1524,7 @@ const _everyPropInherits: Exclude<keyof TrackProps, (typeof INHERITED)[number]> 
 void _everyPropInherits;
 
 /** Keys a track may hold besides the inherited props. */
-const TRACK_KEYS = new Set<string>([...INHERITED, 'instrument', 'title', 'wait', 'set', 'play', 'tracks']);
+const TRACK_KEYS = new Set<string>([...INHERITED, 'title', 'wait', 'set', 'play', 'tracks']);
 /** Keys only the root may hold: the printed header and the song form. */
 const ROOT_KEYS = new Set<string>(['composer', 'key', 'tempo text', 'metronome marks', 'sections']);
 
@@ -1566,6 +1564,9 @@ function suggestKey(key: string, known: Iterable<string>): string | undefined {
 function checkTrackKeys(node: TrackNode, where: string, isRoot: boolean): void {
   for (const key of Object.keys(node)) {
     if (TRACK_KEYS.has(key) || (isRoot && ROOT_KEYS.has(key))) continue;
+    if (key === 'sample' || key === 'instrument') {
+      throw new Error(`${where}: "${key}:" is now "preset:" (preset: ${node[key as keyof TrackNode]}).`);
+    }
     const known = isRoot ? [...TRACK_KEYS, ...ROOT_KEYS] : [...TRACK_KEYS];
     const hint = suggestKey(key, known);
     const tracksHint = !isRoot || hint ? '' : ` A track goes under "tracks:".`;
@@ -1654,12 +1655,6 @@ function effectiveProps(
   for (const key of INHERITED) {
     if (node[key] !== undefined) (props as Record<string, unknown>)[key] = node[key];
   }
-  if (node.instrument !== undefined) {
-    if (node.sample !== undefined) {
-      throw new Error(`${where}: "instrument:" and "sample:" are the same key. Keep one.`);
-    }
-    props.sample = String(node.instrument);
-  }
   let opening: ControlEvent[] = [];
   if (node.set !== undefined) {
     const patch = parseSet(node.set, props.controls);
@@ -1717,7 +1712,7 @@ export function compileDoc(doc: SongDoc, options: CompileOptions = {}): Compiled
   const root = effectiveProps(doc, {
     tempo: DEFAULT_TEMPO,
     measure: DEFAULT_MEASURE,
-    sample: DEFAULT_SAMPLE,
+    preset: DEFAULT_PRESET,
     octave: DEFAULT_OCTAVE,
   }, 'score');
   const rootProps = root.props;
@@ -1741,7 +1736,7 @@ export function compileDoc(doc: SongDoc, options: CompileOptions = {}): Compiled
         if (!warnings.includes(tagged)) warnings.push(tagged);
       }
       lengthBeats = Math.max(lengthBeats, trackBeats);
-      const sample = props.sample ?? DEFAULT_SAMPLE;
+      const preset = props.preset ?? DEFAULT_PRESET;
       // Tempo belongs to the song, not a voice — merge every track's changes.
       tempoMap.push(...tempos);
       // Kit tracks live on the GM percussion channel and take no program
@@ -1751,11 +1746,11 @@ export function compileDoc(doc: SongDoc, options: CompileOptions = {}): Compiled
       tracks.push({
         name,
         channel: props.channel ?? (props.kit != null ? DRUM_CHANNEL : nextChannel++),
-        sample,
+        preset,
         // `kit: 808` reads as a YAML number — normalize so consumers compare strings.
         kit: props.kit != null ? String(props.kit) : undefined,
         program: props.kit != null ? undefined
-          : props.program ?? SAMPLE_PROGRAMS[sample.toLowerCase()],
+          : props.program ?? PRESET_PROGRAMS[preset.toLowerCase()],
         timeline,
         controls: [...opening, ...controls],
       });
@@ -1768,7 +1763,7 @@ export function compileDoc(doc: SongDoc, options: CompileOptions = {}): Compiled
         if (child == null) continue; // `name:` with nothing under it: an empty slot
         if (typeof child !== 'object' || Array.isArray(child)) {
           throw new Error(
-            `Track "${childName}" must be a mapping (instrument:, play:…), not ${JSON.stringify(child)}.`,
+            `Track "${childName}" must be a mapping (preset:, play:…), not ${JSON.stringify(child)}.`,
           );
         }
         walk(child, childName, props, node === doc ? undefined : name, wait);

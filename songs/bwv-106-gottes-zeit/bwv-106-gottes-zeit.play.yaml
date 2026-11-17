@@ -10,15 +10,15 @@ dynamic: mezzopiano
 articulation: legato
 
 tracks:
-  soprano: { instrument: strings }
-  alto: { instrument: strings }
-  tenor: { instrument: strings }
-  bass: { instrument: strings }
-  recorder1: { instrument: flute }
-  recorder2: { instrument: flute }
-  gamba1: { instrument: cello }
-  gamba2: { instrument: cello }
-  continuo: { instrument: keys }
+  soprano: { preset: strings }
+  alto: { preset: strings }
+  tenor: { preset: strings }
+  bass: { preset: strings }
+  recorder1: { preset: flute }
+  recorder2: { preset: flute }
+  gamba1: { preset: cello }
+  gamba2: { preset: cello }
+  continuo: { preset: keys }
 
 sections:
   piece:

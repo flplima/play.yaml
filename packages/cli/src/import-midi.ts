@@ -22,7 +22,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import {
-  NOTATE_TICKS, SAMPLE_PROGRAMS, compileDoc, decodeMidi, drumName, notateMeasures,
+  NOTATE_TICKS, PRESET_PROGRAMS, compileDoc, decodeMidi, drumName, notateMeasures,
   parseYaml, separateVoices, MidiNote, NotateNote, ParsedMidi,
 } from '@play.yaml/core';
 import { parseFlags, run, usage } from './shared';
@@ -82,7 +82,7 @@ Flags:
 
 const PROGRAM_SAMPLES: Record<number, string> = (() => {
   const map: Record<number, string> = {};
-  for (const [sample, program] of Object.entries(SAMPLE_PROGRAMS)) {
+  for (const [sample, program] of Object.entries(PRESET_PROGRAMS)) {
     if (map[program] === undefined) map[program] = sample;
   }
   return map;
@@ -192,7 +192,7 @@ function groupNotes(midi: ParsedMidi, filter?: string): Group[] {
 interface BuiltTrack {
   key: string;
   drums: boolean;
-  sample: string;
+  preset: string;
   lines: string[];
   maxShift: number;
   placed: { start: number; midi: number }[];
@@ -308,7 +308,7 @@ function importMidi(bytes: Uint8Array, args: ImportOptions): ImportResult {
       if (!placed.length) { used.delete(key); return; }
       maxShift = Math.max(maxShift, shift);
       noteCount += placed.length;
-      tracks.push({ key, drums: group.drums, sample: sampleForProgram(group.program), lines, maxShift: shift, placed });
+      tracks.push({ key, drums: group.drums, preset: sampleForProgram(group.program), lines, maxShift: shift, placed });
     });
   }
 
@@ -325,7 +325,7 @@ function importMidi(bytes: Uint8Array, args: ImportOptions): ImportResult {
     'tracks:',
   ];
   for (const t of tracks) {
-    L.push(`  ${t.key}: { ${t.drums ? 'kit: acoustic' : `instrument: ${t.sample}`} }`);
+    L.push(`  ${t.key}: { ${t.drums ? 'kit: acoustic' : `preset: ${t.preset}`} }`);
   }
   L.push('', 'sections:', '  piece:', '    loop: false');
   for (const t of tracks) {

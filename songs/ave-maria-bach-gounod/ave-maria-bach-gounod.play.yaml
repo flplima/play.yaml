@@ -11,7 +11,7 @@ measure: 4/4
 # chord over the left hand's tenor, tied across each half bar, and held bass.
 tracks:
   rh:
-    instrument: epiano
+    preset: epiano
     dynamic: mezzopiano
     controls:
       # cc, and how far the pedal words may push it; the curve stops short of 118 (a floored damper rings into mud)
@@ -20,14 +20,14 @@ tracks:
     # Syncopated pedalling: the pedal lifts on each new bass note and retakes at once
     set: legato, pedale sincopato
   tenor:
-    instrument: epiano
+    preset: epiano
     dynamic: mezzopiano
     controls:
       pedal: { cc: 64, range: [0, 24, 96, 118] }
       soft: { cc: 67, range: 90 }
     set: legato, pedale sincopato
   bass:
-    instrument: epiano
+    preset: epiano
     dynamic: mezzopiano
     controls:
       pedal: { cc: 64, range: [0, 24, 96, 118] }
@@ -36,7 +36,7 @@ tracks:
   # The added line. A warm synth pad (GM 89) stands in for the voice and sustains like a singer.
   # Dynamics ride on expression (CC11) and vibrato on CC1, both ramped through the held notes.
   voice:
-    instrument: pad
+    preset: pad
     dynamic: piano
     velocityRange: [114, 124]
     controls:

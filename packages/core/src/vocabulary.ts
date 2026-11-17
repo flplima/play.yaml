@@ -545,7 +545,7 @@ export function resolveDrum(token: string): DrumSpec | undefined {
  * orchestral names are the ones the VPO sampler plays (core/src/vpo.ts);
  * sections share their solo instrument's program, as GM has no other.
  */
-export const SAMPLE_PROGRAMS: Record<string, number> = {
+export const PRESET_PROGRAMS: Record<string, number> = {
   piano: 0,
   epiano: 4,
   keys: 4,

@@ -36,7 +36,7 @@ tempo: 96
 scale: d minor
 tracks:
   cello:
-    instrument: cello
+    preset: cello
     octave: 3
     dynamic: piano
     play: |

@@ -12,7 +12,7 @@ import { loudness } from './bus';
 
 export type InstrumentPreset = 'piano' | 'epiano' | 'strings' | 'flute' | 'bass' | 'lead';
 
-const SAMPLE_PRESETS: Record<string, InstrumentPreset> = {
+const SYNTH_PRESETS: Record<string, InstrumentPreset> = {
   piano: 'piano',
   epiano: 'epiano',
   keys: 'epiano',
@@ -35,8 +35,8 @@ const SAMPLE_PRESETS: Record<string, InstrumentPreset> = {
  * name keywords, then to the default lead synth.
  */
 export function detectPreset(track: CompiledTrack): InstrumentPreset {
-  const sample = track.sample?.toLowerCase();
-  if (sample && SAMPLE_PRESETS[sample]) return SAMPLE_PRESETS[sample];
+  const sample = track.preset?.toLowerCase();
+  if (sample && SYNTH_PRESETS[sample]) return SYNTH_PRESETS[sample];
   const name = track.name.toLowerCase();
   if (name.includes('bass')) return 'bass';
   if (name.includes('string') || name.includes('pad') || name.includes('cello')) return 'strings';

@@ -10,8 +10,8 @@ dynamic: mezzopiano
 articulation: legato
 
 tracks:
-  rh: { instrument: piano }
-  lh: { instrument: piano }
+  rh: { preset: piano }
+  lh: { preset: piano }
 
 sections:
   prelude:

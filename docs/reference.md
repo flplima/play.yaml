@@ -68,16 +68,16 @@ Tokens nest recursively — `{c {d e}}` splits the second half of the slot again
 
 ### Tracks & inheritance
 
-A track may declare child `tracks` (a named mapping). Children **inherit every property from their parent except `play`**, and can override any of them. Inheritable properties: `tempo`, `measure`, `instrument`, `scale`, `octave`, `channel`, `program`, `velocity`.
+A track may declare child `tracks` (a named mapping). Children **inherit every property from their parent except `play`**, and can override any of them. Inheritable properties: `tempo`, `measure`, `preset`, `scale`, `octave`, `channel`, `program`, `velocity`.
 
-`instrument:` names the sound a track plays on. `sample:` is the older name for the same key and still works.
+`preset:` names the sound a track plays on: a synth preset, or an orchestra instrument when the sample library is installed.
 
 A track that comes in late says so with `wait:`, in bars, instead of counting rests. A child adds its wait to its parent's, so a group of tracks can enter together:
 
 ```yaml
 tracks:
   voice:
-    instrument: choir
+    preset: choir
     wait: 4                      # the piano plays four bars alone
     play: |
       e
@@ -92,17 +92,17 @@ tracks:
       d
 ```
 
-A key the compiler does not know is an error, with a hint when it looks like a typo (`instrumnet:` asks "did you mean instrument?"). A track written as a one-line mapping takes lists in brackets: `voice: { instrument: choir, set: [legato, cantabile] }`.
+A key the compiler does not know is an error, with a hint when it looks like a typo (`presst:` asks "did you mean preset?"). A track written as a one-line mapping takes lists in brackets: `voice: { preset: choir, set: [legato, cantabile] }`.
 
 ```yaml
 tempo: 80
 measure: 4/4
 tracks:
   melody:
-    instrument: piano
+    preset: piano
     play: "c d e d"              # 4 tokens → quarter notes
   bassline:
-    instrument: bass
+    preset: bass
     octave: 2
     play:
       - "c c ~ ~ c c ~ ~"        # 8 tokens → eighth notes
@@ -116,7 +116,7 @@ sections that play in declaration order, with the parallel instrument parts
 
 ```yaml
 tracks:                # the instruments — props only, no music here
-  sax: { instrument: flute, dynamic: mezzoforte }
+  sax: { preset: flute, dynamic: mezzoforte }
   drums: { kit: acoustic }
 
 sections:
@@ -155,7 +155,7 @@ sections:
   ```
 - Per-section overrides are allowed for the directive props (`velocity`,
   `gate`, `rubato`, `scale`, `octave`, `tempo`, `measure`, `strum`, `voices`, `set`) —
-  instrument identity (`instrument`, `kit`, `channel`, `controls`) stays on the
+  instrument identity (`preset`, `kit`, `channel`, `controls`) stays on the
   top-level track.
 - The compiled song carries `loopStartBeats`: the web player loops the cycle
   (intro plays once; turn Loop off for a single pass), the CLI's `--loop`
@@ -271,7 +271,7 @@ Reach for `tempo`/`ritardando` when the music genuinely changes speed; reach for
 The technique words above drive `bow`, `pressure` and `vibrato`, which default to the conventional CCs 74, 71 and 1 — so they work with nothing declared:
 
 ```yaml
-instrument: cello
+preset: cello
 play:
   - 1: "1 2 3 4"
   - set: sul tasto, molto vibrato
@@ -356,9 +356,9 @@ are fixed by the standard, so they need no `controls:` block:
 
 ```yaml
 tracks:
-  violin: { instrument: violin, set: "pan left, hall" }
-  cello:  { instrument: cello,  set: "pan right, room" }
-  organ:  { instrument: piano,  set: "cathedral, voix celeste" }
+  violin: { preset: violin, set: "pan left, hall" }
+  cello:  { preset: cello,  set: "pan right, room" }
+  organ:  { preset: piano,  set: "cathedral, voix celeste" }
 ```
 
 They behave like any other control: drift them with a span (`fade out over 4`,
@@ -417,7 +417,7 @@ a modelled string turns exactly that — a soft-velocity overlapped note — int
 a slide.
 
 ```yaml
-instrument: cello
+preset: cello
 controls: { expression: 11, bow: 74, pressure: 71, vibrato: 1, playmode: 20, tremolo: 21 }
 dynamic: piano
 play:
@@ -558,7 +558,7 @@ and the studio says so in the status bar. To hear the sampled orchestra:
    `PLAY_YAML_VPO` at wherever it lives (the dev server and the CLI both
    read that variable).
 
-`instrument: cello` is a solo cello with its pizzicato, tremolo and staccato
+`preset: cello` is a solo cello with its pizzicato, tremolo and staccato
 programs switched in by the score's `pizzicato`/`tremolo` words and by note
 length; `violins`, `horns` and the other plurals are the sections;
 `strings`, `woodwinds`, `brass` are the whole families; kit tracks land on
@@ -638,7 +638,7 @@ What gets printed:
 - **Key**: `key: g major` names the key signature. Without it, the first `scale:` gives the key, and a score with neither prints with no key signature. A `scale:` set mid-piece changes what the degrees mean, never the printed key. To print real key changes, give `key:` the bars where they happen: `key: { 1: db major, 37: e major, 43: db major }`.
 - **Sharps and flats**: a note named by letter prints as written, so `d#4` is D sharp and `eb4` E flat in any key. A note named by degree is spelled from the `scale:` in force; a chromatic one follows its line, rising with sharps and falling with flats (the turn `{12# 12 11# 12}` in G major prints E flat, D, C sharp, D).
 - **Meter and tempo**: meter changes print where they happen, and so does every tempo change, a gradual one as rit. or accel. When those come from the performance rather than the text, `metronome marks: opening` prints only the opening mark and `metronome marks: none` prints none; either way the tempo still plays. `tempo text: Andante semplice` prints the tempo word over the first bar, with the opening mark or, under `metronome marks: none`, instead of it.
-- **Keyboards**: tracks that share a keyboard `instrument:` (piano, organ, harp and friends) print as one part on a grand staff, named for the parent track they share or else for the instrument (`piano` and `epiano` both print as Piano). A track named `rh`, `right` or `upper` goes on the upper staff, and `lh`, `left` or `lower` on the lower one. Other names are split around middle C. A track named `pedal` gets a staff of its own.
+- **Keyboards**: tracks that share a keyboard `preset:` (piano, organ, harp and friends) print as one part on a grand staff, named for the parent track they share or else for the instrument (`piano` and `epiano` both print as Piano). A track named `rh`, `right` or `upper` goes on the upper staff, and `lh`, `left` or `lower` on the lower one. Other names are split around middle C. A track named `pedal` gets a staff of its own.
 - **Drums**: a `kit:` track prints on a percussion staff, with x noteheads for hats and cymbals.
 - **Sections and repeats**: written out in full, with no repeat signs.
 

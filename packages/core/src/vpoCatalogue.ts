@@ -1,5 +1,5 @@
 /**
- * vpoCatalogue.ts — which Virtual Playing Orchestra programs each `sample:`
+ * vpoCatalogue.ts — which Virtual Playing Orchestra programs each `preset:`
  * name plays on, and which orchestral percussion key each GM drum maps to.
  * Data only; vpo.ts loads and plays it.
  */
@@ -8,7 +8,7 @@
 // The catalogue
 // ---------------------------------------------------------------------------
 
-/** The programs one `sample:` name plays on, all relative to the library root. */
+/** The programs one `preset:` name plays on, all relative to the library root. */
 export interface VpoVoicing {
   sustain: string;
   pizz?: string;
@@ -34,7 +34,7 @@ const wind = (dir: string, name: string, kind: 'SOLO' | 'SEC'): VpoVoicing => ({
   staccato: `${dir}/${name}-${kind}-staccato.sfz`,
 });
 
-/** DSL `sample:` names → VPO programs. Aliases share an entry. */
+/** DSL `preset:` names → VPO programs. Aliases share an entry. */
 export const VPO_INSTRUMENTS: Record<string, VpoVoicing> = {
   violin: strings('1st-violin', 'SOLO'),
   violins: strings('1st-violin', 'SEC'),
@@ -110,9 +110,9 @@ const VPO_ALIASES: Record<string, string> = {
   men: 'choir-male',
 };
 
-/** The programs for a `sample:` name ("French Horn" → horn), or undefined when the orchestra has none. */
-export function vpoVoicingFor(sample: string): VpoVoicing | undefined {
-  const key = sample.trim().toLowerCase().replace(/[\s_]+/g, '-');
+/** The programs for a `preset:` name ("French Horn" → horn), or undefined when the orchestra has none. */
+export function vpoVoicingFor(preset: string): VpoVoicing | undefined {
+  const key = preset.trim().toLowerCase().replace(/[\s_]+/g, '-');
   return VPO_INSTRUMENTS[VPO_ALIASES[key] ?? key];
 }
 

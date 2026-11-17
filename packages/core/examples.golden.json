@@ -3,114 +3,114 @@
     "tracks": 1,
     "notes": 656,
     "lengthBeats": 168,
-    "sha256": "c2b981339fad65cc18b78a91d8ec77227ab27aadba1aa1d64568b6d2a3a00a51"
+    "sha256": "c2e5ac959766e763eeb0bb5e0f56b797a739bc0b65784324a98a9819a9b1e257"
   },
   "bwv846.play.yaml": {
     "tracks": 3,
     "notes": 549,
     "lengthBeats": 140,
-    "sha256": "0e31b8d4b9ddbb4cbdb8002bf7155993fa33213bb6964310530a9ab40de0c7ef"
+    "sha256": "8585ed97829d599a0056bcca602edc7791ab770c67baa470b3b9d1e3fe4d7ea6"
   },
   "bwv881.play.yaml": {
     "tracks": 2,
     "notes": 1473,
     "lengthBeats": 282,
-    "sha256": "104db081e65267fe47b6e33d1bc29cf3f0419f8953b3a961e9ffd9ef607501a9"
+    "sha256": "dca2bd331b28208eca675f1b79fc43b267cdf44936e84576d84258e0f33c05ca"
   },
   "clair-de-lune.play.yaml": {
     "tracks": 9,
     "notes": 1603,
     "lengthBeats": 324,
-    "sha256": "2da81b6c39e8d6d9557e7a08f6e74863318490b830c8f895abe921af5ec466a7"
+    "sha256": "2c691bf79057eaa34c9c129b8376b8faf02302e5c801217fd00eeb1715137a17"
   },
   "drum-lab.play.yaml": {
     "tracks": 6,
     "notes": 389,
     "lengthBeats": 96,
-    "sha256": "cdd415ef8dd3a74cc33fdca6cdb25e4c0280c2bfb223ae88f2d755f59c14ebaa"
+    "sha256": "65a6caa6815e50abe148f8c2fa59bd2c98ce92c175324c0fff8bd8f478a17621"
   },
   "fur-elise.play.yaml": {
     "tracks": 2,
     "notes": 901,
     "lengthBeats": 159,
-    "sha256": "cd1f12a0cdcf9234c092465708332aec215cd6f9948363e1e6f694698a61ac6c"
+    "sha256": "97dec05883326e887b07f7b3a31a0ba9306b7bc2b0d83caa12dffd33e0c22831"
   },
   "generative-lab.play.yaml": {
     "tracks": 4,
     "notes": 205,
     "lengthBeats": 36,
-    "sha256": "c8caade796b3c71a3353dc3e6fc1f328e99e7b5f143a1e747069226852455027"
+    "sha256": "478b65d4e34dbe15ca976dc2c9294a50650296b9d37364301884a33f56a4019b"
   },
   "my-score.play.yaml": {
     "tracks": 2,
     "notes": 28,
     "lengthBeats": 16,
-    "sha256": "ceba51585f0e5d6245455b15f880c8d9c786bb7285526ce3090c887bc9f42f78"
+    "sha256": "e00a3d4ff50c73748e02de3b4ba7732172b6a13463ddbcea764d7d16a76278c1"
   },
   "nocturne-op9-no2.play.yaml": {
     "tracks": 2,
     "notes": 1231,
     "lengthBeats": 224,
-    "sha256": "1d61234b798e8b80b45058049a4594ea5c7f3a2636e060c4ecf8a1880dd0e46a"
+    "sha256": "eeab1ad64ac277d36ab5da22280f4d4583db4c4a7cd5a13674756a3e0526bd5f"
   },
   "twinkle.play.yaml": {
     "tracks": 1,
     "notes": 14,
     "lengthBeats": 16,
-    "sha256": "6e958d1300fbc0bccfcffc65c26cf623d7436f9baa1fe45bb8eabbe3b92428f6"
+    "sha256": "c3db4fe1424376d2107ea03e8d5218fa149229014392e25aa79dc2e8ca8d7586"
   },
   "songs/ave-maria-bach-gounod/ave-maria-bach-gounod.play.yaml": {
     "tracks": 4,
     "notes": 716,
     "lengthBeats": 156,
-    "sha256": "bd4e9a32912bf988ceeae2c54fb939cc677be109aac75d9a6b25d3bae8fd3f24"
+    "sha256": "1efff1c6521c72f8159fde1304633aae8252b8c12b10b3a2cc499912a3776005"
   },
   "songs/bwv-106-gottes-zeit/bwv-106-gottes-zeit.play.yaml": {
     "tracks": 9,
     "notes": 1759,
     "lengthBeats": 154,
-    "sha256": "5a2de1a10da23a692c4d2e2fd8a7376b28c089a0016c543886c0c43764a2616f"
+    "sha256": "c0f95f9484dc13d1477ffadbe59c92815ce89a19b20658c20488ee13be651ee0"
   },
   "songs/bwv-106-in-deine-haende/bwv-106-in-deine-haende.play.yaml": {
     "tracks": 2,
     "notes": 463,
     "lengthBeats": 96,
-    "sha256": "dc9172f204264ec0b52a503e486e303c4a3212f465057c373c7a8432ec1bc322"
+    "sha256": "c34129d6ce8aea62617402a26300b25238bf953fb6bb71c3d3fd14219fc896d4"
   },
   "songs/bwv-106-sonatina/bwv-106-sonatina.play.yaml": {
     "tracks": 5,
     "notes": 753,
     "lengthBeats": 80,
-    "sha256": "97b6275384a59df3026c62619700771c2f7e7ce123c768ab23eff5e5008abda0"
+    "sha256": "11938ed31a5f00ba3154b6769b9dd6fa974768124c2e62e3cb54b85588cdac52"
   },
   "songs/bwv-528-andante/bwv-528-andante.play.yaml": {
     "tracks": 3,
     "notes": 1356,
     "lengthBeats": 180,
-    "sha256": "d9f8b59e0a75f3ab43a63c0465ed89de7dff994dde6444da9a7cbef31b423688"
+    "sha256": "f987a60c69a57dceda77e2261228d68dc605448405f7ea3dadd28c5d89e14ff8"
   },
   "songs/bwv-784-invention-13/bwv-784-invention-13.play.yaml": {
     "tracks": 2,
     "notes": 564,
     "lengthBeats": 100,
-    "sha256": "4df23ba8a717e73a6ab26a021ae61c92c74100e3426567a4b4f404c28dfe89d5"
+    "sha256": "cd64e691926965f580d190aed68309b11a6ee3554bb8a25d01c22cc64c70ca1a"
   },
   "songs/bwv-881-prelude-and-fugue-12/bwv-881-prelude-and-fugue-12.play.yaml": {
     "tracks": 8,
     "notes": 2591,
     "lengthBeats": 452,
-    "sha256": "73bc318eed8023e481eb62268830fc9bdc68a71b32a3561648fb036ee1870455"
+    "sha256": "34156e57a80dd3dd03f22fb010c7428eff902d299cca45b060257d8de5716b9b"
   },
   "songs/debussy-clair-de-lune/debussy-clair-de-lune.play.yaml": {
     "tracks": 6,
     "notes": 1468,
     "lengthBeats": 324,
-    "sha256": "d14ab5d69c62bbef8642742fbab08ee0b53867a64a8cc42f7ded1b3c03e61979"
+    "sha256": "508bfc53038a6bdb52a73b1372d41a35a9c1a088710ac09c5c7e0753054f0e2c"
   },
   "songs/tico-tico-no-fuba/tico-tico-no-fuba.play.yaml": {
     "tracks": 3,
     "notes": 780,
     "lengthBeats": 168,
-    "sha256": "c20a18fe67b539cc321266239a855f42309fd74af0cd1fa1c45afcbfee99d236"
+    "sha256": "10cd5b02d566ed6a2969012012672de2ffbf1b9ffdf9cb99365f4e5dc4b3b6c3"
   }
 }

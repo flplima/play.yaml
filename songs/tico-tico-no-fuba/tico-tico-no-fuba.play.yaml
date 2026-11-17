@@ -9,9 +9,9 @@ measure: 2/4
 scale: a minor
 
 tracks:
-  flute: { instrument: flute, velocity: 92 }
-  clarinet: { instrument: clarinet, velocity: 82 }
-  cello: { instrument: cello, velocity: 84 }
+  flute: { preset: flute, velocity: 92 }
+  clarinet: { preset: clarinet, velocity: 82 }
+  cello: { preset: cello, velocity: 84 }
 
 sections:
   intro:

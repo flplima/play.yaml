@@ -10,8 +10,8 @@ dynamic: piano
 articulation: legato
 
 tracks:
-  alto: { instrument: strings }
-  continuo: { instrument: keys }
+  alto: { preset: strings }
+  continuo: { preset: keys }
 
 sections:
   piece:

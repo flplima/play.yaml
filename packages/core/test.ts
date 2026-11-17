@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import {
-  compileDoc, parsePlayFull, SongDoc, TimelineEvent, TrackProps, PlayInput, DEFAULT_TEMPO, DEFAULT_SAMPLE,
+  compileDoc, parsePlayFull, SongDoc, TimelineEvent, TrackProps, PlayInput, DEFAULT_TEMPO, DEFAULT_PRESET,
   DEFAULT_VELOCITY,
 } from './src/song';
 import { parseSet } from './src/set';
@@ -947,7 +947,7 @@ check('minimal doc: root play with defaults (Twinkle)', () => {
   assert.strictEqual(song.bpm, DEFAULT_TEMPO);
   assert.strictEqual(song.tracks.length, 1);
   assert.strictEqual(song.tracks[0].name, 'main');
-  assert.strictEqual(song.tracks[0].sample, DEFAULT_SAMPLE);
+  assert.strictEqual(song.tracks[0].preset, DEFAULT_PRESET);
   assert.strictEqual(song.tracks[0].timeline.length, 14);
   assert.strictEqual(song.lengthBeats, 16);
 });
@@ -955,18 +955,18 @@ check('children inherit every prop except play, and can override', () => {
   const song = compileDoc({
     tempo: 100,
     measure: '3/4',
-    sample: 'strings',
+    preset: 'strings',
     octave: 3,
     tracks: {
       melody: { play: 'c d e' },
-      bassline: { sample: 'bass', octave: 2, play: 'c ~ ~' },
+      bassline: { preset: 'bass', octave: 2, play: 'c ~ ~' },
     },
   });
   assert.strictEqual(song.bpm, 100);
   assert.deepStrictEqual(song.tracks.map((t) => t.name), ['melody', 'bassline']);
-  assert.strictEqual(song.tracks[0].sample, 'strings');
+  assert.strictEqual(song.tracks[0].preset, 'strings');
   assert.strictEqual(song.tracks[0].timeline[0].midi, 48); // c3 inherited octave
-  assert.strictEqual(song.tracks[1].sample, 'bass');
+  assert.strictEqual(song.tracks[1].preset, 'bass');
   assert.strictEqual(song.tracks[1].timeline[0].midi, 36); // c2 overridden octave
   assert.strictEqual(song.measureBeats, 3);
 });
@@ -976,11 +976,11 @@ check('root can play alongside its children', () => {
 });
 check('nested children inherit through the chain', () => {
   const song = compileDoc({
-    sample: 'flute',
+    preset: 'flute',
     tracks: { a: { octave: 5, tracks: { b: { play: 'c' } } } },
   });
   assert.strictEqual(song.tracks[0].name, 'b');
-  assert.strictEqual(song.tracks[0].sample, 'flute');
+  assert.strictEqual(song.tracks[0].preset, 'flute');
   assert.strictEqual(song.tracks[0].timeline[0].midi, 72); // c5 via parent chain
 });
 check('channels auto-assign but explicit ones win', () => {
@@ -990,7 +990,7 @@ check('channels auto-assign but explicit ones win', () => {
   assert.deepStrictEqual(song.tracks.map((t) => t.channel), [1, 10, 2]);
 });
 check('sample maps to a GM program for export', () => {
-  const song = compileDoc({ sample: 'bass', play: 'c' });
+  const song = compileDoc({ preset: 'bass', play: 'c' });
   assert.strictEqual(song.tracks[0].program, 33);
 });
 check('empty doc throws', () => {
@@ -999,9 +999,9 @@ check('empty doc throws', () => {
 
 console.log('\nyaml:');
 check('nested tracks parse', () => {
-  const doc = parseYaml('tempo: 90\ntracks:\n  melody:\n    sample: piano\n    play: "c d e d"\n');
+  const doc = parseYaml('tempo: 90\ntracks:\n  melody:\n    preset: piano\n    play: "c d e d"\n');
   assert.strictEqual(doc.tempo, 90);
-  assert.strictEqual(doc.tracks.melody.sample, 'piano');
+  assert.strictEqual(doc.tracks.melody.preset, 'piano');
 });
 check('inline flow maps parse, measure strings do not', () => {
   const doc = parseYaml('controls: { bow: 74, pressure: 71 }\nplay:\n  - "{1 2 3 4}"\n');
@@ -1394,7 +1394,7 @@ check('duration weights combine with accents and rolls', () => {
 console.log('\nsections:');
 check('sections play in order; parallel tracks align; absent tracks rest', () => {
   const song = compileDoc({
-    tracks: { bass: { sample: 'bass' } },
+    tracks: { bass: { preset: 'bass' } },
     sections: {
       intro: { loop: false, lead: { play: ['c ~ ~ ~'] } },
       groove: { loop: false, lead: { play: ['e ~ ~ ~'] }, bass: { play: ['g2 ~ ~ ~'] } },
@@ -1499,7 +1499,7 @@ check('sections misuse fails loud', () => {
     /forever-looping tail/,
   );
   assert.throws(
-    () => compileDoc({ sections: { a: { loop: false, lead: { sample: 'bass', play: ['c'] } } } } as any),
+    () => compileDoc({ sections: { a: { loop: false, lead: { preset: 'bass', play: ['c'] } } } } as any),
     /declare it on the top-level track/,
   );
 });
@@ -1957,8 +1957,8 @@ check('decodeMidi reads meter, key, track names and program changes', () => {
 tempo: 96
 measure: 3/4
 tracks:
-  rh: { sample: flute }
-  lh: { sample: bass }
+  rh: { preset: flute }
+  lh: { preset: bass }
 sections:
   a:
     loop: false
@@ -2209,7 +2209,7 @@ check('keys come from scale:, and pitches are spelled from them', () => {
   assert.deepStrictEqual(keyFromScale('gb major'), { fifths: -6, mode: 'major' });
   assert.deepStrictEqual(keyFromScale('d dorian'), { fifths: 0, mode: 'dorian' });
   assert.deepStrictEqual(keyFromScale('c whole tone'), { fifths: 0, mode: 'none' });
-  const score = scoreFromDoc({ scale: 'eb major', sample: 'flute', play: ['eb4 e4 eb4 ab4', 'c5 db5 b4 bb4'] });
+  const score = scoreFromDoc({ scale: 'eb major', preset: 'flute', play: ['eb4 e4 eb4 ab4', 'c5 db5 b4 bb4'] });
   assert.deepStrictEqual(score.parts[0].measures[0].key, { fifths: -3, mode: 'major' });
   const written = (m: number) => firstVoice(score, m).map((e) => {
     const p = e.notes[0].pitch!;
@@ -2218,17 +2218,17 @@ check('keys come from scale:, and pitches are spelled from them', () => {
   assert.deepStrictEqual(written(0), ['Eb4', 'E4(natural)', 'Eb4(flat)', 'Ab4']);
   assert.deepStrictEqual(written(1), ['C5', 'Db5(flat)', 'B4(natural)', 'Bb4(flat)']);
   assert.strictEqual(score.parts[0].measures[1].key, undefined, 'the key is only restated when it changes');
-  const minor = scoreFromDoc({ scale: 'd minor', sample: 'flute', play: ['c#5 d5 bb4 b4'] });
+  const minor = scoreFromDoc({ scale: 'd minor', preset: 'flute', play: ['c#5 d5 bb4 b4'] });
   assert.deepStrictEqual(firstVoice(minor, 0).map((e) => e.notes[0].pitch!.step + e.notes[0].pitch!.alter), ['C1', 'D0', 'B-1', 'B0'],
     'a minor key raises its 6th and 7th as sharpened letters');
 });
 check('the printed key: key: names it, a mid-piece scale: keeps it, a bar map changes it', () => {
-  const held = scoreFromDoc({ scale: 'g major', sample: 'flute', play: ['1 2 3 4', { scale: 'd major' }, '1 2 3 7'] });
+  const held = scoreFromDoc({ scale: 'g major', preset: 'flute', play: ['1 2 3 4', { scale: 'd major' }, '1 2 3 7'] });
   assert.deepStrictEqual(held.parts[0].measures.map((m) => m.key), [{ fifths: 1, mode: 'major' }, undefined],
     'a scale: change moves the degrees, not the signature');
   assert.strictEqual(firstVoice(held, 1)[3].notes[0].pitch!.accidental, 'sharp', 'so the c# of D major is an accidental');
   const keyed = scoreFromDoc({
-    key: { 1: 'db major', 2: 'e major', 3: 'db major' }, sample: 'flute',
+    key: { 1: 'db major', 2: 'e major', 3: 'db major' }, preset: 'flute',
     play: ['db4 f4 ab4 db5', 'e4 g#4 b4 e5', 'db4 f4 ab4 db5'],
   });
   assert.deepStrictEqual(keyed.parts[0].measures.map((m) => m.key?.fifths), [-5, 4, -5]);
@@ -2253,23 +2253,23 @@ check('a note named by letter prints as written; the written compile keeps the s
   assert.ok(compileDoc({ play: ['d#4 eb4'] }).tracks[0].timeline.every((e) => e.spelling === undefined), 'a performance carries none');
   assert.strictEqual(compileDoc({ transpose: 2, play: ['d#4'] }, { written: true }).tracks[0].timeline[0].spelling, undefined,
     'a transposition loses the letter');
-  const score = scoreFromDoc({ scale: 'a minor', sample: 'flute', play: ['e5 d#5 e5 eb5', 'b#3 c#4 e#4 f#4'] });
+  const score = scoreFromDoc({ scale: 'a minor', preset: 'flute', play: ['e5 d#5 e5 eb5', 'b#3 c#4 e#4 f#4'] });
   assert.deepStrictEqual(spelledNames(score, 0), ['E', 'D#', 'E', 'Eb']);
   assert.deepStrictEqual(spelledNames(score, 1), ['B#', 'C#', 'E#', 'F#']);
   assert.strictEqual(score.parts[0].measures[1].voices[0].events[0].notes[0].pitch!.octave, 3, 'B#3 is MIDI 60, written in octave 3');
 });
 check('a chromatic degree follows its line: rising with sharps, falling with flats', () => {
-  const turn = scoreFromDoc({ scale: 'g major', sample: 'cello', play: ['{12# 12 11# 12} {9# 9 8# 9}'] });
+  const turn = scoreFromDoc({ scale: 'g major', preset: 'cello', play: ['{12# 12 11# 12} {9# 9 8# 9}'] });
   assert.deepStrictEqual(spelledNames(turn, 0), ['Eb', 'D', 'C#', 'D', 'Bb', 'A', 'G#', 'A']);
-  const repeat = scoreFromDoc({ scale: 'g major', sample: 'cello', play: ['{9 9# 9# 9}'] });
+  const repeat = scoreFromDoc({ scale: 'g major', preset: 'cello', play: ['{9 9# 9# 9}'] });
   assert.deepStrictEqual(spelledNames(repeat, 0), ['A', 'Bb', 'Bb', 'A'], 'a repeated note looks past itself');
-  const minor = scoreFromDoc({ scale: 'a minor', sample: 'flute', play: ['1 4# 1 7#'] });
+  const minor = scoreFromDoc({ scale: 'a minor', preset: 'flute', play: ['1 4# 1 7#'] });
   assert.deepStrictEqual(spelledNames(minor, 0), ['A', 'D#', 'A', 'G#'], 'a minor key raises its 4th and 7th');
   assert.strictEqual(expandArp({ chord: 'Gm7', steps: 4 }), 'g4 bb4 d5 f5', 'an arpeggio takes its chord\'s letters');
   assert.strictEqual(expandArp({ notes: ['bb3', 'db4'], steps: 2 }), 'bb3 db4', 'and listed notes keep theirs');
 });
 check('overlapping lines in one track become two voices, each filling the bar', () => {
-  const score = scoreFromDoc({ sample: 'flute', play: ['[c5 {e4 f4 g4 a4}]: b4 c5'] });
+  const score = scoreFromDoc({ preset: 'flute', play: ['[c5 {e4 f4 g4 a4}]: b4 c5'] });
   const voices = score.parts[0].measures[0].voices;
   assert.strictEqual(voices.length, 2);
   for (const v of voices) assert.strictEqual(v.events.reduce((s, e) => s + e.duration, 0), score.measures[0].length);
@@ -2281,18 +2281,18 @@ check('overlapping lines in one track become two voices, each filling the bar', 
   assert.ok(/<forward>\s*<duration>5040<\/duration>\s*<voice>2<\/voice>/.test(encodeMusicXml(score)), 'written as a forward');
   assert.deepStrictEqual(voices.map((v) => [...new Set(v.events.filter((e) => e.kind === 'note').map((e) => e.stem))]), [['up'], ['down']],
     'with two voices on a staff, the first stems up and the second down');
-  assert.strictEqual(firstVoice(scoreFromDoc({ sample: 'flute', play: ['c5 d5 e5 f5'] }), 0)[0].stem, undefined,
+  assert.strictEqual(firstVoice(scoreFromDoc({ preset: 'flute', play: ['c5 d5 e5 f5'] }), 0)[0].stem, undefined,
     'a single voice leaves stems to the renderer');
-  const after = scoreFromDoc({ sample: 'flute', play: ['[c5 {e4 f4 g4 a4}]: b4 c5', 'c4 d4 e4 f4'] });
+  const after = scoreFromDoc({ preset: 'flute', play: ['[c5 {e4 f4 g4 a4}]: b4 c5', 'c4 d4 e4 f4'] });
   assert.deepStrictEqual(after.parts[0].measures[1].voices.map((v) => [v.voice, shape(v.events).length]), [[1, 4]],
     'once the lines stop overlapping, a lower line moves back into voice 1');
 });
 check('lines sharing a staff are numbered by pitch: the upper one is voice 1, stems up, its rests printed', () => {
   const score = scoreFromDoc({
     tracks: {
-      rh: { sample: 'piano', play: ['c5 c5 c5 c5'] },
-      tenor: { sample: 'piano', play: ['{~ e3 _ _ _ _ _ _} {~ e3 _ _ _ _ _ _}'] },
-      bass: { sample: 'piano', play: ['c3 c3'] },
+      rh: { preset: 'piano', play: ['c5 c5 c5 c5'] },
+      tenor: { preset: 'piano', play: ['{~ e3 _ _ _ _ _ _} {~ e3 _ _ _ _ _ _}'] },
+      bass: { preset: 'piano', play: ['c3 c3'] },
     },
   });
   const lower = score.parts[0].measures[0].voices.filter((v) => v.staff === 2);
@@ -2308,7 +2308,7 @@ check('keyboards get a grand staff, chords stay together', () => {
   assert.deepStrictEqual(part.clefs.map((c) => c.sign), ['G', 'F']);
   const staffOf = (midi: number) => part.measures[0].voices.find((v) => v.events.some((e) => e.notes.some((n) => n.midi === midi)))!.staff;
   assert.deepStrictEqual([48, 52, 55, 76, 79, 84, 60, 64, 67].map(staffOf), [2, 2, 2, 1, 1, 1, 1, 1, 1]);
-  assert.deepStrictEqual(scoreFromDoc({ sample: 'cello', play: ['c2 g2 c3 e3'] }).parts[0].clefs, [{ sign: 'F', line: 4 }]);
+  assert.deepStrictEqual(scoreFromDoc({ preset: 'cello', play: ['c2 g2 c3 e3'] }).parts[0].clefs, [{ sign: 'F', line: 4 }]);
 });
 check('a drum bar is unpitched on a percussion clef, with x heads for hats', () => {
   const score = scoreFromDoc({ kit: 'acoustic', play: ['[bd hh] hh [sd hh] hh'] });
@@ -2366,7 +2366,7 @@ check('the composer is written as the MusicXML creator, which the PDF prints top
   assert.ok(!encodeMusicXml(scoreFromDoc({ play: 'c d e f' })).includes('<creator'), 'no composer, no creator');
 });
 check('MusicXML: header, element order and backups', () => {
-  const xml = encodeMusicXml(scoreFromDoc({ sample: 'flute', play: ['[c5 {e4 f4 g4 a4}]: {b4 c5 d5} c5', 'c5 _ _ _', '_ d5 e5 f5'] }));
+  const xml = encodeMusicXml(scoreFromDoc({ preset: 'flute', play: ['[c5 {e4 f4 g4 a4}]: {b4 c5 d5} c5', 'c5 _ _ _', '_ d5 e5 f5'] }));
   assert.ok(xml.startsWith('<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<!DOCTYPE score-partwise'));
   assert.ok(xml.includes('<score-partwise version="4.0">'));
   assert.ok(/<backup>\s*<duration>10080<\/duration>/.test(xml), 'the second voice backs up a whole measure');
@@ -2423,13 +2423,13 @@ check('the MusicXML encoder is deterministic', () => {
   assert.strictEqual(a, b);
 });
 check('keyboard tracks with the same sample are one part on one grand staff', () => {
-  const score = scoreFromDoc({ tracks: { rh: { sample: 'piano', play: 'e5 d5 c5 b4' }, lh: { sample: 'piano', play: 'c3 g3 c3 g3' } } });
+  const score = scoreFromDoc({ tracks: { rh: { preset: 'piano', play: 'e5 d5 c5 b4' }, lh: { preset: 'piano', play: 'c3 g3 c3 g3' } } });
   assert.strictEqual(score.parts.length, 1);
   const part = score.parts[0];
   assert.deepStrictEqual([part.name, part.staves, part.tracks], ['Piano', 2, [0, 1]]);
   const staffOf = (midi: number) => part.measures[0].voices.find((v) => v.events.some((e) => e.notes.some((n) => n.midi === midi)))!.staff;
   assert.deepStrictEqual([76, 74, 72, 71, 48, 55].map(staffOf), [1, 1, 1, 1, 2, 2]);
-  const nested = scoreFromDoc({ tracks: { organ: { sample: 'organ', tracks: {
+  const nested = scoreFromDoc({ tracks: { organ: { preset: 'organ', tracks: {
     manual1: { play: 'c5 d5 e5 f5' }, manual2: { play: 'e4 f4 g4 a4' }, pedal: { play: 'c2 g2 c2 g2' },
   } } } });
   assert.deepStrictEqual(nested.parts.map((p) => [p.name, p.staves, p.tracks]), [['organ', 2, [0, 1]], ['pedal', 1, [2]]],
@@ -2442,18 +2442,18 @@ check('keyboard tracks with the same sample are one part on one grand staff', ()
 check('a keyboard part of several tracks is named for its instrument, and an electric piano prints as Piano', () => {
   const score = scoreFromDoc({
     tracks: {
-      rh: { sample: 'epiano', play: ['c5 c5 c5 c5'] },
-      tenor: { sample: 'epiano', play: ['e3 e3'] },
-      bass: { sample: 'epiano', play: ['c3 c3'] },
-      voice: { sample: 'pad', play: ['g5 _ _ _'] },
+      rh: { preset: 'epiano', play: ['c5 c5 c5 c5'] },
+      tenor: { preset: 'epiano', play: ['e3 e3'] },
+      bass: { preset: 'epiano', play: ['c3 c3'] },
+      voice: { preset: 'pad', play: ['g5 _ _ _'] },
     },
   });
   assert.deepStrictEqual(score.parts.map((p) => p.name), ['Piano', 'voice']);
-  assert.deepStrictEqual(scoreFromDoc({ sample: 'epiano', play: 'c d e f' }).parts[0].name, 'Piano');
-  assert.deepStrictEqual(scoreFromDoc({ tracks: { a: { sample: 'organ', play: 'c' }, b: { sample: 'organ', play: 'c3' } } }).parts[0].name, 'Organ');
+  assert.deepStrictEqual(scoreFromDoc({ preset: 'epiano', play: 'c d e f' }).parts[0].name, 'Piano');
+  assert.deepStrictEqual(scoreFromDoc({ tracks: { a: { preset: 'organ', play: 'c' }, b: { preset: 'organ', play: 'c3' } } }).parts[0].name, 'Organ');
 });
 check('a left hand above middle C stays on the lower staff, under a treble clef', () => {
-  const score = scoreFromDoc({ tracks: { rh: { sample: 'piano', play: 'c6 d6 e6 f6' }, lh: { sample: 'piano', play: 'e4 g4 c5 g4' } } });
+  const score = scoreFromDoc({ tracks: { rh: { preset: 'piano', play: 'c6 d6 e6 f6' }, lh: { preset: 'piano', play: 'e4 g4 c5 g4' } } });
   const part = score.parts[0];
   for (const v of part.measures[0].voices) {
     const midis = v.events.flatMap((e) => e.notes.map((n) => n.midi));
@@ -2463,8 +2463,8 @@ check('a left hand above middle C stays on the lower staff, under a treble clef'
 });
 check('a grand staff changes clef where a hand settles in another register', () => {
   const score = scoreFromDoc({ tracks: {
-    rh: { sample: 'piano', play: ['c5 d5 e5 f5', 'c5 d5 e5 f5', 'c5 d5 e5 f5', 'c5 d5 e5 f5'] },
-    lh: { sample: 'piano', play: ['c3 g3 c3 g3', 'e4 g4 c5 g4', 'e4 g4 c5 g4', 'c3 g3 c3 g3'] },
+    rh: { preset: 'piano', play: ['c5 d5 e5 f5', 'c5 d5 e5 f5', 'c5 d5 e5 f5', 'c5 d5 e5 f5'] },
+    lh: { preset: 'piano', play: ['c3 g3 c3 g3', 'e4 g4 c5 g4', 'e4 g4 c5 g4', 'c3 g3 c3 g3'] },
   } });
   const part = score.parts[0];
   assert.deepStrictEqual(part.clefs.map((c) => c.sign), ['G', 'F']);
@@ -2472,27 +2472,27 @@ check('a grand staff changes clef where a hand settles in another register', () 
   const xml = encodeMusicXml(score);
   assert.strictEqual((xml.match(/<clef number="2">/g) ?? []).length, 3, 'the opening clef and two changes');
   const blip = scoreFromDoc({ tracks: {
-    rh: { sample: 'piano', play: ['c5 d5 e5 f5', 'c5 d5 e5 f5', 'c5 d5 e5 f5'] },
-    lh: { sample: 'piano', play: ['c3 g3 c3 g3', 'e4 g4 c5 g4', 'c3 g3 c3 g3'] },
+    rh: { preset: 'piano', play: ['c5 d5 e5 f5', 'c5 d5 e5 f5', 'c5 d5 e5 f5'] },
+    lh: { preset: 'piano', play: ['c3 g3 c3 g3', 'e4 g4 c5 g4', 'c3 g3 c3 g3'] },
   } });
   assert.ok(blip.parts[0].measures.every((m) => !m.clefs), 'one high measure is not worth two clef changes');
 });
 check('two keyboard tracks striking together with equal lengths form one chord; a unison is one note', () => {
-  const score = scoreFromDoc({ tracks: { rh1: { sample: 'piano', play: 'e5 f5 g5 a5' }, rh2: { sample: 'piano', play: 'c5 d5 g5 f5' } } });
+  const score = scoreFromDoc({ tracks: { rh1: { preset: 'piano', play: 'e5 f5 g5 a5' }, rh2: { preset: 'piano', play: 'c5 d5 g5 f5' } } });
   const events = score.parts[0].measures[0].voices.filter((v) => v.staff === 1);
   assert.strictEqual(events.length, 1, 'one voice on the upper staff');
   assert.deepStrictEqual(events[0].events.map((e) => e.notes.map((n) => n.midi)), [[72, 76], [74, 77], [79], [77, 81]]);
   assert.strictEqual(scoreNotes(score).length, 7, 'the unison g5 is one note');
-  const held = scoreFromDoc({ tracks: { lh1: { sample: 'piano', play: '[f3 ab3] ~ ~ ~' }, lh2: { sample: 'piano', play: '[f3 ab3] _ _ ~' } } });
+  const held = scoreFromDoc({ tracks: { lh1: { preset: 'piano', play: '[f3 ab3] ~ ~ ~' }, lh2: { preset: 'piano', play: '[f3 ab3] _ _ ~' } } });
   assert.deepStrictEqual(scoreNotes(held).map((n) => [n.midi, (n.end - n.start) / held.divisions]), [[53, 3], [56, 3]],
     'the same key struck together by two tracks is one note, as long as the longest');
   assert.strictEqual(held.parts[0].measures[0].voices.filter((v) => v.staff === 2).length, 1);
 });
 check('a piano and a cello stay two parts; so do two different keyboards', () => {
-  const mixed = scoreFromDoc({ tracks: { rh: { sample: 'piano', play: 'c5 d5 e5 f5' }, cello: { sample: 'cello', play: 'c3 d3 e3 f3' }, lh: { sample: 'piano', play: 'c3 g3 c3 g3' } } });
+  const mixed = scoreFromDoc({ tracks: { rh: { preset: 'piano', play: 'c5 d5 e5 f5' }, cello: { preset: 'cello', play: 'c3 d3 e3 f3' }, lh: { preset: 'piano', play: 'c3 g3 c3 g3' } } });
   assert.deepStrictEqual(mixed.parts.map((p) => [p.name, p.tracks]), [['Piano', [0, 2]], ['cello', [1]]],
     'the piano sits where its first track does');
-  const keyboards = scoreFromDoc({ tracks: { a: { sample: 'piano', play: 'c5 d5 e5 f5' }, b: { sample: 'organ', play: 'c3 d3 e3 f3' } } });
+  const keyboards = scoreFromDoc({ tracks: { a: { preset: 'piano', play: 'c5 d5 e5 f5' }, b: { preset: 'organ', play: 'c3 d3 e3 f3' } } });
   assert.deepStrictEqual(keyboards.parts.map((p) => p.name), ['a', 'b']);
 });
 check('every bundled score: the model gives back the written timeline, and every voice fills its bar', () => {
@@ -2554,16 +2554,16 @@ check('dynamic: f names the word to write instead of turning into the key of F',
   assert.strictEqual(compileYaml('dynamic: forte\nplay: e').tracks[0].timeline[0].velocity, 96);
 });
 check('a flow mapping with a keyless entry is an error, not a vanished track', () => {
-  assert.throws(() => parseYaml('voice: { sample: choir, set: legato, cantabile }'), /set: \[legato, cantabile\]/);
-  assert.deepStrictEqual(parseYaml('voice: { sample: choir, set: [legato, cantabile] }'),
-    { voice: { sample: 'choir', set: ['legato', 'cantabile'] } });
+  assert.throws(() => parseYaml('voice: { preset: choir, set: legato, cantabile }'), /set: \[legato, cantabile\]/);
+  assert.deepStrictEqual(parseYaml('voice: { preset: choir, set: [legato, cantabile] }'),
+    { voice: { preset: 'choir', set: ['legato', 'cantabile'] } });
   assert.deepStrictEqual(parseYaml('- {c d}'), ['{c d}']);
 });
 check('a track that is not a mapping is an error', () => {
   assert.throws(() => compileYaml('tracks:\n  voice: choir\n  piano:\n    play: c'), /Track "voice" must be a mapping/);
 });
 check('unknown keys are errors, with a hint for a typo', () => {
-  assert.throws(() => compileYaml('tracks:\n  v:\n    sampel: choir\n    play: c'), /unknown key "sampel". Did you mean "sample"/);
+  assert.throws(() => compileYaml('tracks:\n  v:\n    presset: choir\n    play: c'), /unknown key "presset". Did you mean "preset"/);
   assert.throws(() => compileYaml('tempoo: 90\nplay: c'), /Did you mean "tempo"/);
   assert.throws(() => compileYaml('play:\n  - c\n  - dynamic: forte'), /write the word as its own line/);
   assert.throws(() => compileYaml('play:\n  - c\n  - scael: d major'), /Did you mean "scale"/);
@@ -2614,43 +2614,13 @@ check('wait: takes whole bars, and stays inside sections when a song has them', 
   assert.throws(() => compileYaml('tracks:\n  v:\n    wait: 2\nsections:\n  a:\n    v:\n      play: c'), /inside a section/);
 });
 
-console.log('\ninstrument: names the sound:');
-check('instrument: is sample: under its documented name', () => {
-  assert.strictEqual(compileYaml('instrument: cello\nplay: c').tracks[0].sample, 'cello');
-  assert.strictEqual(compileYaml('sample: cello\nplay: c').tracks[0].sample, 'cello');
-  assert.strictEqual(compileYaml('instrument: cello\ntracks:\n  a:\n    play: c').tracks[0].sample, 'cello');
-  assert.throws(() => compileYaml('instrument: cello\nsample: flute\nplay: c'), /same key/);
-  assert.throws(() => compileYaml('instrumnet: cello\nplay: c'), /Did you mean "instrument"/);
-});
-
-console.log('\nchord tokens:');
-check('a capital is a chord, voiced up from the root at the track octave', () => {
-  const names = (bar: string, props: TrackProps = {}) => parsePlay([bar], props).map((n) => n.pitch);
-  assert.deepStrictEqual(names('C', { octave: 3 }), ['C3', 'E3', 'G3']);
-  assert.deepStrictEqual(names('Dm7/C', { octave: 3 }), ['C3', 'D3', 'F3', 'A3', 'C4']);
-  assert.deepStrictEqual(names('G7/B', { octave: 3 }), ['B2', 'G3', 'B3', 'D4', 'F4']);
-  assert.deepStrictEqual(names('Bbmaj7'), ['A#4', 'D5', 'F5', 'A5']);
-  assert.deepStrictEqual(parsePlay(['C _ F G']).map((n) => n.time), [0, 0, 0, 2, 2, 2, 3, 3, 3]);
-  assert.strictEqual(parsePlay(['C _ _ _'])[0].duration, 4 * DEFAULT_GATE);
-});
-check('a chord line is a bar, so the song keeps its length', () => {
-  const song = compileYaml('octave: 3\nplay: |\n  C\n  Dm7/C\n  G7/B\n  C');
-  assert.strictEqual(song.lengthBeats, 16);
-  assert.deepStrictEqual(song.warnings, []);
-  assert.strictEqual(isDirectiveString('Dm7/C'), false);
-  assert.strictEqual(isDirectiveString('d dorian'), true);
-});
-check('written chords keep their letters for the score', () => {
-  const tl = compileDoc({ play: 'Bb Ebmaj7' }, { written: true }).tracks[0].timeline;
-  assert.deepStrictEqual(tl.slice(0, 3).map((n) => n.spelling), [
-    { letter: 'B', alter: -1 }, { letter: 'D', alter: 0 }, { letter: 'F', alter: 0 }]);
-  assert.deepStrictEqual(tl.slice(3).map((n) => n.spelling!.letter), ['E', 'G', 'B', 'D']);
-});
-check('capitals are never notes: A- and C4 warn and stay silent', () => {
-  const r = parsePlayFull(['e A- C4 g']);
-  assert.deepStrictEqual(r.timeline.map((n) => n.pitch), ['E4', 'G4']);
-  assert.strictEqual(r.warnings.length, 2);
-  assert.match(r.warnings[0], /note names are lowercase/);
+console.log('\npreset: names the sound:');
+check('preset: is the key, and the old names say so', () => {
+  assert.strictEqual(compileYaml('preset: cello\nplay: c').tracks[0].preset, 'cello');
+  assert.strictEqual(compileYaml('preset: cello\ntracks:\n  a:\n    play: c').tracks[0].preset, 'cello');
+  assert.throws(() => compileYaml('sample: cello\nplay: c'), /"sample:" is now "preset:"/);
+  assert.throws(() => compileYaml('instrument: cello\nplay: c'), /is now "preset:"/);
+  assert.throws(() => compileYaml('presst: cello\nplay: c'), /Did you mean "preset"/);
 });
 
 if (failed.length > 0) {

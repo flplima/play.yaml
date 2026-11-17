@@ -9,8 +9,8 @@ tempo text: Andante
 measure: 12/8
 
 tracks:
-  rh: { instrument: piano }
-  lh: { instrument: piano }
+  rh: { preset: piano }
+  lh: { preset: piano }
 
 sections:
   piece:
