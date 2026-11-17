@@ -32,6 +32,7 @@ import { encodeMp3, renderSong } from './render';
 import { renderScore, scoreXml } from './score';
 import { buildNoteSpans, NoteSpan } from './noteSpans';
 import { playingNoteExtension, setPlayingNotes } from './highlight';
+import { gruvboxEditorTheme } from './editorTheme';
 import { useMidi } from './useMidi';
 import { clearShareHash, decodeShareHash, encodeShareHash, isShareHash } from './share';
 import { usePersisted } from './storage';
@@ -523,7 +524,7 @@ export default function App() {
               value={text}
               onChange={handleEdit}
               onCreateEditor={(view) => (editorView.current = view)}
-              theme="dark"
+              theme={gruvboxEditorTheme}
               height="100%"
               style={{ height: '100%' }}
               extensions={[yaml(), playingNoteExtension]}

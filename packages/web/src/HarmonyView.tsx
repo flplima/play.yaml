@@ -14,6 +14,7 @@
  * never leaves a stale picture behind.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { GRUVBOX, QUALITY_COLORS, fgAlpha, trackColor, withAlpha } from './palette';
 import { DRUM_CHANNEL, type CompiledSong } from '@play.yaml/core';
 
 interface Props {
@@ -21,9 +22,6 @@ interface Props {
   /** Transport position, in beats. */
   currentBeat: number;
 }
-
-/** Same hues as the piano roll, so a track keeps its colour across tabs. */
-const TRACK_HUES = [265, 190, 42, 330, 150, 15, 220, 95];
 
 /** Beats a released note takes to fade out. */
 const FADE_BEATS = 0.5;
@@ -147,8 +145,6 @@ function nameChord(held: number[], bass: number): Chord | null {
   return null;
 }
 
-const QUALITY_HUE: Record<string, number> = { major: 42, minor: 220, dim: 330, aug: 150, sus: 95, other: 265 };
-
 /** Lattice coordinates → pitch class: +1 step right is a fifth, +1 up-right a major third. */
 const latticePc = (i: number, j: number) => (((7 * i + 4 * j) % 12) + 12) % 12;
 
@@ -185,7 +181,7 @@ export default function HarmonyView({ song, currentBeat }: Props) {
       ctx.clearRect(0, 0, w, h);
 
       if (!data.notes.length) {
-        ctx.fillStyle = 'rgba(255,255,255,0.28)';
+        ctx.fillStyle = fgAlpha(0.28);
         ctx.font = '13px "Paper Mono", ui-monospace, monospace';
         ctx.textAlign = 'center';
         ctx.fillText('Nothing to show yet. The score has no pitched notes.', w / 2, h / 2);
@@ -217,7 +213,7 @@ export default function HarmonyView({ song, currentBeat }: Props) {
   }, [data, currentBeat, fifths]);
 
   return (
-    <div ref={wrapRef} className="relative h-full w-full overflow-hidden bg-[#0b0c10]">
+    <div ref={wrapRef} className="relative h-full w-full overflow-hidden bg-stage">
       <canvas ref={canvasRef} className="block h-full w-full" />
       <button
         onClick={() => setFifths((f) => !f)}
@@ -241,7 +237,7 @@ function drawClock(ctx: CanvasRenderingContext2D, box: Box, now: Harmony, chord:
     return { x: cx + Math.cos(a) * R, y: cy + Math.sin(a) * R, a };
   };
 
-  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.strokeStyle = fgAlpha(0.08);
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.arc(cx, cy, R, 0, Math.PI * 2);
@@ -252,7 +248,7 @@ function drawClock(ctx: CanvasRenderingContext2D, box: Box, now: Harmony, chord:
   if (lit.length >= 2) {
     const ordered = lit.sort((x, y) => pos(x).a - pos(y).a);
     const peak = Math.max(...ordered.map((p) => now.pcs[p]!.alpha));
-    const hue = QUALITY_HUE[chord?.quality ?? 'other'];
+    const color = QUALITY_COLORS[chord?.quality ?? 'other'] ?? QUALITY_COLORS.other;
     ctx.beginPath();
     ordered.forEach((p, i) => {
       const { x, y } = pos(p);
@@ -260,9 +256,9 @@ function drawClock(ctx: CanvasRenderingContext2D, box: Box, now: Harmony, chord:
       else ctx.lineTo(x, y);
     });
     ctx.closePath();
-    ctx.fillStyle = `hsl(${hue} 70% 55% / ${0.22 * peak})`;
+    ctx.fillStyle = withAlpha(color, 0.22 * peak);
     ctx.fill();
-    ctx.strokeStyle = `hsl(${hue} 80% 70% / ${0.85 * peak})`;
+    ctx.strokeStyle = withAlpha(color, 0.85 * peak);
     ctx.lineWidth = 2;
     ctx.stroke();
   }
@@ -274,13 +270,13 @@ function drawClock(ctx: CanvasRenderingContext2D, box: Box, now: Harmony, chord:
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
     if (st) {
-      const hue = TRACK_HUES[st.track % TRACK_HUES.length];
-      ctx.fillStyle = `hsl(${hue} 75% ${35 + 33 * st.alpha}% / ${0.35 + 0.65 * st.alpha})`;
+      const color = trackColor(st.track);
+      ctx.fillStyle = withAlpha(color, 0.35 + 0.65 * st.alpha);
     } else {
-      ctx.fillStyle = 'rgba(255,255,255,0.1)';
+      ctx.fillStyle = fgAlpha(0.1);
     }
     ctx.fill();
-    ctx.fillStyle = st ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.4)';
+    ctx.fillStyle = st ? fgAlpha(0.95) : fgAlpha(0.4);
     ctx.font = '11px "Paper Mono", ui-monospace, monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -296,7 +292,7 @@ function drawClock(ctx: CanvasRenderingContext2D, box: Box, now: Harmony, chord:
     const label = chord
       ? SHARP_NAMES[chord.root] + chord.suffix
       : now.held.map((p) => SHARP_NAMES[p]).join(' ');
-    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.fillStyle = fgAlpha(0.92);
     ctx.font = `600 ${chord ? Math.max(16, R * 0.28) : Math.max(12, R * 0.14)}px "Paper Mono", ui-monospace, monospace`;
     ctx.fillText(label, cx, cy);
   }
@@ -354,7 +350,7 @@ function drawTonnetz(
   });
 
   // Faint lattice edges.
-  ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+  ctx.strokeStyle = fgAlpha(0.07);
   ctx.lineWidth = 1;
   const key = (i: number, j: number) => `${i},${j}`;
   const have = new Set(nodes.map((n) => key(n.i, n.j)));
@@ -373,20 +369,20 @@ function drawTonnetz(
   placed.forEach(({ t, best }, idx) => {
     if (!best) return;
     const fresh = (idx + 1) / placed.length;
-    const hue = t.minor ? QUALITY_HUE.minor : QUALITY_HUE.major;
+    const color = t.minor ? QUALITY_COLORS.minor : QUALITY_COLORS.major;
     ctx.beginPath();
     best.pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
     ctx.closePath();
-    ctx.fillStyle = `hsl(${hue} 70% 55% / ${idx === placed.length - 1 && t.age === 0 ? 0.5 : 0.1 + 0.15 * fresh})`;
+    ctx.fillStyle = withAlpha(color, idx === placed.length - 1 && t.age === 0 ? 0.5 : 0.1 + 0.15 * fresh);
     ctx.fill();
-    ctx.strokeStyle = `hsl(${hue} 80% 70% / ${0.25 + 0.5 * fresh})`;
+    ctx.strokeStyle = withAlpha(color, 0.25 + 0.5 * fresh);
     ctx.lineWidth = 1.5;
     ctx.stroke();
   });
   // A line through the triangle centres shows the path taken.
   const centres = placed.filter((p) => p.best).map((p) => ({ x: p.best!.gx, y: p.best!.gy }));
   if (centres.length > 1) {
-    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.strokeStyle = fgAlpha(0.35);
     ctx.lineWidth = 1.5;
     ctx.setLineDash([4, 4]);
     ctx.beginPath();
@@ -395,7 +391,7 @@ function drawTonnetz(
     ctx.setLineDash([]);
   }
 
-  // Nodes: lit ones carry the track hue and fade with the note.
+  // Nodes: lit ones carry the track colour and fade with the note.
   ctx.font = '11px "Paper Mono", ui-monospace, monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -404,13 +400,13 @@ function drawTonnetz(
     ctx.beginPath();
     ctx.arc(n.x, n.y, st ? 11 + 3 * st.alpha : 9, 0, Math.PI * 2);
     if (st) {
-      const hue = TRACK_HUES[st.track % TRACK_HUES.length];
-      ctx.fillStyle = `hsl(${hue} 75% ${35 + 33 * st.alpha}% / ${0.3 + 0.7 * st.alpha})`;
+      const color = trackColor(st.track);
+      ctx.fillStyle = withAlpha(color, 0.3 + 0.7 * st.alpha);
     } else {
-      ctx.fillStyle = 'rgba(255,255,255,0.07)';
+      ctx.fillStyle = fgAlpha(0.07);
     }
     ctx.fill();
-    ctx.fillStyle = st ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.38)';
+    ctx.fillStyle = st ? GRUVBOX.bg0H : fgAlpha(0.38);
     ctx.fillText(SHARP_NAMES[n.pc], n.x, n.y);
   }
 }

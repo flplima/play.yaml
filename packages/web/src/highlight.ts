@@ -34,16 +34,16 @@ const playingNoteField = StateField.define<DecorationSet>({
   provide: (field) => EditorView.decorations.from(field),
 });
 
-// The studio's accent, from index.css, so a theme change reaches the editor too.
+// Gruvbox yellow (note) and orange (the exact sub-note), from index.css.
 const playingNoteTheme = EditorView.baseTheme({
   '.cm-playing-note': {
-    backgroundColor: 'color-mix(in oklch, var(--primary) 25%, transparent)',
-    outline: '1px solid color-mix(in oklch, var(--primary) 50%, transparent)',
+    backgroundColor: 'color-mix(in srgb, var(--gb-yellow) 22%, transparent)',
+    outline: '1px solid color-mix(in srgb, var(--gb-yellow) 50%, transparent)',
     borderRadius: '3px',
   },
   '.cm-playing-subnote': {
-    backgroundColor: 'color-mix(in oklch, var(--primary) 60%, transparent)',
-    outline: '1px solid color-mix(in oklch, var(--primary) 90%, transparent)',
+    backgroundColor: 'color-mix(in srgb, var(--gb-orange) 55%, transparent)',
+    outline: '1px solid color-mix(in srgb, var(--gb-orange) 90%, transparent)',
     borderRadius: '3px',
   },
 });
