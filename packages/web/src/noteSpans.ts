@@ -55,9 +55,10 @@ export function buildNoteSpans(text: string): NoteSpan[] {
   const spans: NoteSpan[] = [];
   let cursor = 0;
 
-  const walk = (node: TrackNode, inheritedMeasure: string | number | undefined) => {
+  const walk = (node: TrackNode, inheritedMeasure: string | number | undefined, waited = 0) => {
     if (!node || typeof node !== 'object') return;
     const measure = node.measure ?? inheritedMeasure;
+    const wait = waited + (typeof node.wait === 'number' ? node.wait : 0);
 
     if (node.play != null) {
       let measureBeats: number;
@@ -78,7 +79,7 @@ export function buildNoteSpans(text: string): NoteSpan[] {
         const slots = divideByWeight(tokens.map((t) => t.text), measureBeats);
         tokens.forEach((tok, i) => {
           if (isRestToken(tok.text)) return;
-          const startBeat = mi * measureBeats + slots[i].offset;
+          const startBeat = (wait + mi) * measureBeats + slots[i].offset;
           const endBeat = startBeat + slots[i].span;
           spans.push({ from: idx + tok.from, to: idx + tok.to, startBeat, endBeat, kind: 'beat' });
           emitGroupSpans(tok.text, idx + tok.from, startBeat, endBeat, spans);
@@ -87,7 +88,7 @@ export function buildNoteSpans(text: string): NoteSpan[] {
     }
 
     if (node.tracks && typeof node.tracks === 'object') {
-      for (const child of Object.values(node.tracks)) walk(child, measure);
+      for (const child of Object.values(node.tracks)) walk(child, measure, wait);
     }
   };
 

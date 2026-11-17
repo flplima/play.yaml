@@ -2582,6 +2582,38 @@ check('sharps stay sharps: c# 4# and fences are not comments', () => {
   assert.deepStrictEqual(parsePlay(['dolce  # soft']).length, 0);
 });
 
+console.log('\nwait: on a plain track:');
+check('a track waits whole bars before it plays, and a child adds its own wait', () => {
+  const song = compileYaml([
+    'tracks:',
+    '  voice:',
+    '    wait: 4',
+    '    play: |',
+    '      pianissimo',
+    '      e',
+    '  piano:',
+    '    play: c',
+    '  strings:',
+    '    wait: 1',
+    '    tracks:',
+    '      viola:',
+    '        wait: 1',
+    '        play:',
+    '          - g',
+    '          - 3: a',
+  ].join('\n'));
+  const at = (name: string) => song.tracks.find((t) => t.name === name)!.timeline.map((n) => [n.time, n.pitch]);
+  assert.deepStrictEqual(at('voice'), [[16, 'E4']]);
+  assert.strictEqual(song.tracks.find((t) => t.name === 'voice')!.timeline[0].velocity, 32);
+  assert.deepStrictEqual(at('piano'), [[0, 'C4']]);
+  assert.deepStrictEqual(at('viola'), [[8, 'G4'], [16, 'A4']]);
+  assert.strictEqual(song.lengthBeats, 20);
+});
+check('wait: takes whole bars, and stays inside sections when a song has them', () => {
+  assert.throws(() => compileYaml('wait: 1.5\nplay: c'), /whole number of bars/);
+  assert.throws(() => compileYaml('tracks:\n  v:\n    wait: 2\nsections:\n  a:\n    v:\n      play: c'), /inside a section/);
+});
+
 if (failed.length > 0) {
   console.error(`\n${passed} passed, ${failed.length} FAILED:\n  ${failed.join('\n  ')}`);
   process.exit(1);

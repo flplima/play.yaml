@@ -60,6 +60,26 @@ Tokens nest recursively — `{c {d e}}` splits the second half of the slot again
 
 A track may declare child `tracks` (a named mapping). Children **inherit every property from their parent except `play`**, and can override any of them. Inheritable properties: `tempo`, `measure`, `sample`, `scale`, `octave`, `channel`, `program`, `velocity`.
 
+A track that comes in late says so with `wait:`, in bars, instead of counting rests. A child adds its wait to its parent's, so a group of tracks can enter together:
+
+```yaml
+tracks:
+  voice:
+    sample: choir
+    wait: 4                      # the piano plays four bars alone
+    play: |
+      e
+      f
+  piano:
+    play: |
+      c
+      d
+      e
+      g
+      c
+      d
+```
+
 A key the compiler does not know is an error, with a hint when it looks like a typo (`sampel:` asks "did you mean sample?"). A track written as a one-line mapping takes lists in brackets: `voice: { sample: choir, set: [legato, cantabile] }`.
 
 ```yaml

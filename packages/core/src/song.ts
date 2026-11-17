@@ -271,6 +271,11 @@ export type PlayInput =
 
 export interface TrackNode extends TrackProps {
   title?: string; // meaningful at the root
+  /**
+   * Bars of silence before this track's music starts. A child adds its own
+   * wait to its parent's, so a group of tracks can enter together.
+   */
+  wait?: number;
   set?: string | string[]; // shorthand prop patch, applied after own props
   play?: PlayInput;
   tracks?: Record<string, TrackNode>;
@@ -1355,7 +1360,15 @@ export function expandSections(doc: SongDoc): { doc: SongDoc; loopStartBar: numb
   if (doc.play != null) {
     throw new Error('Use either a top-level "play:" or "sections:", not both.');
   }
+  if (doc.wait != null) {
+    throw new Error('With "sections:", "wait:" goes on a section or on a track inside one.');
+  }
   for (const [name, node] of Object.entries(doc.tracks ?? {})) {
+    if (node && typeof node === 'object' && node.wait != null) {
+      throw new Error(
+        `With "sections:", the top-level track "${name}" can't wait — put "wait:" on its part inside a section.`,
+      );
+    }
     if (node && typeof node === 'object' && (node.play != null || node.tracks)) {
       throw new Error(
         `With "sections:", the top-level track "${name}" declares the instrument only ` +
@@ -1498,7 +1511,7 @@ const _everyPropInherits: Exclude<keyof TrackProps, (typeof INHERITED)[number]> 
 void _everyPropInherits;
 
 /** Keys a track may hold besides the inherited props. */
-const TRACK_KEYS = new Set<string>([...INHERITED, 'title', 'set', 'play', 'tracks']);
+const TRACK_KEYS = new Set<string>([...INHERITED, 'title', 'wait', 'set', 'play', 'tracks']);
 /** Keys only the root may hold: the printed header and the song form. */
 const ROOT_KEYS = new Set<string>(['composer', 'key', 'tempo text', 'metronome marks', 'sections']);
 
@@ -1635,6 +1648,37 @@ function effectiveProps(
   return { props, opening };
 }
 
+/** Bars of `wait:` as a whole number, or an error naming the track. */
+function waitBars(value: unknown, where: string): number {
+  if (value == null) return 0;
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+    throw new Error(`${where}: "wait:" takes a whole number of bars, not ${JSON.stringify(value)}.`);
+  }
+  return value;
+}
+
+/**
+ * A play value that starts `bars` later: an empty numbered bar moves the
+ * cursor to the entry, and the play's own numbered bars move with it.
+ */
+export function delayPlay(play: PlayInput, bars: number): PlayInput {
+  if (bars <= 0) return play;
+  const items = Array.isArray(play) ? play : String(play).split('\n');
+  const out: Exclude<PlayInput, string> = [{ [bars + 1]: '' }];
+  for (const item of items) {
+    if (item && typeof item === 'object' && Object.keys(item).some((k) => /^\d+$/.test(k))) {
+      const shifted: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(item)) {
+        shifted[/^\d+$/.test(key) ? String(parseInt(key, 10) + bars) : key] = value;
+      }
+      out.push(shifted as PlayDirective);
+    } else {
+      out.push(item);
+    }
+  }
+  return out;
+}
+
 /**
  * Compile a document (which is itself a track) into flat per-track timelines.
  */
@@ -1663,13 +1707,14 @@ export function compileDoc(doc: SongDoc, options: CompileOptions = {}): Compiled
   let lengthBeats = 0;
   let nextChannel = 1;
 
-  const walk = (node: TrackNode, name: string, inherited: TrackProps, parent?: string) => {
+  const walk = (node: TrackNode, name: string, inherited: TrackProps, parent?: string, waited = 0) => {
     if (node !== doc) checkTrackKeys(node, `track "${name}"`, false);
     const { props, opening } = node === doc ? root : effectiveProps(node, inherited, `track "${name}"`);
+    const wait = waited + waitBars(node.wait, node === doc ? 'score' : `track "${name}"`);
 
     if (node.play != null) {
       const { timeline, controls, tempos, lengthBeats: trackBeats, warnings: trackWarnings, bars } =
-        parsePlayFull(node.play, props, opening, options);
+        parsePlayFull(delayPlay(node.play, wait), props, opening, options);
       for (const w of trackWarnings) {
         const tagged = `${name}: ${w}`;
         if (!warnings.includes(tagged)) warnings.push(tagged);
@@ -1705,7 +1750,7 @@ export function compileDoc(doc: SongDoc, options: CompileOptions = {}): Compiled
             `Track "${childName}" must be a mapping (sample:, play:…), not ${JSON.stringify(child)}.`,
           );
         }
-        walk(child, childName, props, node === doc ? undefined : name);
+        walk(child, childName, props, node === doc ? undefined : name, wait);
       }
     }
   };
