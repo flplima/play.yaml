@@ -287,6 +287,12 @@ function writeEvent(w: Writer, part: Part, voice: NotationVoice, event: Notation
       }
       w.close('notations');
     }
+    if (i === 0 && note && event.lyric) {
+      w.open('lyric', ' number="1"');
+      w.leaf('syllabic', event.lyric.syllabic);
+      w.leaf('text', event.lyric.text);
+      w.close('lyric');
+    }
     w.close('note');
   });
 }

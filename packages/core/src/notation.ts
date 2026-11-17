@@ -33,7 +33,7 @@
  *    through beat 3 (the half bar), in 6/8 notes group by dotted quarters.
  */
 
-import { BarInfo, CompiledSong, CompiledTrack, MetronomeMarks, SongDoc, TempoEvent, compileDoc } from './song';
+import { BarInfo, CompiledSong, CompiledTrack, MetronomeMarks, SongDoc, Syllabic, TempoEvent, compileDoc } from './song';
 import { NOTATE_TICKS, NotateNote, separateVoices } from './notate';
 import { SCALES, parseScale } from './theory';
 import { drumName } from './vocabulary';
@@ -121,6 +121,8 @@ export interface NotationEvent {
   tuplet?: TupletMark;
   /** Tremolo strokes for a drum roll (`sd~` = 3). */
   tremolo?: number;
+  /** The syllable sung on this note, from the track's `lyrics:`. */
+  lyric?: { text: string; syllabic: Syllabic };
   /**
    * Beams through this note or chord: `[0]` is the eighth beam, `[1]` the
    * 16th, and so on. Absent on rests, unbeamed notes and lone flags.
@@ -1180,6 +1182,22 @@ function scoreFromWritten(song: CompiledSong, doc: SongDoc): Score {
       ? (tracks[0] === rootTrack ? instrumentName(tracks[0].preset) : tracks[0].name)
       : parents.size === 1 && tracks[0].parent !== undefined ? tracks[0].parent : instrumentName(tracks[0].preset);
     return buildPart(tracks, indices, index, name, env);
+  });
+
+  // ── Lyrics ── on the note that starts where the syllable is sung.
+  parts.forEach((part) => {
+    for (const index of part.tracks) {
+      for (const lyric of song.tracks[index].lyrics ?? []) {
+        const at = tick(lyric.time);
+        const mi = measureAt(at);
+        const offset = at - measures[mi].start;
+        const event = part.measures[mi]?.voices
+          .flatMap((v) => v.events)
+          .find((e) => e.kind === 'note' && !e.tieStop && e.offset === offset && !e.lyric);
+        if (event) event.lyric = { text: lyric.text, syllabic: lyric.syllabic };
+        else warn(`${song.tracks[index].name}: bar ${mi + 1}: no note for the syllable "${lyric.text}"`);
+      }
+    }
   });
 
   const composer: unknown = doc?.composer;

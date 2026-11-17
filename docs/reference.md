@@ -92,6 +92,25 @@ tracks:
       d
 ```
 
+`lyrics:` puts words under a track's notes, one syllable per struck note, in order. A trailing `-` joins a syllable to the next one, and `_` lets a note pass with no new syllable (a melisma). Line breaks and `#` comments are free. The words go into the `.mid` as lyric events and print under the staff in the PDF and the Score tab:
+
+```yaml
+tracks:
+  voice:
+    preset: choir
+    octave: 5
+    lyrics: |
+      A- ve
+      Ma- ri- a
+    play: |
+      e
+      f
+      g _ _ d
+      e _ _ ~
+```
+
+Only commit words that are free to share, the same as the music (see CONTRIBUTING.md).
+
 A key the compiler does not know is an error, with a hint when it looks like a typo (`presst:` asks "did you mean preset?"). A track written as a one-line mapping takes lists in brackets: `voice: { preset: choir, set: [legato, cantabile] }`.
 
 ```yaml

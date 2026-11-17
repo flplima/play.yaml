@@ -101,6 +101,12 @@ function trackEvents(track: CompiledTrack, tpqn: number): MidiInternalEvent[] {
       data: [0xb0 | channel, control.cc & 0x7f, control.value & 0x7f],
     });
   }
+  // Lyric meta events, the karaoke convention: a syllable joined to the
+  // next ends in "-", and a word's last syllable is followed by a space.
+  for (const lyric of track.lyrics ?? []) {
+    const joined = lyric.syllabic === 'begin' || lyric.syllabic === 'middle';
+    events.push({ tick: Math.round(lyric.time * tpqn), order: 0, data: textMeta(0x05, joined ? `${lyric.text}-` : `${lyric.text} `) });
+  }
   for (const note of track.timeline) {
     const onTick = Math.round(note.time * tpqn);
     const offTick = Math.round((note.time + note.duration) * tpqn);

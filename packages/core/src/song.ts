@@ -276,6 +276,12 @@ export interface TrackNode extends TrackProps {
    * wait to its parent's, so a group of tracks can enter together.
    */
   wait?: number;
+  /**
+   * The words, one syllable per struck note in order: `A- ve Ma- ri- a`.
+   * A trailing `-` joins a syllable to the next one; `_` lets a note pass
+   * with no new syllable (a melisma). Line breaks are free.
+   */
+  lyrics?: string;
   set?: string | string[]; // shorthand prop patch, applied after own props
   play?: PlayInput;
   tracks?: Record<string, TrackNode>;
@@ -386,6 +392,18 @@ export interface CompiledTrack {
    * Notation names a merged keyboard part after it.
    */
   parent?: string;
+  /** The words under the notes, from `lyrics:`, one syllable per struck note. */
+  lyrics?: Lyric[];
+}
+
+/** How a syllable sits in its word, in MusicXML's terms. */
+export type Syllabic = 'single' | 'begin' | 'middle' | 'end';
+
+export interface Lyric {
+  /** The beat of the note it is sung on. */
+  time: number;
+  text: string;
+  syllabic: Syllabic;
 }
 
 export interface CompiledSong {
@@ -1524,7 +1542,7 @@ const _everyPropInherits: Exclude<keyof TrackProps, (typeof INHERITED)[number]> 
 void _everyPropInherits;
 
 /** Keys a track may hold besides the inherited props. */
-const TRACK_KEYS = new Set<string>([...INHERITED, 'title', 'wait', 'set', 'play', 'tracks']);
+const TRACK_KEYS = new Set<string>([...INHERITED, 'title', 'wait', 'lyrics', 'set', 'play', 'tracks']);
 /** Keys only the root may hold: the printed header and the song form. */
 const ROOT_KEYS = new Set<string>(['composer', 'key', 'tempo text', 'metronome marks', 'sections']);
 
@@ -1664,6 +1682,31 @@ function effectiveProps(
   return { props, opening };
 }
 
+/**
+ * Lay `lyrics:` on a track's note onsets, in order. Returns the lyrics and
+ * how many syllables found no note.
+ */
+export function placeLyrics(text: string, onsets: number[]): { lyrics: Lyric[]; extra: number } {
+  const words = String(text).split('\n').map(stripComment).join(' ').split(/\s+/).filter(Boolean);
+  const lyrics: Lyric[] = [];
+  let inWord = false;
+  let i = 0;
+  let extra = 0;
+  for (const word of words) {
+    if (i >= onsets.length) {
+      if (word !== '_') extra++;
+      continue;
+    }
+    const time = onsets[i++];
+    if (word === '_') continue; // the syllable before carries on over this note
+    const continues = word.length > 1 && word.endsWith('-');
+    const syllabic: Syllabic = continues ? (inWord ? 'middle' : 'begin') : inWord ? 'end' : 'single';
+    lyrics.push({ time, text: continues ? word.slice(0, -1) : word, syllabic });
+    inWord = continues;
+  }
+  return { lyrics, extra };
+}
+
 /** Bars of `wait:` as a whole number, or an error naming the track. */
 function waitBars(value: unknown, where: string): number {
   if (value == null) return 0;
@@ -1727,6 +1770,9 @@ export function compileDoc(doc: SongDoc, options: CompileOptions = {}): Compiled
     if (node !== doc) checkTrackKeys(node, `track "${name}"`, false);
     const { props, opening } = node === doc ? root : effectiveProps(node, inherited, `track "${name}"`);
     const wait = waited + waitBars(node.wait, node === doc ? 'score' : `track "${name}"`);
+    if (node.lyrics != null && node.play == null) {
+      throw new Error(`${node === doc ? 'score' : `track "${name}"`}: "lyrics:" needs a "play:" to sit under.`);
+    }
 
     if (node.play != null) {
       const { timeline, controls, tempos, lengthBeats: trackBeats, warnings: trackWarnings, bars } =
@@ -1755,6 +1801,16 @@ export function compileDoc(doc: SongDoc, options: CompileOptions = {}): Compiled
         controls: [...opening, ...controls],
       });
       if (bars) tracks[tracks.length - 1].bars = bars;
+      if (node.lyrics != null) {
+        // Syllables sit on written onsets: a performance's rubato, strum and
+        // humanize must not decide which note a word belongs to.
+        const writtenLine = options.written ? timeline
+          : parsePlayFull(delayPlay(node.play, wait), props, opening, { ...options, written: true }).timeline;
+        const onsets = [...new Set(writtenLine.map((e) => e.time))].sort((a, b) => a - b);
+        const { lyrics, extra } = placeLyrics(String(node.lyrics), onsets);
+        tracks[tracks.length - 1].lyrics = lyrics;
+        if (extra) warnings.push(`${name}: lyrics: ${extra} syllable${extra > 1 ? 's' : ''} past the last note`);
+      }
       if (bars && parent !== undefined) tracks[tracks.length - 1].parent = parent;
     }
 

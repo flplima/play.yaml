@@ -2623,6 +2623,38 @@ check('preset: is the key, and the old names say so', () => {
   assert.throws(() => compileYaml('presst: cello\nplay: c'), /Did you mean "preset"/);
 });
 
+console.log('\nlyrics:');
+check('one syllable per struck note; - joins a word, _ holds a syllable over a note', () => {
+  const song = compileYaml([
+    'octave: 5',
+    'lyrics: |',
+    '  A- ve   # the first word',
+    '  Ma- ri- _ a',
+    'play: |',
+    '  e',
+    '  f',
+    '  g _ {_ a} {b c6}',
+  ].join('\n'));
+  assert.deepStrictEqual(song.tracks[0].lyrics, [
+    { time: 0, text: 'A', syllabic: 'begin' },
+    { time: 4, text: 've', syllabic: 'end' },
+    { time: 8, text: 'Ma', syllabic: 'begin' },
+    { time: 10.5, text: 'ri', syllabic: 'middle' },
+    { time: 11.5, text: 'a', syllabic: 'end' },
+  ]);
+  assert.deepStrictEqual(song.warnings, []);
+  assert.deepStrictEqual(compileYaml('lyrics: la la la\nplay: c d').warnings, ['main: lyrics: 1 syllable past the last note']);
+  assert.throws(() => compileYaml('lyrics: la\ntracks:\n  a:\n    play: c'), /needs a "play:"/);
+});
+check('lyrics go into the .mid as lyric events and print under the staff', () => {
+  const doc = parseYaml('lyrics: A- ve Ma- ri- a\nplay: |\n  e f g _\n  d _ ~ e');
+  const midi = Buffer.from(encodeMidi(compileDoc(doc)));
+  assert.ok(midi.includes(Buffer.from([0xff, 0x05, 2, 0x41, 0x2d])), 'A- as a lyric meta event');
+  const xml = encodeMusicXml(scoreFromDoc(doc));
+  const sung = [...xml.matchAll(/<syllabic>(\w+)<\/syllabic>\s*<text>([^<]*)<\/text>/g)].map((m) => `${m[2]}:${m[1]}`);
+  assert.deepStrictEqual(sung, ['A:begin', 've:end', 'Ma:begin', 'ri:middle', 'a:end']);
+});
+
 if (failed.length > 0) {
   console.error(`\n${passed} passed, ${failed.length} FAILED:\n  ${failed.join('\n  ')}`);
   process.exit(1);
