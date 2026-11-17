@@ -107,6 +107,12 @@
     "lengthBeats": 324,
     "sha256": "508bfc53038a6bdb52a73b1372d41a35a9c1a088710ac09c5c7e0753054f0e2c"
   },
+  "songs/joplin-the-entertainer/joplin-the-entertainer.play.yaml": {
+    "tracks": 4,
+    "notes": 2621,
+    "lengthBeats": 304,
+    "sha256": "372c12d21207c694fb72c912981d8cc7fd98b530ecd661171b479d4bba229252"
+  },
   "songs/tico-tico-no-fuba/tico-tico-no-fuba.play.yaml": {
     "tracks": 3,
     "notes": 780,
