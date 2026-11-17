@@ -18,7 +18,9 @@ import { notateMeasures, separateVoices } from './src/notate';
 import { parseYaml } from './src/yaml';
 import { tempoSegments, beatsToSeconds, secondsToBeats, TempoSegment } from './src/time';
 import { panicMessages } from './src/midiPanic';
-import { DEFAULT_CONTROLS, DEFAULT_GATE, controlValue } from './src/vocabulary';
+import { DEFAULT_CONTROLS, DEFAULT_GATE, PRESET_PROGRAMS, controlValue, presetProgram } from './src/vocabulary';
+import { VPO_ALIASES, VPO_INSTRUMENTS } from './src/vpoCatalogue';
+import { SYNTH_PRESETS } from './src/synth';
 import { NotationEvent, Score, handOf, keyFromScale, scoreFromDoc, scoreNotes } from './src/notation';
 import { encodeMusicXml } from './src/musicxml';
 
@@ -1847,6 +1849,25 @@ check('every example matches its golden digest', () => {
     golden,
     'compiled examples drifted from examples.golden.json — if intentional, rerun with UPDATE_GOLDEN=1',
   );
+});
+
+console.log('\npreset → General MIDI program:');
+
+check('every preset name resolves to a GM program, and only keyboards are piano', () => {
+  const names = new Set([...Object.keys(VPO_INSTRUMENTS), ...Object.keys(VPO_ALIASES), ...Object.keys(SYNTH_PRESETS)]);
+  const keyboards = new Set(['piano', 'synth_piano']);
+  for (const name of names) {
+    const program = presetProgram(name);
+    assert.notStrictEqual(program, undefined, `${name} has no GM program`);
+    if (!keyboards.has(name)) assert.notStrictEqual(program, 0, `${name} exports as piano`);
+  }
+  assert.strictEqual(presetProgram('2nd-violins'), PRESET_PROGRAMS.violins);
+  assert.strictEqual(presetProgram('French Horn'), 60);
+});
+
+check('a 2nd-violins track exports program 40', () => {
+  const song = compileDoc({ preset: '2nd-violins', play: 'c d e f' });
+  assert.strictEqual(song.tracks[0].program, 40);
 });
 
 console.log('\nfidelity (decodeMidi / compareMidi):');

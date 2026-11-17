@@ -12,7 +12,7 @@ import { loudness } from './bus';
 
 export type InstrumentPreset = 'piano' | 'epiano' | 'strings' | 'flute' | 'bass' | 'lead';
 
-const SYNTH_PRESETS: Record<string, InstrumentPreset> = {
+export const SYNTH_PRESETS: Record<string, InstrumentPreset> = {
   piano: 'piano',
   epiano: 'epiano',
   keys: 'epiano',
