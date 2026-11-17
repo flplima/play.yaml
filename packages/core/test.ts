@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import {
-  compileDoc, parsePlayFull, TimelineEvent, TrackProps, PlayInput, DEFAULT_TEMPO, DEFAULT_SAMPLE,
+  compileDoc, parsePlayFull, SongDoc, TimelineEvent, TrackProps, PlayInput, DEFAULT_TEMPO, DEFAULT_SAMPLE,
   DEFAULT_VELOCITY,
 } from './src/song';
 import { parseSet } from './src/set';
@@ -2322,6 +2322,23 @@ check('tempo marks: the opening tempo and each change', () => {
   assert.deepStrictEqual(score.measures.map((m) => m.tempos.map((t) => [t.beatUnit, t.dotted, t.perMinute, t.bpm])), [
     [['quarter', true, 80, 120]], [['quarter', true, 60, 90]],
   ]);
+});
+check('tempo text: prints over bar 1; metronome marks: says which marks print', () => {
+  const play = ['c d e f', { set: 'tempo 60 over 1' }, 'c d e f', { tempo: 90 }, 'c d e f'];
+  const marks = (score: Score) => score.measures.map((m) => m.tempos.map((t) =>
+    `${t.text ? `${t.text} ` : ''}${t.words ?? (t.hideMetronome ? '-' : t.perMinute)}`));
+  const all = scoreFromDoc({ tempo: 80, 'tempo text': 'Andante semplice', play });
+  assert.deepStrictEqual(marks(all), [['Andante semplice 80'], ['rit.'], ['90']], 'by default every change prints');
+  const opening = scoreFromDoc({ tempo: 80, 'metronome marks': 'opening', play });
+  assert.deepStrictEqual(marks(opening), [['80'], [], []]);
+  const none = scoreFromDoc({ tempo: 80, 'tempo text': 'Molto adagio', 'metronome marks': 'none', play });
+  assert.deepStrictEqual(marks(none), [['Molto adagio -'], [], []]);
+  const xml = encodeMusicXml(none);
+  assert.ok(/<words font-weight="bold">Molto adagio<\/words>/.test(xml) && !xml.includes('<metronome>'), 'the words alone');
+  assert.ok(xml.includes('<sound tempo="80"/>'), 'still carrying the tempo for playback');
+  assert.ok(/<words font-weight="bold">Andante semplice<\/words>\s*<\/direction-type>\s*<direction-type>\s*<metronome>/
+    .test(encodeMusicXml(all)), 'words before the metronome mark');
+  assert.throws(() => scoreFromDoc({ 'metronome marks': 'some', play: 'c' } as unknown as SongDoc), /not one of all, opening, none/);
 });
 check('MusicXML escapes the title and parts', () => {
   const xml = encodeMusicXml(scoreFromDoc({ title: 'Tom & Jerry <live>', tracks: { 'a"b': { play: 'c d e f' } } }));

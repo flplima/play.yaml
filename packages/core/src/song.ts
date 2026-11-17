@@ -302,7 +302,28 @@ export type SectionNode =
     wait?: number;
   };
 
-export type SongDoc = TrackNode & { sections?: Record<string, SectionNode> };
+/** Which metronome marks sheet music prints: every change, the opening one, or none. */
+export type MetronomeMarks = 'all' | 'opening' | 'none';
+
+/**
+ * Header keys only the printed score reads (notation.ts); compiling ignores
+ * them, so they never change what plays.
+ */
+export interface PrintHeader {
+  /** Printed top right, under the title. */
+  composer?: string;
+  /**
+   * The key signature: `g major`, or bar numbers to keys for real key
+   * changes (`{ 1: db major, 37: e major }`). Defaults to the first `scale:`.
+   */
+  key?: string | Record<string, string>;
+  /** Tempo words printed over the first bar ("Andante semplice"). */
+  'tempo text'?: string;
+  /** Default `all`. */
+  'metronome marks'?: MetronomeMarks;
+}
+
+export type SongDoc = TrackNode & PrintHeader & { sections?: Record<string, SectionNode> };
 
 /**
  * One measure of a track as written, from a written compile (`{ written: true }`).

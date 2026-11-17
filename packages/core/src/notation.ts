@@ -33,7 +33,7 @@
  *    through beat 3 (the half bar), in 6/8 notes group by dotted quarters.
  */
 
-import { BarInfo, CompiledSong, CompiledTrack, SongDoc, TempoEvent, compileDoc } from './song';
+import { BarInfo, CompiledSong, CompiledTrack, MetronomeMarks, SongDoc, TempoEvent, compileDoc } from './song';
 import { NOTATE_TICKS, NotateNote, separateVoices } from './notate';
 import { SCALES, parseScale } from './theory';
 import { drumName } from './vocabulary';
@@ -220,6 +220,10 @@ export interface TempoMark {
   perMinute: number;
   /** A gradual change starts here; the mark at its end gives the arrival tempo. */
   words?: 'rit.' | 'accel.';
+  /** Tempo words printed before the metronome mark: the score's `tempo text:`. */
+  text?: string;
+  /** The metronome mark itself is not printed, only `text` (its tempo still plays). */
+  hideMetronome?: boolean;
 }
 
 export interface MeasureInfo {
@@ -1145,7 +1149,7 @@ function scoreFromWritten(song: CompiledSong, doc: SongDoc): Score {
       tempos: [],
     };
   });
-  placeTempos(song, measures, tick);
+  placeTempos(song, measures, tick, tempoPrint(doc));
 
   const measureAt = (t: number): number => {
     let lo = 0;
@@ -1155,7 +1159,7 @@ function scoreFromWritten(song: CompiledSong, doc: SongDoc): Score {
 
   // ── Parts ──
   const rootTrack = doc && doc.play != null ? song.tracks[0] : undefined;
-  const keys = printedKeys((doc as { key?: unknown } | undefined)?.key, measures.length, warn);
+  const keys = printedKeys(doc?.key, measures.length, warn);
   const env: PartEnv = { measures, T, tick, warn, measureAt, keys };
   const parts = groupParts(song.tracks).map((indices, index) => {
     const tracks = indices.map((i) => song.tracks[i]);
@@ -1169,7 +1173,7 @@ function scoreFromWritten(song: CompiledSong, doc: SongDoc): Score {
     return buildPart(tracks, indices, index, name, env);
   });
 
-  const composer = (doc as { composer?: unknown } | undefined)?.composer;
+  const composer: unknown = doc?.composer;
   return {
     title: song.title,
     composer: typeof composer === 'string' ? composer : undefined,
@@ -1503,13 +1507,37 @@ function buildPart(tracks: CompiledTrack[], indices: number[], index: number, na
   };
 }
 
+const METRONOME_MARKS: readonly MetronomeMarks[] = ['all', 'opening', 'none'];
+
+/**
+ * How the score asks its tempo to be printed: `tempo text:` (words over the
+ * first bar, "Andante semplice") and `metronome marks:`. Playback ignores
+ * both: a rit. written for the performance can stay off the page.
+ */
+function tempoPrint(doc: SongDoc | undefined): { text?: string; marks: MetronomeMarks } {
+  const raw = doc?.['metronome marks'];
+  const marks = raw == null ? 'all' : String(raw).trim().toLowerCase() as MetronomeMarks;
+  if (!METRONOME_MARKS.includes(marks)) {
+    throw new Error(`metronome marks: "${raw}" is not one of ${METRONOME_MARKS.join(', ')}`);
+  }
+  const text = doc?.['tempo text'] == null ? '' : String(doc['tempo text']).trim();
+  return { text: text || undefined, marks };
+}
+
 /**
  * Metronome marks: the opening tempo, then one wherever it changes. A
  * gradual change (rit., accel.) is marked in words where it starts and with
  * the tempo it arrives at where it ends. The mark counts the meter's beat,
  * a dotted quarter in 6/8, though `bpm` stays in quarters for playback.
+ * `metronome marks: opening` keeps only the first, `none` not even that, and
+ * a `tempo text:` goes over the first bar, beside its mark or alone.
  */
-function placeTempos(song: CompiledSong, measures: MeasureInfo[], tick: (b: number) => number): void {
+function placeTempos(
+  song: CompiledSong,
+  measures: MeasureInfo[],
+  tick: (b: number) => number,
+  print: { text?: string; marks: MetronomeMarks },
+): void {
   type Mark = { at: number; bpm: number; words?: 'rit.' | 'accel.' };
   const marks: Mark[] = [];
   const events: TempoEvent[] = song.tempoMap;
@@ -1552,6 +1580,27 @@ function placeTempos(song: CompiledSong, measures: MeasureInfo[], tick: (b: numb
       words: m.words,
     });
     shown = m.words ? undefined : m.bpm;
+  }
+
+  if (print.marks !== 'all') {
+    for (const [i, measure] of measures.entries()) {
+      measure.tempos = print.marks === 'opening' && i === 0
+        ? measure.tempos.filter((t) => !t.words && t.offset === 0)
+        : [];
+    }
+  }
+  if (print.text) {
+    const first = measures[0].tempos.find((t) => !t.words && t.offset === 0);
+    if (first) first.text = print.text;
+    else {
+      // No mark to sit beside: the words stand alone, carrying the opening tempo.
+      const at0 = song.tempoMap.find((e) => tick(e.time) === 0);
+      const bpm = at0 ? at0.bpm : song.bpm;
+      measures[0].tempos.unshift({
+        offset: 0, bpm, beatUnit: 'quarter', dotted: false, perMinute: Math.max(1, Math.round(bpm)),
+        text: print.text, hideMetronome: true,
+      });
+    }
   }
 }
 
