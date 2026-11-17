@@ -13,6 +13,7 @@
  */
 import { useEffect, useMemo, useRef } from 'react';
 import type { CompiledSong } from '@play.yaml/core';
+import { GRUVBOX, fgAlpha, trackColor, withAlpha } from './palette';
 import PianoKeys, { isBlack, type KeysApi } from './PianoKeys';
 
 interface Props {
@@ -23,13 +24,6 @@ interface Props {
 
 /** Beats of music visible above the keyboard. */
 const LOOK_AHEAD = 8;
-
-/**
- * One colour per track, walked in order. Chosen to stay distinct on a dark
- * background and to survive being drawn small — a track is identified by hue
- * alone, so the hues are spaced rather than pretty.
- */
-const TRACK_HUES = [265, 190, 42, 330, 150, 15, 220, 95];
 
 /**
  * The pitch span the roll and the keyboard share: the score's own range,
@@ -82,7 +76,7 @@ export default function PianoRoll({ song, currentBeat }: Props) {
       const notes = tracks.flatMap((t, i) => t.timeline.map((n) => ({ ...n, track: i })));
       if (!notes.length) {
         keysRef.current?.press(new Map());
-        ctx.fillStyle = 'rgba(255,255,255,0.28)';
+        ctx.fillStyle = fgAlpha(0.35);
         ctx.font = '13px "Paper Mono", ui-monospace, monospace';
         ctx.textAlign = 'center';
         ctx.fillText('Nothing to show yet — the score has no notes.', w / 2, h / 2);
@@ -100,7 +94,7 @@ export default function PianoRoll({ song, currentBeat }: Props) {
       // are in flight rather than only when they land.
       for (let m = lo; m <= hi; m++) {
         if (!isBlack(m)) continue;
-        ctx.fillStyle = 'rgba(255,255,255,0.035)';
+        ctx.fillStyle = fgAlpha(0.04);
         ctx.fillRect(xOf(m), 0, keyW, rollH);
       }
 
@@ -111,7 +105,7 @@ export default function PianoRoll({ song, currentBeat }: Props) {
         const y = rollH - (b - currentBeat) * pxPerBeat;
         if (y < 0 || y > rollH) continue;
         const bar = b % measureBeats === 0;
-        ctx.strokeStyle = bar ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.06)';
+        ctx.strokeStyle = bar ? fgAlpha(0.18) : fgAlpha(0.07);
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(0, y + 0.5);
@@ -120,21 +114,21 @@ export default function PianoRoll({ song, currentBeat }: Props) {
       }
 
       // ── the notes ───────────────────────────────────────────────────────
-      const sounding = new Map<number, number>();
+      const sounding = new Map<number, string>();
       for (const n of notes) {
         const end = n.time + n.duration;
         if (end < currentBeat - 0.5 || n.time > currentBeat + LOOK_AHEAD) continue;
         const top = rollH - (end - currentBeat) * pxPerBeat;
         const bottom = rollH - (n.time - currentBeat) * pxPerBeat;
         const height = Math.max(2, bottom - top);
-        const hue = TRACK_HUES[n.track % TRACK_HUES.length];
+        const color = trackColor(n.track);
         const live = n.time <= currentBeat && end > currentBeat;
-        if (live) sounding.set(n.midi, hue);
-        // A note being played is lit; one still falling is dimmer, and the
+        if (live) sounding.set(n.midi, color);
+        // A note being played is solid; one still falling is fainter, and the
         // dimming follows velocity so a phrase's shape is visible before it
         // arrives rather than only when it sounds.
-        const light = live ? 68 : 34 + (n.velocity / 127) * 18;
-        ctx.fillStyle = `hsl(${hue} 70% ${light}%)`;
+        const alpha = live ? 1 : 0.4 + (n.velocity / 127) * 0.3;
+        ctx.fillStyle = withAlpha(color, alpha);
         const x = xOf(n.midi) + keyW * 0.08;
         const nw = Math.max(1.5, keyW * 0.84);
         const r = Math.min(3, nw / 2, height / 2);
@@ -142,7 +136,7 @@ export default function PianoRoll({ song, currentBeat }: Props) {
         ctx.roundRect(x, Math.max(-height, top), nw, height, r);
         ctx.fill();
         if (live) {
-          ctx.strokeStyle = `hsl(${hue} 90% 82%)`;
+          ctx.strokeStyle = GRUVBOX.fg;
           ctx.lineWidth = 1.5;
           ctx.stroke();
         }
@@ -151,7 +145,7 @@ export default function PianoRoll({ song, currentBeat }: Props) {
       keysRef.current?.press(sounding);
 
       // The strike line: where a note becomes a sound.
-      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+      ctx.strokeStyle = fgAlpha(0.6);
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(0, rollH);
@@ -172,7 +166,7 @@ export default function PianoRoll({ song, currentBeat }: Props) {
   }, [song, currentBeat, lo, hi]);
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-[#0b0c10]">
+    <div className="flex h-full w-full flex-col overflow-hidden bg-stage">
       {/* The canvas takes whatever height the keyboard leaves, so the strike
           line is always exactly where the keys begin. */}
       <div ref={wrapRef} className="relative min-h-0 flex-1">

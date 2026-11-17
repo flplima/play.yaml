@@ -23,8 +23,8 @@ export const isBlack = (midi: number) => BLACK[((midi % 12) + 12) % 12];
 export const KEYBOARD_HEIGHT = 112;
 
 export interface KeysApi {
-  /** Midi pitch -> hue of the track sounding it. Everything absent is up. */
-  press(down: Map<number, number>): void;
+  /** Midi pitch -> colour of the track sounding it. Everything absent is up. */
+  press(down: Map<number, string>): void;
 }
 
 interface Props {
@@ -62,12 +62,12 @@ export default function PianoKeys({ lo, hi, apiRef }: Props) {
           nodes.current[m - lo]?.classList.remove('down');
           downNow.delete(m);
         }
-        for (const [m, hue] of down) {
+        for (const [m, color] of down) {
           const el = nodes.current[m - lo];
           if (!el) continue;
-          // The hue is kept after release so the key fades out in its own
+          // The colour is kept after release so the key fades out in its own
           // colour rather than flashing to the default one.
-          el.style.setProperty('--hue', String(hue));
+          el.style.setProperty('--track', color);
           if (!downNow.has(m)) {
             el.classList.add('down');
             downNow.add(m);
