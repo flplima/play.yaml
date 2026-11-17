@@ -1,0 +1,230 @@
+# George Gershwin: Rhapsody in Blue (1924): bars 1 to 20, and the first phrase
+# of the Andantino moderato (the love theme).
+# Public domain: published 1924 (free in the US since 2020), Gershwin died in 1937.
+#
+# Bars 1 to 20 (file bars 1 to 20): transcribed by hand from the two-piano
+# edition, New York: T.B. Harms, 1924 (IMSLP #10970, marked public domain).
+# Where that scan is too faint to read, the same notes were read off Harms'
+# 1927 piano solo edition (IMSLP #891278, also public domain), which prints
+# bars 1 to 15 the same way. Bars 1 to 18 are the second piano, Gershwin's
+# reduction of the band; bars 19 and 20 add the solo piano's first entry. The
+# excerpt stops at rehearsal 3. The opening line goes to a clarinet, as the
+# second piano's part marks it.
+#
+# The love theme (file bars 22 to 29, after one bar of silence): the first 8
+# bars of the Andantino moderato, transcribed by hand from the 1927 piano solo
+# edition (IMSLP #891278), page 20, the only source used for this section.
+#
+# Trills, grace notes and the two runs are written out (see README.md).
+# The edition marks Molto moderato with a half note at 80, so quarter = 160;
+# the fermatas in bars 1, 10 and 15 are slower bars. The Andantino moderato
+# has no metronome mark: 76 is a guess.
+
+title: "Rhapsody in Blue (opening and love theme)"
+composer: "George Gershwin"
+tempo: 160
+tempo text: Molto moderato
+metronome marks: none
+measure: 4/4
+key: { 1: bb major, 16: ab major, 22: e major }
+
+tracks:
+  # The clarinet: the trill, the 17-note scale and the theme, bars 1 to 5.
+  clarinet: { preset: clarinet, dynamic: mezzoforte }
+  # The second piano (the band). upper and lower are the main line of each
+  # hand; upper2, upper3, lower2 and lower3 are the extra voices.
+  upper: { preset: piano, dynamic: mezzoforte }
+  upper2: { preset: piano, dynamic: mezzoforte }
+  upper3: { preset: piano, dynamic: mezzoforte }
+  lower: { preset: piano, dynamic: mezzoforte }
+  lower2: { preset: piano, dynamic: mezzoforte }
+  lower3: { preset: piano, dynamic: mezzoforte }
+  # The solo piano, from bar 19 (its right hand reads in the bass clef there).
+  rh: { preset: piano, dynamic: mezzoforte }
+  rh2: { preset: piano, dynamic: mezzoforte }
+  lh: { preset: piano, dynamic: mezzoforte }
+  lh2: { preset: piano, dynamic: mezzoforte }
+
+sections:
+  # Bars 1 to 15, B-flat major.
+  opening:
+    loop: false
+    clarinet:
+      play:
+        # 1: the trill on F3 (fermata), then 17 notes up to A5 in one beat
+        - "{f3 g3 f3 g3 f3 g3 f3 g3} {f3 g3 f3 g3 f3 g3 f3 g3} f3 {f3 g3 a3 bb3 c4 d4 eb4 f4 g4 a4 bb4 c5 d5 eb5 f5 g5 a5}"
+        - "bb5> {_ _ ab5 bb5} {ab5 gb5 ab5} {gb5 ab5 gb5}"   # 2: the theme, grace notes A-flat B-flat
+        - "f5 eb5 d5 db5 _ eb5 e5 f5"                         # 3
+        - "_ d5 {bb4 c5 bb4 a4} ab4> _ gb4 f4 f4>"            # 4
+        - "_"                                                 # 5: F4 held
+    upper:
+      play:
+        - set: tempo 100                                      # the fermata bar
+        - "~"                                                 # 1
+        - set: tempo 160
+        - "~"                                                 # 2
+        - "~"                                                 # 3
+        - "~"                                                 # 4
+        - "~"                                                 # 5
+        - "~ f4 {g4> ab4 g4} f4 {g4> ab4 g4} f4 {g4> ab4 g4} f4"     # 6: trills on G, A-flat above
+        - "bb4"                                               # 7
+        - "~ bb4 {c5> db5 c5} bb4 {c5> db5 c5} bb4 {c5 db5 c5} bb4"  # 8: trills on C, D-flat above
+        - "eb5"                                               # 9
+        - set: tempo 120                                      # 10: fermatas
+        - "~ eb5 {f5 g5 f5} eb5 {eb6 c6 f5}: {f#5 g5 bb5}:"
+        - set: tempo 200                                      # 11: [1] Piu mosso
+        - "[bb4 eb5]"
+        - "_"                                                 # 12
+        - set: tempo 160 over 2                               # poco rit.
+        - "_"                                                 # 13
+        - "_"                                                 # 14
+        - set: tempo 90                                       # 15: fermata, then 10 notes up
+        - "~ {eb4 f4 eb4 f4 eb4 f4 eb4 f4} {eb4 f4 eb4 f4 eb4 f4 eb4 f4} {eb4 f4 g4 ab4 bb4 c5 db5 eb5 f5 g5}"
+    upper2:
+      wait: 4
+      play:
+        - "bb3 [g3 b3]>: [ab3 c4] [bb3 d4] [g3 b3]>: [ab3 c4]"     # 5
+        - "[bb3 db4]"                                               # 6
+        - "~ [c4 e4]>: [db4 f4] [eb4 g4] [c4 e4]>: [db4 f4]"       # 7
+        - "[eb4 g4]"                                                # 8
+        - "~ [f4 a4]>: [gb4 bb4] [ab4 c5] [f4 a4]>: [gb4 bb4]"     # 9
+        - "[ab4 c5]"                                                # 10
+        - "g4"                                                      # 11
+        - "~"                                                       # 12
+        - "~ ~ g4> _"                                               # 13
+        - "_"                                                       # 14
+        - "[bb3 db4]"                                               # 15
+    upper3:
+      wait: 13
+      play:
+        - "~ ~ ~ {[g3 bb3] [g#3 b3] [a3 c4]}"                      # 14
+    lower:
+      play:
+        - "~"                                                       # 1
+        - "[f3 bb3 d4] _ [eb3 a3 c#4] _"                            # 2
+        - "[d3 ab3] _ g3 gb3"                                       # 3
+        - "[d3 f3 bb3] _ [gb2 fb3 bb3]~ _ _ [f2 eb3 a3] _ _"        # 4: G-flat 7 rolled, then F 7
+        - "[bb2 d3] [g2 d3]>: [ab2 eb3] [bb2 f3] [g2 d3]>: [ab2 eb3]"   # 5
+        - "[bb2 f3]"                                                # 6
+        - "~ [c3 g3]>: [db3 ab3] [eb3 bb3] [c3 g3]>: [db3 ab3]"     # 7
+        - "[eb3 bb3]"                                               # 8
+        - "~ [f3 c4]>: [gb3 db4] [ab3 eb4] [f3 c4]>: [gb3 db4]"     # 9
+        - "[ab3 eb4]"                                               # 10
+        - "~ eb4 eb4 eb4 eb4> db4 db4 db4"                          # 11
+        - "db4> eb4 eb4 eb4 eb4> f#4 f#4 f#4"                       # 12
+        - "f#4> g4 eb4 c4 db4 c4 bb3 f#3"                           # 13
+        - "g3 bb3 g3 eb3 _ _ _ _"                                   # 14
+        - "~ ~ ~ eb3"                                               # 15
+    lower2:
+      wait: 2
+      play:
+        - "c4 cb4 [eb3 bb3] _"                                      # 3
+        - "~"                                                       # 4
+        - "~"                                                       # 5
+        - "~"                                                       # 6
+        - "~"                                                       # 7
+        - "~"                                                       # 8
+        - "~"                                                       # 9
+        - "~"                                                       # 10
+        - "[eb3 bb3]"                                               # 11: E-flat pedal, held to bar 14
+        - "_"                                                       # 12
+        - "_"                                                       # 13
+        - "_"                                                       # 14
+    lower3:
+      play:
+        # the grace-note octave B-flat before bars 2, 3 and 4, played just ahead of the bar
+        - "~ ~ ~ {~ ~ ~ [bb1 bb2]}"                                 # 1
+        - "~ ~ ~ {~ ~ ~ [bb1 bb2]}"                                 # 2
+        - "~ ~ ~ {~ ~ ~ [bb1 bb2]}"                                 # 3
+
+  # Bars 16 to 20: [2] the theme in A-flat, then Moderato assai, the solo
+  # piano's first entry, up to [3].
+  theme in a flat:
+    loop: false
+    upper:
+      play:
+        - set: tempo 160, piano                               # [2] p a tempo
+        - "ab5> {_ _ gb5 ab5} {gb5 fb5 gb5} {fb5 gb5 fb5}"    # 16
+        - "eb5 db5 c5 cb5 _ db5 d5 eb5"                       # 17
+        - "_ c5 ab4 gb4> _ fb4 eb4 eb4>"                      # 18
+        - set: tempo 120                                      # 19: Moderato assai
+        - "_"                                                 # 19: E-flat held
+        - "_ _ _ {[db4 db5]> [eb4 eb5]> [f4 f5]>}"            # 20: the pickup into [3]
+    upper2:
+      wait: 2
+      play:
+        - set: piano
+        - "~ ~ ~ ~ [g3 c4] _ _ _"                             # 18
+        - "[ab3 c4] ~ ~ ~ ~ ~ ~ ~"                            # 19
+    lower:
+      play:
+        - set: piano
+        - "[ab1 ab2] [eb3 ab3 c4] [eb3 g3 c4] [db3 g3 b3]"    # 16
+        - "[g3 bb3] _ _ bbb3 _ db4 cb4 bbb3>"                 # 17
+        - "[c3 e3 ab3] _ [c3 eb3 ab3] ~ [eb2 bb2 eb3] _ _ _"  # 18
+        - "[ab2 eb3] ~ ~ ~ ~ ~ ~ ~"                           # 19
+        - "~ ~ ~ {db3> eb3> f3>}"                             # 20
+    lower2:
+      wait: 1
+      play:
+        - set: piano
+        - "c3 db3 d3 [eb3 g3] _ _ _ _"                        # 17
+    rh:
+      wait: 3
+      play:
+        - "{~ ab3 bb3 ab3} {cb4 cb4} {~ ab3 bb3 ab3} {cb4 db4 cb4 bb3}"   # 19
+        - "{~ ab3 bb3 ab3} {cb4 cb4} cb4 _"                               # 20
+    rh2:
+      wait: 3
+      play:
+        - "e3 f3 gb3 f3"                                      # 19
+        - "e3 gb3 f3 _"                                       # 20
+    lh:
+      wait: 3
+      play:
+        - "ab2 _ ab2 _"                                       # 19
+        - "ab2 ab2 ab2 _"                                     # 20
+    lh2:
+      wait: 3
+      play:
+        - "ab1 db2 ab1 db2"                                   # 19
+        - "ab1 eb2 db2 _"                                     # 20
+
+  # The love theme: Andantino moderato, E major, its first 8 bars, from the
+  # 1927 piano solo edition, page 20. One bar of silence before it marks the
+  # cut. upper2 is the inner line under the held top notes.
+  love theme:
+    loop: false
+    wait: 1
+    upper:
+      play:
+        - set: tempo 76, piano                                       # Andantino moderato, p
+        - "[g#3 b3 e4 g#4] [a3 b3 f#4 a4] [b3 e4 g#4 b4] [b2 e3 g#3 b3]>"   # 1: the last chord crosses to the left hand's staff
+        - "_ [c#3 e3 g#3 c#4] [d#3 g#3 b3 d#4] [e3 g#3 b3 e4]"            # 2: the right hand, in the bass
+        - "f#4"                                                      # 3
+        - "_"                                                        # 4
+        - "f##4"                                                     # 5: F double sharp
+        - "f#4"                                                      # 6
+        - "g#4"                                                      # 7
+        - "_"                                                        # 8
+    upper2:
+      wait: 2
+      play:
+        - set: piano
+        - "d#4 d4 c#4: d#4: d4:"                                     # 3
+        - "c#4 d#4 d4: c#4: d#4:"                                    # 4
+        - "d4 c#4 d#4: d4: c#4:"                                     # 5
+        - "d#4 d4 c#4: d#4: d4:"                                     # 6
+        - "c#4 d#4 d4: c#4: d#4:"                                    # 7
+        - "d4 c#4 d#4: d4: c#4:"                                     # 8
+    lower:
+      play:
+        - set: piano
+        - "[e1 e2]"                                                  # 1
+        - "[g#1 g#2]"                                                # 2
+        - "[f#1 f#2 e3 a#3]"                                         # 3: F-sharp 7
+        - "_"                                                        # 4
+        - "[b1 b2 a3]"                                               # 5: B 7
+        - "_"                                                        # 6
+        - "[e2 b2 g#3]"                                              # 7
+        - "_"                                                        # 8

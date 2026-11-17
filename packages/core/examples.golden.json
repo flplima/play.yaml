@@ -119,6 +119,12 @@
     "lengthBeats": 324,
     "sha256": "508bfc53038a6bdb52a73b1372d41a35a9c1a088710ac09c5c7e0753054f0e2c"
   },
+  "songs/gershwin-rhapsody-in-blue/gershwin-rhapsody-in-blue.play.yaml": {
+    "tracks": 11,
+    "notes": 451,
+    "lengthBeats": 116,
+    "sha256": "4569b1d8b0874fce61a3e016a86d2597bae86b9078a5cb5e1bea3a75726fb877"
+  },
   "songs/grieg-hall-of-the-mountain-king/grieg-hall-of-the-mountain-king.play.yaml": {
     "tracks": 4,
     "notes": 1453,
