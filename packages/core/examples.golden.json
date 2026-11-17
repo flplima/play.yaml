@@ -125,6 +125,12 @@
     "lengthBeats": 352,
     "sha256": "430f91eabe0a429939665fc2f51396d7b2a1bc38bc382d9e0acc43840a3f6df1"
   },
+  "songs/johnson-the-charleston/johnson-the-charleston.play.yaml": {
+    "tracks": 9,
+    "notes": 2299,
+    "lengthBeats": 352,
+    "sha256": "3ae765319475f26c1ce1c3d5cc07962d86ad678a117ec3e0c7b54172e4e463ea"
+  },
   "songs/joplin-the-entertainer/joplin-the-entertainer.play.yaml": {
     "tracks": 4,
     "notes": 2621,
