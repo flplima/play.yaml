@@ -3,6 +3,7 @@
 
 title: "Clair de Lune"
 composer: "Claude Debussy"
+key: { 1: db major, 37: e major, 43: db major }
 tempo: 50
 measure: 9/8
 

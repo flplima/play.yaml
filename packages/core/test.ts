@@ -2222,6 +2222,26 @@ check('keys come from scale:, and pitches are spelled from them', () => {
   assert.deepStrictEqual(firstVoice(minor, 0).map((e) => e.notes[0].pitch!.step + e.notes[0].pitch!.alter), ['C1', 'D0', 'B-1', 'B0'],
     'a minor key raises its 6th and 7th as sharpened letters');
 });
+check('the printed key: key: names it, a mid-piece scale: keeps it, a bar map changes it', () => {
+  const held = scoreFromDoc({ scale: 'g major', sample: 'flute', play: ['1 2 3 4', { scale: 'd major' }, '1 2 3 7'] });
+  assert.deepStrictEqual(held.parts[0].measures.map((m) => m.key), [{ fifths: 1, mode: 'major' }, undefined],
+    'a scale: change moves the degrees, not the signature');
+  assert.strictEqual(firstVoice(held, 1)[3].notes[0].pitch!.accidental, 'sharp', 'so the c# of D major is an accidental');
+  const keyed = scoreFromDoc({
+    key: { 1: 'db major', 2: 'e major', 3: 'db major' }, sample: 'flute',
+    play: ['db4 f4 ab4 db5', 'e4 g#4 b4 e5', 'db4 f4 ab4 db5'],
+  });
+  assert.deepStrictEqual(keyed.parts[0].measures.map((m) => m.key?.fifths), [-5, 4, -5]);
+  assert.deepStrictEqual(keyed.parts.flatMap((p) => p.measures.flatMap((m) => m.voices[0].events.map((e) => e.notes[0].pitch!.accidental))),
+    Array(12).fill(undefined), 'each bar reads in its own key, with no accidentals');
+  const xml = encodeMusicXml(keyed);
+  assert.deepStrictEqual(xml.match(/<measure number="\d+">\s*<attributes>(?:\s*<divisions>\d+<\/divisions>)?\s*<key>\s*<fifths>-?\d+/g)!
+    .map((m) => /number="(\d+)"[\s\S]*<fifths>(-?\d+)/.exec(m)!.slice(1).join(':')), ['1:-5', '2:4', '3:-5'],
+    'MusicXML restates <key> in the measure where it changes');
+  assert.deepStrictEqual(scoreFromDoc({ key: 'eb major', play: 'c d e f' }).parts[0].measures[0].key, { fifths: -3, mode: 'major' });
+  assert.throws(() => scoreFromDoc({ key: 'h major', play: 'c' }), /not a key/);
+  assert.throws(() => scoreFromDoc({ key: { first: 'c major' }, play: 'c' }), /not a bar number/);
+});
 check('overlapping lines in one track become two voices, each filling the bar', () => {
   const score = scoreFromDoc({ sample: 'flute', play: ['[c5 {e4 f4 g4 a4}]: b4 c5'] });
   const voices = score.parts[0].measures[0].voices;
