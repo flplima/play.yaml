@@ -170,8 +170,9 @@ export function expandArp(spec: ArpSpec): string {
   }
   const name = (midi: number): string => {
     const s = spelled.get(((midi % 12) + 12) % 12);
-    if (!s) return midiToName(midi);
-    return `${s.letter}${s.alter > 0 ? '#' : s.alter < 0 ? 'b' : ''}${Math.floor((midi - s.alter) / 12) - 1}`;
+    // Lowercase: in a bar, a capital letter starts a chord token.
+    if (!s) return midiToName(midi).toLowerCase();
+    return `${s.letter.toLowerCase()}${s.alter > 0 ? '#' : s.alter < 0 ? 'b' : ''}${Math.floor((midi - s.alter) / 12) - 1}`;
   };
   const octaves = spec.octaves ?? 1;
   const base = [...pool];

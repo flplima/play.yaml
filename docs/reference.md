@@ -38,7 +38,17 @@ play: |
 
 ### Tokens (recursive)
 
-- `c` — a note: letter `a`–`g`, optional `#`/`b`, optional octave digit (`eb3`, `f#2`); default octave is 4
+- `c` — a note: lowercase letter `a`–`g`, optional `#`/`b`, optional octave digit (`eb3`, `f#2`); default octave is 4
+- `C`, `Dm7`, `G7/B` — a **chord**: a capital letter starts a chord symbol, and it sounds as a chord stacked up from its root at the track's `octave`. A slash bass sounds below the root. Qualities: `m`, `dim`, `aug`, `sus2`, `sus4`, `5`, `6`, `m6`, `69`, `7`, `maj7`, `m7`, `mM7`, `dim7`, `m7b5`, `7sus4`, `aug7`, `9`, `maj9`, `m9`, `add9`, `7b9`, `7#9`, `11`, `m11`, `13`, `maj7#11`. Note names are always lowercase, so a capitalised word never sounds as a note: `A-` and `C4` warn and stay silent. A chord chart is a first accompaniment you can replace bar by bar later:
+
+  ```yaml
+  octave: 3
+  play: |
+    C
+    Dm7/C
+    G7/B
+    C
+  ```
 - `1` — a scale degree in the track's `scale` (default `c major`): `1` is the root at the track's `octave`, `8` the root an octave up, `0` and negatives step below the root, and a trailing `#`/`b` shifts a semitone (`4#`, `7b`).
 - `5^` — an octave modifier, repeatable and stackable: `^` or `+` raises a note an octave, `-` lowers one (`5^^` is the fifth two octaves up). Modifiers follow any accidental (`4#^`) and work on letters too (`c^`, `eb3-`). They shift by a true octave rather than a scale length, so `1^` is the root an octave up in any scale, including the 8-note ones.
 

@@ -7,7 +7,7 @@
  * — reads it through here, so the token grammar lives in one place.
  */
 
-import { isDegreeToken, noteToMidi } from './theory';
+import { chordNotes, isDegreeToken, noteToMidi } from './theory';
 
 /** The token that prolongs the previous note rather than striking a new one. */
 export const HOLD = '_';
@@ -169,6 +169,7 @@ export function isMeasureToken(token: string): boolean {
   if (core === REST || core === HOLD) return true;
   if (core[0] === '{' || core[0] === '[') return true;
   if (isMarkToken(core)) return true;
-  if (/^_+\S/.test(core)) return true; // _1, __d3
-  return isDegreeToken(core) || noteToMidi(core) !== null;
+  const bare = core.replace(/^_+(?=\S)/, ''); // _1, __d3, _C
+  if (/^[A-G]/.test(bare)) return chordNotes(bare) !== null; // capitals are chords
+  return isDegreeToken(bare) || noteToMidi(bare) !== null;
 }

@@ -1668,11 +1668,11 @@ check('spread validates its shape', () => {
   assert.throws(() => expandSpread({ steps: 8 } as never), /at least one layer/);
 });
 check('arp orders chord tones by mode', () => {
-  assert.strictEqual(expandArp({ chord: 'C', steps: 3 }), 'C4 E4 G4');
-  assert.strictEqual(expandArp({ chord: 'Dm7', mode: 'down', steps: 4 }), 'C5 A4 F4 D4');
-  assert.strictEqual(expandArp({ chord: 'C', mode: 'updown', steps: 4 }), 'C4 E4 G4 E4');
+  assert.strictEqual(expandArp({ chord: 'C', steps: 3 }), 'c4 e4 g4');
+  assert.strictEqual(expandArp({ chord: 'Dm7', mode: 'down', steps: 4 }), 'c5 a4 f4 d4');
+  assert.strictEqual(expandArp({ chord: 'C', mode: 'updown', steps: 4 }), 'c4 e4 g4 e4');
   assert.strictEqual(expandArp({ notes: ['d3', 'f3', 'a3', 'c4'], mode: 'converge', steps: 4 }),
-    'D3 C4 F3 A3');
+    'd3 c4 f3 a3');
 });
 check('arp random mode is seeded and deterministic', () => {
   const one = expandArp({ chord: 'C', mode: 'random', steps: 8, seed: 3 });
@@ -2265,8 +2265,8 @@ check('a chromatic degree follows its line: rising with sharps, falling with fla
   assert.deepStrictEqual(spelledNames(repeat, 0), ['A', 'Bb', 'Bb', 'A'], 'a repeated note looks past itself');
   const minor = scoreFromDoc({ scale: 'a minor', sample: 'flute', play: ['1 4# 1 7#'] });
   assert.deepStrictEqual(spelledNames(minor, 0), ['A', 'D#', 'A', 'G#'], 'a minor key raises its 4th and 7th');
-  assert.strictEqual(expandArp({ chord: 'Gm7', steps: 4 }), 'G4 Bb4 D5 F5', 'an arpeggio takes its chord\'s letters');
-  assert.strictEqual(expandArp({ notes: ['bb3', 'db4'], steps: 2 }), 'Bb3 Db4', 'and listed notes keep theirs');
+  assert.strictEqual(expandArp({ chord: 'Gm7', steps: 4 }), 'g4 bb4 d5 f5', 'an arpeggio takes its chord\'s letters');
+  assert.strictEqual(expandArp({ notes: ['bb3', 'db4'], steps: 2 }), 'bb3 db4', 'and listed notes keep theirs');
 });
 check('overlapping lines in one track become two voices, each filling the bar', () => {
   const score = scoreFromDoc({ sample: 'flute', play: ['[c5 {e4 f4 g4 a4}]: b4 c5'] });
@@ -2621,6 +2621,36 @@ check('instrument: is sample: under its documented name', () => {
   assert.strictEqual(compileYaml('instrument: cello\ntracks:\n  a:\n    play: c').tracks[0].sample, 'cello');
   assert.throws(() => compileYaml('instrument: cello\nsample: flute\nplay: c'), /same key/);
   assert.throws(() => compileYaml('instrumnet: cello\nplay: c'), /Did you mean "instrument"/);
+});
+
+console.log('\nchord tokens:');
+check('a capital is a chord, voiced up from the root at the track octave', () => {
+  const names = (bar: string, props: TrackProps = {}) => parsePlay([bar], props).map((n) => n.pitch);
+  assert.deepStrictEqual(names('C', { octave: 3 }), ['C3', 'E3', 'G3']);
+  assert.deepStrictEqual(names('Dm7/C', { octave: 3 }), ['C3', 'D3', 'F3', 'A3', 'C4']);
+  assert.deepStrictEqual(names('G7/B', { octave: 3 }), ['B2', 'G3', 'B3', 'D4', 'F4']);
+  assert.deepStrictEqual(names('Bbmaj7'), ['A#4', 'D5', 'F5', 'A5']);
+  assert.deepStrictEqual(parsePlay(['C _ F G']).map((n) => n.time), [0, 0, 0, 2, 2, 2, 3, 3, 3]);
+  assert.strictEqual(parsePlay(['C _ _ _'])[0].duration, 4 * DEFAULT_GATE);
+});
+check('a chord line is a bar, so the song keeps its length', () => {
+  const song = compileYaml('octave: 3\nplay: |\n  C\n  Dm7/C\n  G7/B\n  C');
+  assert.strictEqual(song.lengthBeats, 16);
+  assert.deepStrictEqual(song.warnings, []);
+  assert.strictEqual(isDirectiveString('Dm7/C'), false);
+  assert.strictEqual(isDirectiveString('d dorian'), true);
+});
+check('written chords keep their letters for the score', () => {
+  const tl = compileDoc({ play: 'Bb Ebmaj7' }, { written: true }).tracks[0].timeline;
+  assert.deepStrictEqual(tl.slice(0, 3).map((n) => n.spelling), [
+    { letter: 'B', alter: -1 }, { letter: 'D', alter: 0 }, { letter: 'F', alter: 0 }]);
+  assert.deepStrictEqual(tl.slice(3).map((n) => n.spelling!.letter), ['E', 'G', 'B', 'D']);
+});
+check('capitals are never notes: A- and C4 warn and stay silent', () => {
+  const r = parsePlayFull(['e A- C4 g']);
+  assert.deepStrictEqual(r.timeline.map((n) => n.pitch), ['E4', 'G4']);
+  assert.strictEqual(r.warnings.length, 2);
+  assert.match(r.warnings[0], /note names are lowercase/);
 });
 
 if (failed.length > 0) {

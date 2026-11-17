@@ -8,7 +8,7 @@
 
 import {
   DEFAULT_MEASURE, DEFAULT_OCTAVE, ScaleInfo, degreeToMidi, isDegreeToken, measureToBeats,
-  letterSpelling, notatedMeter, midiToName, noteToMidi, parseScale,
+  chordNotes, letterSpelling, notatedMeter, midiToName, noteToMidi, parseScale,
 } from './theory';
 import {
   ACCENT_STEP, ControlSpec, DEFAULT_GATE, DEFAULT_STRUM, DRUM_CHANNEL, PedalPattern,
@@ -541,10 +541,12 @@ function velocityAt(ctx: EmitCtx, beat: number): number {
  * music with nothing to point at. So the token is recorded: playback stays
  * forgiving, and the studio can say which bar went quiet and why.
  */
-function noteUnknownToken(ctx: EmitCtx, token: string, kind: 'pitch' | 'drum' = 'pitch'): void {
+function noteUnknownToken(ctx: EmitCtx, token: string, kind: 'pitch' | 'drum' | 'chord' = 'pitch'): void {
   const tok = token.trim();
   if (!tok) return;
-  const what = kind === 'drum' ? 'no such drum name or GM key' : 'not a note, degree, chord or rest';
+  const what = kind === 'drum' ? 'no such drum name or GM key'
+    : kind === 'chord' ? 'a capital starts a chord like C, Dm7 or G7/B; note names are lowercase'
+    : 'not a note, degree, chord or rest';
   const where = `bar ${ctx.measureNumber}`;
   const message = `${where}: unknown token "${tok}" (${what}) — silent`;
   if (!ctx.warnings.includes(message)) ctx.warnings.push(message);
@@ -683,6 +685,17 @@ function placeToken(token: string, start: number, span: number, ctx: EmitCtx, bo
   const core = under ? tok.slice(under[1].length) : tok;
   const octavesDown = under ? under[1].length : 0;
 
+  // A capital starts a chord token (`C`, `Dm7/C`): it sounds as a chord
+  // in the track's octave. Note names are lowercase, so `A-` is never a note.
+  if (/^[A-G]/.test(core)) {
+    const notes = chordNotes(core, ctx.octave - octavesDown);
+    if (!notes) {
+      noteUnknownToken(ctx, token, 'chord');
+      return;
+    }
+    placeToken(`[${notes.join(' ')}]${'~'.repeat(strumMarks)}`, start, span, ctx, boost);
+    return;
+  }
   const raw = isDegreeToken(core)
     ? degreeToMidi(core, ctx.scale, ctx.octave)
     : noteToMidi(core, ctx.octave);

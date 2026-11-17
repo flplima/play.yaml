@@ -84,6 +84,67 @@ export function chordToScale(chord: string): ScaleInfo | null {
   return { rootPc: rootPitchClass(m[1], m[2]), intervals: SCALES[found[1]] };
 }
 
+/** A chord tone: semitones above the root, and letter steps above it (for spelling). */
+type Tone = [semis: number, steps: number];
+const R: Tone = [0, 0], m3: Tone = [3, 2], M3: Tone = [4, 2], P5: Tone = [7, 4], d5: Tone = [6, 4];
+const A5: Tone = [8, 4], M6: Tone = [9, 5], m7: Tone = [10, 6], M7: Tone = [11, 6], d7: Tone = [9, 6];
+const M2: Tone = [2, 1], P4: Tone = [5, 3], M9: Tone = [14, 8], b9: Tone = [13, 8], s9: Tone = [15, 8];
+const P11: Tone = [17, 10], s11: Tone = [18, 10], M13: Tone = [21, 12];
+
+/** Chord qualities a chord token can name, with the tones each one stacks. */
+const CHORD_TONES: Record<string, Tone[]> = {
+  '': [R, M3, P5], m: [R, m3, P5], min: [R, m3, P5],
+  dim: [R, m3, d5], '°': [R, m3, d5], aug: [R, M3, A5], '+': [R, M3, A5],
+  sus2: [R, M2, P5], sus4: [R, P4, P5], sus: [R, P4, P5], '5': [R, P5],
+  '6': [R, M3, P5, M6], m6: [R, m3, P5, M6], '69': [R, M3, P5, M6, M9],
+  '7': [R, M3, P5, m7], maj7: [R, M3, P5, M7], M7: [R, M3, P5, M7], 'Δ': [R, M3, P5, M7], 'Δ7': [R, M3, P5, M7],
+  m7: [R, m3, P5, m7], min7: [R, m3, P5, m7], mM7: [R, m3, P5, M7], mmaj7: [R, m3, P5, M7],
+  dim7: [R, m3, d5, d7], '°7': [R, m3, d5, d7], m7b5: [R, m3, d5, m7], 'ø': [R, m3, d5, m7], 'ø7': [R, m3, d5, m7],
+  '7sus4': [R, P4, P5, m7], '7sus': [R, P4, P5, m7], aug7: [R, M3, A5, m7], '+7': [R, M3, A5, m7], '7#5': [R, M3, A5, m7],
+  '9': [R, M3, P5, m7, M9], maj9: [R, M3, P5, M7, M9], m9: [R, m3, P5, m7, M9], add9: [R, M3, P5, M9],
+  '7b9': [R, M3, P5, m7, b9], '7#9': [R, M3, P5, m7, s9],
+  '11': [R, P5, m7, M9, P11], m11: [R, m3, P5, m7, M9, P11],
+  '13': [R, M3, P5, m7, M9, M13], 'maj7#11': [R, M3, P5, M7, s11],
+};
+
+const LETTER_ORDER = ['c', 'd', 'e', 'f', 'g', 'a', 'b'];
+
+/** A spelled note name, lowercase with its octave: `bb3`, `f#4`. */
+function spelledName(letter: string, midi: number): string {
+  const natural = PITCH_CLASSES[letter];
+  let alter = (((midi - natural) % 12) + 12) % 12;
+  if (alter > 6) alter -= 12;
+  if (Math.abs(alter) > 2) return midiToName(midi).toLowerCase();
+  const accidental = alter > 0 ? '#'.repeat(alter) : 'b'.repeat(-alter);
+  return `${letter}${accidental}${Math.floor((midi - alter) / 12) - 1}`;
+}
+
+/**
+ * A chord token (`C`, `Dm7`, `G7/B`, `Bbmaj7`) → its notes, spelled and
+ * stacked up from the root at `octave`. A slash bass sounds below the root.
+ * A chord token starts with a capital letter; note names are lowercase, so
+ * a stray capitalised word can never sound as a note. Null when the token is
+ * not a chord.
+ */
+export function chordNotes(token: string, octave: number = DEFAULT_OCTAVE): string[] | null {
+  const m = /^([A-G])(#|b)?([^/]*)(?:\/([A-G])(#|b)?)?$/.exec(token.trim());
+  if (!m) return null;
+  const tones = CHORD_TONES[m[3]];
+  if (!tones) return null;
+  const rootLetter = m[1].toLowerCase();
+  const rootMidi = (octave + 1) * 12 + PITCH_CLASSES[rootLetter] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0);
+  const rootIndex = LETTER_ORDER.indexOf(rootLetter);
+  const notes = tones.map(([semis, steps]) =>
+    spelledName(LETTER_ORDER[(rootIndex + steps) % 7], rootMidi + semis));
+  if (m[4]) {
+    const bassLetter = m[4].toLowerCase();
+    const bassPc = PITCH_CLASSES[bassLetter] + (m[5] === '#' ? 1 : m[5] === 'b' ? -1 : 0);
+    const bass = rootMidi - ((((rootMidi - bassPc) % 12) + 12) % 12 || 12);
+    notes.unshift(spelledName(bassLetter, bass));
+  }
+  return notes;
+}
+
 /**
  * "g major" / "eb minor" / "g lydian" / "a" (major implied) → root pitch
  * class + intervals. Any Greek mode name works alongside major/minor, and
