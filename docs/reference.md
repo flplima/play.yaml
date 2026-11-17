@@ -52,6 +52,8 @@ Tokens nest recursively — `{c {d e}}` splits the second half of the slot again
 
 A track may declare child `tracks` (a named mapping). Children **inherit every property from their parent except `play`**, and can override any of them. Inheritable properties: `tempo`, `measure`, `sample`, `scale`, `octave`, `channel`, `program`, `velocity`.
 
+A key the compiler does not know is an error, with a hint when it looks like a typo (`sampel:` asks "did you mean sample?"). A track written as a one-line mapping takes lists in brackets: `voice: { sample: choir, set: [legato, cantabile] }`.
+
 ```yaml
 tempo: 80
 measure: 4/4
@@ -158,7 +160,7 @@ set: g ionian, octave 2
 
 Performance is written the way a score marks it, not in numbers. Every term below works as a `set:` clause mid-song, and `dynamic:` / `articulation:` set the starting values as track props:
 
-- **Dynamics** — spelled out: `pianississimo` `pianissimo` `piano` `mezzopiano` `mezzoforte` `forte` `fortissimo` `fortississimo`, or in plain English (`quiet`, `loud`, `louder`, `softer`). The abbreviations (`p`, `mf`, `ff`) are not accepted: a bare `f` is the key of F.
+- **Dynamics** — spelled out: `pianississimo` `pianissimo` `piano` `mezzopiano` `mezzoforte` `forte` `fortissimo` `fortississimo`, or in plain English (`quiet`, `loud`, `louder`, `softer`). The abbreviations (`p`, `mf`, `ff`) are not accepted: `dynamic: f` is an error that names the word to write (`forte`).
 - **Gradual dynamics** — `crescendo`, `diminuendo`, with an optional target and span: `crescendo to fortissimo over 2`. Notes inside the span interpolate.
 - **Tempo** — `grave` `largo` `lento` `adagio` `andante` `moderato` `allegretto` `allegro` `vivace` `presto`
 - **Gradual tempo** — `ritardando`, `rallentando`, `allargando`, `accelerando`, `stringendo`, plus `slower` / `faster`; each takes an optional target and span (`allargando to adagio over 3`, `rit. over 2`). `a tempo` returns to the tempo the track started at.

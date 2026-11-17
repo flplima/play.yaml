@@ -2544,6 +2544,31 @@ check('every bundled score: the model gives back the written timeline, and every
   }
 });
 
+console.log('\nsilent failures are errors:');
+const compileYaml = (src: string) => compileDoc(parseYaml(src));
+check('dynamic: f names the word to write instead of turning into the key of F', () => {
+  assert.throws(() => compileYaml('dynamic: f\nplay: e'), /write "forte"/);
+  assert.throws(() => compileYaml('dynamic: mf\nplay: e'), /write "mezzoforte"/);
+  assert.throws(() => compileYaml('dynamic: g lydian\nplay: e'), /is a scale, not a dynamic/);
+  assert.throws(() => compileYaml('dynamic: warp speed\nplay: e'), /Unknown set clause/);
+  assert.strictEqual(compileYaml('dynamic: forte\nplay: e').tracks[0].timeline[0].velocity, 96);
+});
+check('a flow mapping with a keyless entry is an error, not a vanished track', () => {
+  assert.throws(() => parseYaml('voice: { sample: choir, set: legato, cantabile }'), /set: \[legato, cantabile\]/);
+  assert.deepStrictEqual(parseYaml('voice: { sample: choir, set: [legato, cantabile] }'),
+    { voice: { sample: 'choir', set: ['legato', 'cantabile'] } });
+  assert.deepStrictEqual(parseYaml('- {c d}'), ['{c d}']);
+});
+check('a track that is not a mapping is an error', () => {
+  assert.throws(() => compileYaml('tracks:\n  voice: choir\n  piano:\n    play: c'), /Track "voice" must be a mapping/);
+});
+check('unknown keys are errors, with a hint for a typo', () => {
+  assert.throws(() => compileYaml('tracks:\n  v:\n    sampel: choir\n    play: c'), /unknown key "sampel". Did you mean "sample"/);
+  assert.throws(() => compileYaml('tempoo: 90\nplay: c'), /Did you mean "tempo"/);
+  assert.throws(() => compileYaml('play:\n  - c\n  - dynamic: forte'), /write the word as its own line/);
+  assert.throws(() => compileYaml('play:\n  - c\n  - scael: d major'), /Did you mean "scale"/);
+});
+
 if (failed.length > 0) {
   console.error(`\n${passed} passed, ${failed.length} FAILED:\n  ${failed.join('\n  ')}`);
   process.exit(1);

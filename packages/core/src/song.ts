@@ -1140,6 +1140,7 @@ export function parsePlayFull(
 
   for (const item of playItems(play)) {
     if (item && typeof item === 'object') {
+      checkDirectiveKeys(item, m + 1);
       applyPatch(directivePatch(item), beat);
       if (item.set !== undefined) applySet(item.set, beat);
       for (const [key, value] of Object.entries(item)) {
@@ -1269,6 +1270,26 @@ function notatedMeterText(measure: string | number): string {
     if (Math.abs(num - Math.round(num)) < 1e-9) return `${Math.round(num)}/${den}`;
   }
   return `${Math.round(beats)}/4`;
+}
+
+const DIRECTIVE_KEYS = new Set<string>([...DIRECTIVE_PROPS, 'set']);
+
+/** A mapping item in a play list takes props, `set:` and bar numbers only. */
+function checkDirectiveKeys(item: PlayDirective, bar: number): void {
+  for (const key of Object.keys(item)) {
+    if (/^\d+$/.test(key) || DIRECTIVE_KEYS.has(key)) continue;
+    if (key === 'dynamic' || key === 'articulation') {
+      throw new Error(
+        `bar ${bar}: "${key}:" is a track key. Inside a play list, write the word as its own line: - "${item[key as keyof PlayDirective]}".`,
+      );
+    }
+    const hint = suggestKey(key, [...DIRECTIVE_KEYS, ...GENERATOR_KEYS, 'alternate']);
+    throw new Error(
+      `bar ${bar}: "${key}:" can't change inside a play list.` +
+        (hint ? ` Did you mean "${hint}"?` : ` Inside a play list a mapping takes ${[...DIRECTIVE_KEYS].join(', ')}, ` +
+          `a bar number, a repeat (2x:) or a generator.`),
+    );
+  }
 }
 
 /**
@@ -1462,6 +1483,93 @@ const INHERITED = [
 const _everyPropInherits: Exclude<keyof TrackProps, (typeof INHERITED)[number]> extends never ? true : never = true;
 void _everyPropInherits;
 
+/** Keys a track may hold besides the inherited props. */
+const TRACK_KEYS = new Set<string>([...INHERITED, 'title', 'set', 'play', 'tracks']);
+/** Keys only the root may hold: the printed header and the song form. */
+const ROOT_KEYS = new Set<string>(['composer', 'key', 'tempo text', 'metronome marks', 'sections']);
+
+/** Edit distance, for "did you mean" hints on misspelled keys. */
+function editDistance(a: string, b: string): number {
+  const row = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    let prev = row[0];
+    row[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const next = row[j];
+      row[j] = Math.min(row[j] + 1, row[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = next;
+    }
+  }
+  return row[b.length];
+}
+
+/** The closest known key, when one is close enough to be a typo. */
+function suggestKey(key: string, known: Iterable<string>): string | undefined {
+  let best: string | undefined;
+  let bestDistance = Math.max(2, Math.floor(key.length / 3)) + 1;
+  for (const candidate of known) {
+    const d = editDistance(key.toLowerCase(), candidate.toLowerCase());
+    if (d < bestDistance) {
+      best = candidate;
+      bestDistance = d;
+    }
+  }
+  return best;
+}
+
+/**
+ * Refuse keys the compiler would otherwise skip without a word: a typo like
+ * `instrumnet:` used to leave the track on the default piano.
+ */
+function checkTrackKeys(node: TrackNode, where: string, isRoot: boolean): void {
+  for (const key of Object.keys(node)) {
+    if (TRACK_KEYS.has(key) || (isRoot && ROOT_KEYS.has(key))) continue;
+    const known = isRoot ? [...TRACK_KEYS, ...ROOT_KEYS] : [...TRACK_KEYS];
+    const hint = suggestKey(key, known);
+    const tracksHint = !isRoot || hint ? '' : ` A track goes under "tracks:".`;
+    throw new Error(
+      `${where}: unknown key "${key}".` +
+        (hint ? ` Did you mean "${hint}"?` : '') + tracksHint,
+    );
+  }
+}
+
+/** Dynamics are spelled out; the abbreviation each word is printed as. */
+const DYNAMIC_ABBREVIATIONS: Record<string, string> = {
+  ppp: 'pianississimo', pp: 'pianissimo', p: 'piano', mp: 'mezzopiano',
+  mf: 'mezzoforte', f: 'forte', ff: 'fortissimo', fff: 'fortississimo',
+};
+
+/**
+ * `dynamic:` and `articulation:` take words of performance. A word that
+ * parses as something else (`dynamic: f` is the key of F) would be dropped.
+ */
+function checkWorded(key: 'dynamic' | 'articulation', value: unknown, where: string): void {
+  if (value === undefined || value === null) return;
+  const text = String(value);
+  for (const word of text.split(',').map((w) => w.trim().toLowerCase())) {
+    if (DYNAMIC_ABBREVIATIONS[word]) {
+      throw new Error(
+        `${where}: ${key}: "${word}" is an abbreviation. Dynamics are spelled out: write "${DYNAMIC_ABBREVIATIONS[word]}".`,
+      );
+    }
+  }
+  let patch: SetPatch;
+  try {
+    patch = parseSet(text, {}, { ignoreMissingControls: true });
+  } catch (error) {
+    throw new Error(`${where}: ${key}: ${error instanceof Error ? error.message : error}`);
+  }
+  const stray = (['scale', 'octave', 'octaveDelta', 'measure', 'tempo'] as const)
+    .find((k) => patch[k] !== undefined);
+  if (stray) {
+    throw new Error(
+      `${where}: ${key}: "${text}" is a ${stray === 'octaveDelta' ? 'octave' : stray}, not a ${key}. ` +
+        `Put it on its own key (${stray === 'octaveDelta' ? 'octave' : stray}:) or in "set:".`,
+    );
+  }
+}
+
 /**
  * The static half of a `set` patch applied to a track's props: what a track
  * opens on. Hairpins, tempo ramps and control drifts are motions, so they
@@ -1496,7 +1604,10 @@ function patchProps(props: TrackProps, patch: SetPatch): TrackProps {
 function effectiveProps(
   node: TrackNode,
   inherited: TrackProps,
+  where = 'score',
 ): { props: TrackProps; opening: ControlEvent[] } {
+  checkWorded('dynamic', node.dynamic, where);
+  checkWorded('articulation', node.articulation, where);
   let props: TrackProps = { ...inherited };
   for (const key of INHERITED) {
     if (node[key] !== undefined) (props as Record<string, unknown>)[key] = node[key];
@@ -1523,12 +1634,13 @@ export function compileDoc(doc: SongDoc, options: CompileOptions = {}): Compiled
 
   // velocity and gate are deliberately left unset here so that their worded
   // forms (`dynamic:` / `articulation:`) can supply them.
+  checkTrackKeys(doc, 'score', true);
   const root = effectiveProps(doc, {
     tempo: DEFAULT_TEMPO,
     measure: DEFAULT_MEASURE,
     sample: DEFAULT_SAMPLE,
     octave: DEFAULT_OCTAVE,
-  });
+  }, 'score');
   const rootProps = root.props;
 
   const tracks: CompiledTrack[] = [];
@@ -1538,7 +1650,8 @@ export function compileDoc(doc: SongDoc, options: CompileOptions = {}): Compiled
   let nextChannel = 1;
 
   const walk = (node: TrackNode, name: string, inherited: TrackProps, parent?: string) => {
-    const { props, opening } = node === doc ? root : effectiveProps(node, inherited);
+    if (node !== doc) checkTrackKeys(node, `track "${name}"`, false);
+    const { props, opening } = node === doc ? root : effectiveProps(node, inherited, `track "${name}"`);
 
     if (node.play != null) {
       const { timeline, controls, tempos, lengthBeats: trackBeats, warnings: trackWarnings, bars } =
@@ -1572,7 +1685,13 @@ export function compileDoc(doc: SongDoc, options: CompileOptions = {}): Compiled
 
     if (node.tracks && typeof node.tracks === 'object') {
       for (const [childName, child] of Object.entries(node.tracks)) {
-        if (child && typeof child === 'object') walk(child, childName, props, node === doc ? undefined : name);
+        if (child == null) continue; // `name:` with nothing under it: an empty slot
+        if (typeof child !== 'object' || Array.isArray(child)) {
+          throw new Error(
+            `Track "${childName}" must be a mapping (sample:, play:…), not ${JSON.stringify(child)}.`,
+          );
+        }
+        walk(child, childName, props, node === doc ? undefined : name);
       }
     }
   };

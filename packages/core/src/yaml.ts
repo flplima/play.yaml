@@ -141,7 +141,18 @@ function parseScalar(s: string): any {
   // an unquoted measure like {1 2 3 4} stays the string it looks like.
   if (s[0] === '{' && s[s.length - 1] === '}') {
     const entries = splitFlow(s.slice(1, -1));
-    if (entries.length && entries.every((e) => /^[^:]+:\s*\S/.test(e))) {
+    const pairs = entries.filter((e) => /^[^:]+:\s*\S/.test(e));
+    if (pairs.length && pairs.length < entries.length) {
+      // `{ sample: choir, set: legato, cantabile }`: the comma ends "set:"
+      // early and leaves "cantabile" with no key. Read as a string, the
+      // whole mapping would vanish without a word.
+      const loose = entries.find((e) => !/^[^:]+:\s*\S/.test(e));
+      throw new Error(
+        `"${s}" mixes "key: value" pairs with "${loose}", which has no key. ` +
+          `A list value needs brackets: set: [legato, cantabile].`,
+      );
+    }
+    if (entries.length && pairs.length === entries.length) {
       const map: Record<string, any> = {};
       for (const entry of entries) {
         const idx = entry.indexOf(':');
