@@ -60,10 +60,10 @@
     "sha256": "6e958d1300fbc0bccfcffc65c26cf623d7436f9baa1fe45bb8eabbe3b92428f6"
   },
   "songs/ave-maria-bach-gounod/ave-maria-bach-gounod.play.yaml": {
-    "tracks": 2,
+    "tracks": 4,
     "notes": 716,
     "lengthBeats": 156,
-    "sha256": "981ce42a1b8bfb90c90048201a0b25f7974e949a2393502481816394b8f2d200"
+    "sha256": "bd4e9a32912bf988ceeae2c54fb939cc677be109aac75d9a6b25d3bae8fd3f24"
   },
   "songs/bwv-106-gottes-zeit/bwv-106-gottes-zeit.play.yaml": {
     "tracks": 9,
