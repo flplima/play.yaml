@@ -2242,6 +2242,32 @@ check('the printed key: key: names it, a mid-piece scale: keeps it, a bar map ch
   assert.throws(() => scoreFromDoc({ key: 'h major', play: 'c' }), /not a key/);
   assert.throws(() => scoreFromDoc({ key: { first: 'c major' }, play: 'c' }), /not a bar number/);
 });
+const spelledNames = (score: Score, m: number) => score.parts[0].measures[m].voices[0].events
+  .filter((e) => e.kind === 'note')
+  .map((e) => { const p = e.notes[0].pitch!; return `${p.step}${p.alter > 0 ? '#' : p.alter < 0 ? 'b' : ''}`; });
+check('a note named by letter prints as written; the written compile keeps the spelling', () => {
+  const written = compileDoc({ play: ['d#4 eb4 b#3 c4'] }, { written: true }).tracks[0].timeline;
+  assert.deepStrictEqual(written.map((e) => e.spelling), [
+    { letter: 'D', alter: 1 }, { letter: 'E', alter: -1 }, { letter: 'B', alter: 1 }, { letter: 'C', alter: 0 },
+  ]);
+  assert.ok(compileDoc({ play: ['d#4 eb4'] }).tracks[0].timeline.every((e) => e.spelling === undefined), 'a performance carries none');
+  assert.strictEqual(compileDoc({ transpose: 2, play: ['d#4'] }, { written: true }).tracks[0].timeline[0].spelling, undefined,
+    'a transposition loses the letter');
+  const score = scoreFromDoc({ scale: 'a minor', sample: 'flute', play: ['e5 d#5 e5 eb5', 'b#3 c#4 e#4 f#4'] });
+  assert.deepStrictEqual(spelledNames(score, 0), ['E', 'D#', 'E', 'Eb']);
+  assert.deepStrictEqual(spelledNames(score, 1), ['B#', 'C#', 'E#', 'F#']);
+  assert.strictEqual(score.parts[0].measures[1].voices[0].events[0].notes[0].pitch!.octave, 3, 'B#3 is MIDI 60, written in octave 3');
+});
+check('a chromatic degree follows its line: rising with sharps, falling with flats', () => {
+  const turn = scoreFromDoc({ scale: 'g major', sample: 'cello', play: ['{12# 12 11# 12} {9# 9 8# 9}'] });
+  assert.deepStrictEqual(spelledNames(turn, 0), ['Eb', 'D', 'C#', 'D', 'Bb', 'A', 'G#', 'A']);
+  const repeat = scoreFromDoc({ scale: 'g major', sample: 'cello', play: ['{9 9# 9# 9}'] });
+  assert.deepStrictEqual(spelledNames(repeat, 0), ['A', 'Bb', 'Bb', 'A'], 'a repeated note looks past itself');
+  const minor = scoreFromDoc({ scale: 'a minor', sample: 'flute', play: ['1 4# 1 7#'] });
+  assert.deepStrictEqual(spelledNames(minor, 0), ['A', 'D#', 'A', 'G#'], 'a minor key raises its 4th and 7th');
+  assert.strictEqual(expandArp({ chord: 'Gm7', steps: 4 }), 'G4 Bb4 D5 F5', 'an arpeggio takes its chord\'s letters');
+  assert.strictEqual(expandArp({ notes: ['bb3', 'db4'], steps: 2 }), 'Bb3 Db4', 'and listed notes keep theirs');
+});
 check('overlapping lines in one track become two voices, each filling the bar', () => {
   const score = scoreFromDoc({ sample: 'flute', play: ['[c5 {e4 f4 g4 a4}]: b4 c5'] });
   const voices = score.parts[0].measures[0].voices;

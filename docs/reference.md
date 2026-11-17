@@ -594,6 +594,7 @@ What gets printed:
 - **Title and composer**: `title:` at the top of the first page, and `composer:` under it on the right (`composer: "Johann Sebastian Bach"`).
 - **The notes as written**: full note values, with no `gate`, `humanize`, `rubato` or strum. Ties, dots, tuplets, rests, beams and up to four voices per staff.
 - **Key**: `key: g major` names the key signature. Without it, the first `scale:` gives the key, and a score with neither prints with no key signature. A `scale:` set mid-piece changes what the degrees mean, never the printed key. To print real key changes, give `key:` the bars where they happen: `key: { 1: db major, 37: e major, 43: db major }`.
+- **Sharps and flats**: a note named by letter prints as written, so `d#4` is D sharp and `eb4` E flat in any key. A note named by degree is spelled from the `scale:` in force; a chromatic one follows its line, rising with sharps and falling with flats (the turn `{12# 12 11# 12}` in G major prints E flat, D, C sharp, D).
 - **Meter and tempo**: changes are printed where they happen.
 - **Keyboards**: tracks that share a keyboard `sample:` (piano, organ, harp and friends) print as one part on a grand staff. A track named `rh`, `right` or `upper` goes on the upper staff, and `lh`, `left` or `lower` on the lower one. Other names are split around middle C. A track named `pedal` gets a staff of its own.
 - **Drums**: a `kit:` track prints on a percussion staff, with x noteheads for hats and cymbals.
