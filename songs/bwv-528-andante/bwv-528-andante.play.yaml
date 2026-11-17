@@ -63,7 +63,10 @@ sections:
         - "{c#5 e4} {a4 d5} {b4 d4} {g4 c5}"
         - "{a#4 g5 f#5 e5} {d5 _ c#5 b4} {b4 _ b4 c#5 d5 _ b4 _} {e4 b4 g5 _}"
         - "{_ _ a4 b4 c#5 _ a4 _} {d4 a4 f#5 _} {_ _ g4 a4 b4 _ g4 _} {c4 g4 e5 _}"
-        - "{_ a#4 b4 c#5} {a#4 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ b4 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ f#4 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _} f4 {~ e4}"
+        # The appoggiatura F# takes the first half of the fermata beat and resolves
+        # to E#; the last two bars broaden instead of a held fermata.
+        - "ritardando over 2 to 30"
+        - "{_ a#4 b4 c#5} {a#4 _ _ b4} {f#4 f4} {~ e4}"
         - "{_ _ d4 e4} {c#4 _ _ b3} b3 _"
     manual2:
       play:
