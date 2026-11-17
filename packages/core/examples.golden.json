@@ -71,6 +71,12 @@
     "lengthBeats": 276,
     "sha256": "ab9168e63598381e9bd31cb1511325b5bb931a85d46604581e188339d46cc437"
   },
+  "songs/beethoven-ode-to-joy/beethoven-ode-to-joy.play.yaml": {
+    "tracks": 6,
+    "notes": 515,
+    "lengthBeats": 128,
+    "sha256": "de4f3dcb2d59acf7f83a46fbfab1d40f6bb4f39225737dacb177c8319b2d49ef"
+  },
   "songs/bwv-106-gottes-zeit/bwv-106-gottes-zeit.play.yaml": {
     "tracks": 9,
     "notes": 1759,
