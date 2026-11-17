@@ -107,6 +107,12 @@
     "lengthBeats": 324,
     "sha256": "508bfc53038a6bdb52a73b1372d41a35a9c1a088710ac09c5c7e0753054f0e2c"
   },
+  "songs/grieg-hall-of-the-mountain-king/grieg-hall-of-the-mountain-king.play.yaml": {
+    "tracks": 4,
+    "notes": 1453,
+    "lengthBeats": 352,
+    "sha256": "0bbc63adac11e0d025ae4fa4714793c064500a7e99179de5ceb31cc7b4d7eea1"
+  },
   "songs/joplin-the-entertainer/joplin-the-entertainer.play.yaml": {
     "tracks": 4,
     "notes": 2621,
