@@ -13,8 +13,11 @@ over a left that walks in even eighths, closer to a Scarlatti sonata than to
 the counterpoint of Book I. The fugue's subject starts off the beat with a
 leap of a sixth and picks its way down in sighing seconds.
 
-- **Casting**: everything on `piano`. The five tracks are the five real voices
-  (two in the prelude, three in the fugue), not five instruments.
+- **Casting**: everything on `piano`, one instrument. In the prelude the
+  tracks are the hands (`rh`, `lh`, and `rh2`/`lh2` for a voice a hand holds
+  while it moves on), so it prints treble over bass. In the fugue they are
+  the three voices, with `tenor` for the bars where the middle voice drops
+  into the left hand.
 - **Verified**: the fugue imports exactly (1118 → 1118, nothing moved); the
   prelude is complete with 20 notes nudged by at most 0.02 beat by `--snap 16`,
   which is the source sequence's own jitter.
