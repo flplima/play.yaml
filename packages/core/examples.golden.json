@@ -6,10 +6,10 @@
     "sha256": "c2b981339fad65cc18b78a91d8ec77227ab27aadba1aa1d64568b6d2a3a00a51"
   },
   "bwv846.play.yaml": {
-    "tracks": 1,
+    "tracks": 3,
     "notes": 549,
     "lengthBeats": 140,
-    "sha256": "80d9128451772e46b6d304b137339c036b12018b0fb5a39d4dca08a096fd5be1"
+    "sha256": "0e31b8d4b9ddbb4cbdb8002bf7155993fa33213bb6964310530a9ab40de0c7ef"
   },
   "bwv881.play.yaml": {
     "tracks": 2,
