@@ -1,0 +1,732 @@
+# James P. Johnson and Cecil Mack: "Charleston" (1923), from the show "Runnin' Wild"
+# Public domain: published in 1923 (US), and Johnson (d. 1955) and Mack (d. 1944) both
+# died more than 70 years ago. Transcribed by hand from the Harms edition, New York,
+# "Copyright MCMXXIII by Harms Inc.", plate 6870-4, voice and piano with a ukulele
+# arrangement by Charles N. Grant (printing titled "The Original Charleston").
+# Scan: Johns Hopkins Levy Sheet Music Collection, on the Internet Archive (carner_6_297).
+#
+# What is Johnson's and Mack's: the melody, the words, and the whole piano part
+# (rh, rh2, lh, lh2), note for note as printed: 8 bars of intro, a 16-bar verse,
+# and the 32-bar refrain with its first and second endings.
+# What is ours: the upright bass, the drums, the clarinet on the second refrain,
+# and the form (the print's repeat of the refrain is sung twice here, the second
+# time forte with the clarinet, as the print's "p-f" asks).
+#
+# Bb major in cut time. The print says only "Animato", so half = 112 is our choice
+# (tempo counts quarter notes: 224). The refrain is marked "con spirito".
+# The ukulele chord boxes are not transcribed. Grace notes in the left hand are played
+# as 32nd notes taken from the end of the note before them. Staccato dots and the
+# tenuto lines of verse bar 15 are not written; marcato wedges are played as accents.
+
+title: "Charleston"
+composer: "James P. Johnson and Cecil Mack"
+key: bb major
+tempo: 224
+tempo text: Animato
+measure: 2/2
+
+tracks:
+  # The singer. One syllable per struck note; "_" lets a note pass on the same syllable.
+  # The words are printed under the voice staff once; the refrain is sung twice here.
+  voice:
+    preset: choir-female
+    dynamic: mezzoforte
+    lyrics: |
+      Car- o- lin- a,             # verse 1
+      Car- o- lin- a, At
+      last they're got you on the map,
+      With a new tune,            # verse 5
+      Fun- ny blue tune,
+      With a pe- cu- _ liar snap!
+      You may
+      not be a- ble to            # verse 9
+      buck or wing,
+      Fox- trot, two- step, or
+      e- ven sing, If you
+      ain't got re- li- gion      # verse 13
+      in your feet, You can
+      do this prance and
+      do it neat.
+      Charles- ton! Charles- ton!  # refrain 1
+      Made in Car- o- lin- a,
+      Some dance, Some prance,
+      I'll say, There's noth- ing fin- er than the
+      Charles- ton, Charles- ton,  # refrain 9
+      Lord how you can shuf- fle,
+      Ev- 'ry step you do,
+      Leads to some- thing new,
+      Man I'm tell- ing you,
+      It's a la- pa- zoo,
+      Buck dance, Wing- dance,     # refrain 17
+      Will be a back num- ber, But the
+      Charles- ton the new Charles- ton
+      That dance is sure- ly a com- er
+      Some- time, You'll dance it  # refrain 25
+      one time, The dance called the
+      Charles- ton, Made in South Car- o-
+      line.
+      Charles- ton! Charles- ton!  # the refrain again
+      Made in Car- o- lin- a,
+      Some dance, Some prance,
+      I'll say, There's noth- ing fin- er than the
+      Charles- ton, Charles- ton,
+      Lord how you can shuf- fle,
+      Ev- 'ry step you do,
+      Leads to some- thing new,
+      Man I'm tell- ing you,
+      It's a la- pa- zoo,
+      Buck dance, Wing- dance,
+      Will be a back num- ber, But the
+      Charles- ton the new Charles- ton
+      That dance is sure- ly a com- er
+      Some- time, You'll dance it
+      one time, The dance called the
+      Charles- ton, Made in South Car- o-
+      line.
+  # Ours: doubles the singer on the second refrain.
+  clarinet: { preset: clarinet, dynamic: mezzoforte }
+  # The printed piano part. rh and lh carry the main voices; rh2 and lh2 hold the
+  # inner voices where the print writes two rhythms in one hand.
+  rh: { preset: piano }
+  rh2: { preset: piano }
+  lh: { preset: piano }
+  lh2: { preset: piano }
+  # Ours: an upright bass on the printed left hand's lowest notes.
+  bass: { preset: bass, dynamic: mezzoforte }
+  # Ours: a 1920s kit. "drums" has the kick and the snare (rim in the quiet parts),
+  # "traps" the foot cymbal, crashes and the woodblock.
+  drums: { kit: acoustic, dynamic: mezzopiano }
+  traps: { kit: acoustic, dynamic: mezzopiano }
+
+sections:
+  # Eight bars of piano, forte: G minor, Cm6, F7, Bb7, then D7 rolled and sforzando.
+  intro:
+    loop: false
+    rh:
+      play:
+        - "forte"
+        - "bb4 {~ bb4} _ _"                                    # 1
+        - "~ [ab4 c5]> {_ _ _ bb4} [ab4 c5]"
+        - "[bb3 bb4] {~ [bb3 bb4]} _ _"
+        - "~ [e4 c5]> {_ _ _ bb4} [e4 c5]"
+        - "g4 {~ g4} _ _"                                      # 5
+        - "{g4 f4} {g4 [c4 eb4 a4]>} {_ [bb3 g4]} [a3 eb4 f4]>"
+        - "bb4 _ _ _"
+        - "_ ~ [c4 f#4 a4 d5]>>~ ~"                            # 8: crescendo to sfz
+    rh2:
+      play:
+        - "forte"
+        - "[bb3 d4] {~ [bb3 d4]} _ [bb3 d4 g4]"
+        - "[bb3 d4 ab4]> d4 _ d4"
+        - "g4 {~ g4} {g4 gb4} f4"
+        - "[bb3 e4] c4 _ c4"
+        - "[bb3 f4] {~ [bb3 f4]} _ [bb3 e4]"
+        - "{[a3 eb4] _} {_ ~} ~ ~"
+        - "[bb3 d4] {[d4 f4] [c4 eb4]>} {_ [d4 f4]} [c4 eb4]"
+        - "[bb3 d4] ~ ~ ~"
+    lh:
+      play:
+        - "forte"
+        - "[g2 g3] ~ ~ [g2 g3]>"
+        - "[f2 f3]> _ ~ [bb1 bb2]"
+        - "[eb2 eb3] ~ {~ [e2 e3]} [f2 f3]"
+        - "[gb2 gb3] _ _ ~"
+        - "[d2 d3] ~ ~ [db2 db3]"
+        - "{[c2 c3] _} {_ [f2 f3]>} _ [f2 f3]>"
+        - "bb2 _ _ _"
+        - "_ ~ [d2 a2 f#3]>>~ ~"
+    lh2:
+      play:
+        - "forte"
+        - "~"
+        - "~"
+        - "~"
+        - "~"
+        - "~"
+        - "~"
+        - "~ {ab3 gb3>} {_ ab3} gb3"                          # 7: the inner line under Bb7
+        - "f3 ~ ~ ~"
+    bass:
+      wait: 7
+      play: ["~ ~ d2>> ~"]
+    drums:
+      wait: 7
+      play: ["~ ~ [bd sd]>> ~"]
+    traps:
+      wait: 7
+      play: ["~ ~ cy>> ~"]
+
+  # The verse, piano: Gm over a falling bass, D7, A7, F7, then F to F7 into the refrain.
+  verse:
+    loop: false
+    voice:
+      play:
+        - "{g4 g4} {_ g4} _ d4"                               # 1 Car-o-lin-a,
+        - "{bb4 bb4} {_ bb4} _ {g4 g4}"
+        - "{c5 _ _ d5} {c5 _ _ d5} {bb4 a4} {_ g4}"
+        - "_ _ _ ~"
+        - "{g4 g4} {_ g4} _ d4"                               # 5 With a new tune,
+        - "{bb4 bb4} {_ bb4} _ g4"
+        - "{~ a4} {g4 f#4} {e4 f#4} {g4 a4}"
+        - "_ _ {_ ~} {eb5 _ _ d5}"
+        - "eb5 c5 {c5 _ _ d5} eb5"                            # 9 not be a-ble to
+        - "{d5 bb4} {_ bb4} _ _"
+        - "c5 c5 {a4 _ _ bb4} c5"
+        - "{bb4 g4} {_ bb4} _ {a4 bb4}"
+        - "c5 {c5 a4} {d5 d5} _"                              # 13 ain't got re-li-gion
+        - "{c5 c5} {_ d5} _ {a4 bb4}"
+        - "c5 bb4 a4 g4"
+        - "{a4 bb4} {_ c5} _ ~"
+    rh:
+      set: piano
+      play:
+        - "{[bb3 d4 g4] [bb3 d4 g4]} {_ [bb3 d4 g4]>} _ [bb3 d4]"         # 1
+        - "{[bb3 d4 bb4] [bb3 d4 bb4]} {_ [bb3 d4 bb4]>} _ [bb3 d4 g4]"
+        - "{c5 _ _ d5} {c5 _ _ d5} {[d4 f#4 a4 c5] [c4 d4 f#4 a4]} {_ [bb3 d4 g4]}"
+        - "{_ c#4} {d4 eb4>} {_ d4} {c4 d4}"                                # 4: in octaves with lh2
+        - "{[bb3 d4 g4] [bb3 d4 g4]} {_ [bb3 d4 g4]>} _ [bb3 d4]"         # 5
+        - "{[bb3 d4 bb4] [bb3 d4 bb4]} {_ [bb3 d4 bb4]>} _ [bb3 d4 g4]"
+        - "{~ a4} {g4 f#4} {e4 f#4} {g4 a4}"
+        - "_ _ {_ ~} {[c5 eb5] _ _ [b4 d5]}"
+        - "[c5 eb5] [a4 c5] {[a4 c5] _ _ [bb4 d5]} [c5 eb5]"               # 9
+        - "{[bb4 d5] [d4 bb4]} {_ [d4 bb4]>} _ _"
+        - "[a4 c5] [a4 c5] {[f#4 a4] _ _ [g4 bb4]} [a4 c5]"
+        - "{[g4 bb4] [bb3 g4]} {_ [g4 bb4]>} _ {[f4 a4] [g4 bb4]}"
+        - "[a4 c5] {_ [f4 a4]} {[g#4 d5] [g#4 d5]} _"                       # 13
+        - "{[a4 c5] [a4 c5]} {_ [f4 a4 d5]>} _ {[f4 a4] bb4}"
+        - "[e4 c5] [d4 e4 bb4] [e4 a4] [e4 g4]"
+        - "{[c4 eb4 a4] [c4 e4 bb4]} {_ [c4 eb4 c5]>} _ [a3 eb4 f4]>"
+    rh2:
+      set: piano
+      play:
+        - "~"
+        - "~"
+        - "[c4 g4] _ ~ ~"
+        - "~ {~ bb3} _ _"
+        - "~"
+        - "~"
+        - "{~ c#4} {b3 a3} {[g3 b3] a3} {[b3 c4] [a3 d4]}"   # 7: the line falls from C# to G under A7
+        - "{_ [a3 d4]} [a3 d4] {[a3 eb4] ~} ~"
+        - "~"
+        - "~"
+        - "~"
+        - "~"
+        - "~"
+        - "~"
+        - "~ ~ {c4 b3} bb3"
+        - "~"
+    lh:
+      set: piano
+      play:
+        - "g3 _ f3 _"                                          # 1
+        - "e3 _ e2 _"
+        - "eb2 _ d2 _"
+        - "g2 _ _ _"
+        - "g3 _ f3 _"                                          # 5
+        - "e3 _ e2 {_ _ _ _ _ f#2 g2 g#2}"             # grace notes into bar 7
+        - "a2> ~ a1 _"
+        - "[f#2 f#3] _ {[f2 f3] ~} ~"
+        - "[f2 c3 a3]~ [f2 c3 a3]~ [f2 c3 a3]~ [f2 c3 a3]~"    # 9: rolled chords
+        - "[bb2 f3 bb3]~ [bb2 f3 bb3]~ [bb2 f3 bb3]~ [bb2 f3 bb3]~"
+        - "[a2 f#3]~ [a2 f#3]~ [a2 f#3]~ [a2 f#3]~"
+        - "[g2 d3 g3]~ [g2 d3 g3]~ [g2 d3 g3]~ ~"
+        - "[f3 c4]> _ [f3 b3]> _"                              # 13
+        - "f3 e3 d3 db3"
+        - "[c3 c4] _ [c2 c3] _"
+        - "{[f2 f3] [g2 g3]} {_ [a2 a3]>} _ [f2 f3]>"
+    lh2:
+      set: piano
+      play:
+        - "~"
+        - "~"
+        - "~"
+        - "{~ c#3} {d3 eb3>} {_ d3} {c3 d3}"
+        - "~"
+        - "~"
+        - "~"
+        - "~"
+        - "~"
+        - "~"
+        - "~"
+        - "~"
+        - "~"
+        - "c4 _ d4 db4"
+        - "~"
+        - "~"
+    bass:
+      set: mezzopiano
+      play:
+        - "g2 _ f2 _"
+        - "e2 _ e2 _"
+        - "eb2 _ d2 _"
+        - "g1 _ _ _"
+        - "g2 _ f2 _"
+        - "e2 _ e2 _"
+        - "a1 _ a1 _"
+        - "f#2 _ {f2 ~} ~"
+        - "f2 _ c2 _"
+        - "bb1 _ f2 _"
+        - "a1 _ d2 _"
+        - "g1 _ d2 ~"
+        - "f2 _ f2 _"
+        - "f2 e2 d2 db2"
+        - "c2 _ c2 _"
+        - "{f2 g2} {_ a2} _ f2"
+    drums:
+      set: piano
+      play:
+        - 15x: "bd rim bd rim"
+        - "bd rim {sd sd} {sd sd~}"                            # a short fill into the refrain
+    traps:
+      set: piano
+      play:
+        - 16x: "~ ph ~ ph"
+
+  # The refrain, piano the first time ("p-f" in the print), first ending.
+  chorus:
+    loop: false
+    voice:
+      play:
+        - "f4 {~ f4} _ _"                                     # 1 Charles-ton!
+        - "f#4 {~ f#4} _ _"
+        - "g4 {~ g4} {_ _ _ f#4} g4"
+        - "d5 {~ g4} _ _"
+        - "g4 {~ d5} _ _"                                     # 5 Some dance,
+        - "g4 {~ d5} _ _"
+        - "g4 {~ bb4} _ _"
+        - "{a4 c5} {a4 g4} {_ a4} {g4 gb4}"
+        - "f4 {~ f4} _ _"                                     # 9 Charles-ton,
+        - "f#4 {~ f#4} _ _"
+        - "g4 {~ g4} {_ _ _ f#4} g4"
+        - "d5 {~ d5} _ _"
+        - "{~ a4} {a4 a4} {_ g4} f4"                          # 13 Ev-'ry step you do,
+        - "{~ g4} {g4 g4} {_ f4} e4"
+        - "{~ a4} {a4 a4} {_ g4} f#4"
+        - "{~ a4} {a4 a4} {_ g4} f4"
+        - "f4 {~ f4} _ _"                                     # 17 Buck dance,
+        - "f#4 {~ f#4} _ _"
+        - "g4 {~ g4} {_ _ _ f#4} g4"
+        - "d5 {~ g4} {_ ~} {g4 _ _ g4}"
+        - "g4 {~ d5} {_ _ _ c#5} d5"                          # 21 Charles-ton the new
+        - "g4 {~ d5} _ _"
+        - "g4 {~ bb4} _ bb4"
+        - "{a4 c5} {a4 g4} _ f4"
+        - "bb4 {~ bb4} _ _"                                   # 25 Some-time,
+        - "~ c5 {_ _ _ bb4} c5"
+        - "bb4 {~ bb4} _ _"
+        - "~ {bb4 c5} {_ bb4} c5"
+        - "g4 {~ g4} _ _"                                     # 29 Charles-ton,
+        - "{~ f4} {g4 a4} {_ g4} f4"
+        - "bb4 _ _ _"
+        - "{_ ~} ~ ~ ~"                                       # 32, first ending
+    rh:
+      set: piano
+      play:
+        - "f4 {~ f4>} _ _"                                    # 1: Bb6
+        - "f#4 {~ f#4>} _ _"                                  # D7/A
+        - "g4 {~ g4>} {_ _ _ f#4} g4"                         # G7
+        - "[f4 b4 d5] {~ g4>} _ _"
+        - "g4 {~ [bb4 d5]>} {_ _ _ c#5} [bb4 d5]"             # 5: C7
+        - "g4 {~ [a4 d5]>} {_ _ _ c#5} [a4 d5]"               # F9
+        - "[f4 g4] {~ bb4>} {_ _ _ g4} bb4"                   # Gm7/D, then E dim7 over Db
+        - "{[a3 eb4 a4] c5} {a4 [a3 eb4 g4]>} {_ a4} {[a3 eb4 g4] gb4}"   # F7/C
+        - "f4 {~ f4>} _ _"                                    # 9
+        - "f#4 {~ f#4>} _ _"
+        - "g4 {~ g4>} {_ _ _ f#4} g4"
+        - "d5 {~ d5>} _ _"                                    # E half-diminished
+        - "{~ [f4 a4]} {[f4 a4] [f4 a4]>} {_ [e4 g4]} [d4 f4]"           # 13: over a held A
+        - "{~ [e4 g4]} {[e4 g4] [e4 g4]>} {_ [d4 f4]} [c#4 e4]"
+        - "{~ [c4 f#4 a4]} {[c4 f#4 a4] [c4 f#4 a4]>} {_ [bb3 e4 g4]} [a3 d4 f#4]"
+        - "{~ a4} {a4 a4>} {_ g4} f4"                         # C dim7 to F7
+        - "f4 {~ f4>} _ _"                                    # 17
+        - "f#4 {~ f#4>} _ _"
+        - "g4 {~ g4>} {_ _ _ f#4} g4"
+        - "[f4 b4 d5] {~ g4>} {_ ~} {g4 _ _ g4}"
+        - "g4 {~ [bb4 d5]>} {_ _ _ c#5} [bb4 d5]"             # 21
+        - "g4 {~ [a4 d5]>} {_ _ _ c#5} [a4 d5]"
+        - "[f4 g4] {~ bb4>} {_ _ _ g4} bb4"
+        - "{[a3 eb4 a4] c5} {a4 [a3 eb4 g4]>} _ [a3 eb4 f4]"
+        - "bb4 {~ bb4} _ _"                                   # 25: bars 25-31 are intro bars 1-7
+        - "~ [ab4 c5]> {_ _ _ bb4} [ab4 c5]"
+        - "[bb3 bb4] {~ [bb3 bb4]} _ _"
+        - "~ {[c4 e4 bb4] [c4 e4 c5]>} {_ [c4 e4 bb4]} [c4 e4 c5]"
+        - "g4 {~ g4} _ _"
+        - "{g4 f4} {g4 [c4 eb4 a4]>} {_ [bb3 g4]} [a3 eb4 f4]>"
+        - "bb4 _ _ _"
+        - "_ {f4 [d4 g#4]>} {_ f4} [eb4 a4]>"                 # 32, first ending: B dim7 to F7
+    rh2:
+      set: piano
+      play:
+        - "[bb3 d4] {~ [bb3 d4]} {_ _ _ c#4} [bb3 d4]"        # 1
+        - "[c4 d4] {~ [c4 d4]} {_ _ _ c#4} [c4 d4]"
+        - "[b3 f4] {~ [b3 f4]} {_ _ _ ~} [b3 f4]"
+        - "~ {~ [b3 f4]} {_ _ _ c#4} [b3 d4]"
+        - "[bb3 e4] {~ e4} _ e4"                              # 5
+        - "[a3 eb4] {~ eb4} _ eb4"
+        - "bb3 {~ [bb3 f4]} {_ _ _ ~} [bb3 e4]"
+        - "~"
+        - "[bb3 d4] {~ [bb3 d4]} {_ _ _ c#4} [bb3 d4]"        # 9
+        - "[c4 d4] {~ [c4 d4]} {_ _ _ c#4} [c4 d4]"
+        - "[b3 f4] {~ [b3 f4]} {_ _ _ ~} [b3 f4]"
+        - "[d4 bb4] {~ [d4 bb4]} {_ _ _ a4} [d4 g4]"
+        - "~"                                                 # 13
+        - "~"
+        - "~"
+        - "{~ [c4 gb4]} {[c4 gb4] [c4 gb4]} _ [a3 eb4]"
+        - "[bb3 d4] {~ [bb3 d4]} {_ _ _ c#4} [bb3 d4]"        # 17
+        - "[c4 d4] {~ [c4 d4]} {_ _ _ c#4} [c4 d4]"
+        - "[b3 f4] {~ [b3 f4]} {_ _ _ ~} [b3 f4]"
+        - "~ {~ [b3 f4]} {_ _ _ c#4} [b3 d4 f4]"
+        - "[bb3 e4] {~ e4} _ e4"                              # 21
+        - "[a3 eb4] {~ eb4} _ eb4"
+        - "bb3 {~ [bb3 f4]} {_ _ _ ~} [bb3 e4]"
+        - "~"
+        - "[bb3 d4] {~ [bb3 d4]} _ [bb3 d4 g4]"               # 25
+        - "[bb3 d4 ab4]> d4 _ d4"
+        - "g4 {~ g4} {g4 gb4} f4"
+        - "[bb3 e4] ~ ~ ~"
+        - "[bb3 f4] {~ [bb3 f4]} _ [bb3 e4]"                  # 29
+        - "{[a3 eb4] _} {_ ~} ~ ~"
+        - "[bb3 d4] {[d4 f4] [c4 eb4]>} {_ [d4 f4]} [c4 eb4]"
+        - "[bb3 d4] ~ ~ ~"
+    lh:
+      set: piano
+      play:
+        - "[bb1 bb2] {~ [bb1 bb2]>} _ _"                      # 1
+        - "[a1 a2] {~ [a1 a2]>} _ _"
+        - "[g1 g2] {~ [g1 g2]>} _ _"
+        - "[g1 g2] {~ [g1 g2]>} _ _"
+        - "[c2 c3] {~ [c2 c3]>} _ _"                          # 5
+        - "[f2 c3] {~ [f2 c3]>} _ _"
+        - "[d2 d3] {~ [d2 d3]>} _ [db2 db3]"
+        - "[c2 c3] {~ [f2 c3]>} _ [f2 c3]"
+        - "[bb1 bb2] {~ [bb1 bb2]>} _ _"                      # 9
+        - "[a1 a2] {~ [a1 a2]>} _ _"
+        - "[g1 g2] {~ [g1 g2]>} _ _"
+        - "[e2 e3] {~ [e2 e3]>} _ {_ _ _ _ _ _ g2 g#2}"
+        - "a2> _ _ {_ _ _ _ _ _ g2 g#2}"              # 13
+        - "a2> _ _ {_ _ _ _ _ _ c3 c#3}"
+        - "d3> _ _ {_ _ _ _ _ _ a2 bb2}"
+        - "c3> _ _ f2"
+        - "[bb1 bb2] {~ [bb1 bb2]>} _ _"                      # 17
+        - "[a1 a2] {~ [a1 a2]>} _ _"
+        - "[g1 g2] {~ [g1 g2]>} _ _"
+        - "[g1 g2] {~ [g1 g2]>} _ _"
+        - "[c2 c3] {~ [c2 c3]>} _ _"                          # 21
+        - "[f2 c3] {~ [f2 c3]>} _ _"
+        - "[d2 d3] {~ [d2 d3]>} _ [db2 db3]"
+        - "[c2 c3] {~ [f2 c3]>} _ [f2 c3]"
+        - "[g2 g3] ~ ~ [g2 g3]>"                              # 25
+        - "[f2 f3]> _ ~ [bb1 bb2]"
+        - "[eb2 eb3] ~ {~ [e2 e3]} [f2 f3]"
+        - "[gb2 gb3] _ _ ~"
+        - "[d2 d3] ~ ~ [db2 db3]"                             # 29
+        - "{[c2 c3] _} {_ [f2 f3]>} _ [f2 f3]>"
+        - "bb2 _ _ _"
+        - "_ {~ b2} _ c3"
+    lh2:
+      set: piano
+      play:
+        - 30x: "~"
+        - "~ {ab3 gb3>} {_ ab3} gb3"                          # 31
+        - "f3 {~ f3} _ f3"
+    bass:
+      set: mezzopiano
+      play:
+        - "bb1 {~ bb1} _ _"                                   # 1
+        - "a1 {~ a1} _ _"
+        - "g1 {~ g1} _ _"
+        - "g1 {~ g1} _ _"
+        - "c2 {~ c2} _ _"                                     # 5
+        - "f1 {~ f1} _ _"
+        - "d2 {~ d2} _ db2"
+        - "c2 {~ f1} _ f1"
+        - "bb1 {~ bb1} _ _"                                   # 9
+        - "a1 {~ a1} _ _"
+        - "g1 {~ g1} _ _"
+        - "e2 {~ e2} _ _"
+        - "a1 _ e2 _"                                         # 13
+        - "a1 _ e2 _"
+        - "d2 _ a1 _"
+        - "c2 _ _ f1"
+        - "bb1 {~ bb1} _ _"                                   # 17
+        - "a1 {~ a1} _ _"
+        - "g1 {~ g1} _ _"
+        - "g1 {~ g1} _ _"
+        - "c2 {~ c2} _ _"                                     # 21
+        - "f1 {~ f1} _ _"
+        - "d2 {~ d2} _ db2"
+        - "c2 {~ f1} _ f1"
+        - "g1 ~ ~ g1"                                         # 25
+        - "f1 _ ~ bb1"
+        - "eb2 ~ {~ e2} f2"
+        - "gb1 _ _ ~"
+        - "d2 ~ ~ db2"                                        # 29
+        - "{c2 _} {_ f1} _ f1"
+        - "bb1 _ _ _"
+        - "_ {~ b1} _ c2"
+    drums:
+      set: mezzopiano
+      play:
+        - 12x: "bd {rim bd>} ~ rim"                           # 1-12: the Charleston beat, kick on 1 and the and of 2
+        - 4x: "bd ~ bd ~"                                     # 13-16
+        - 8x: "bd {rim bd>} ~ rim"                            # 17-24
+        - "bd ~ ~ bd>"                                        # 25-31 follow the piano's accents
+        - "bd> ~ ~ bd"
+        - "bd ~ {~ bd} bd"
+        - "bd ~ ~ ~"
+        - "bd ~ ~ bd"
+        - "bd ~ {~ bd>} bd>"
+        - "bd ~ ~ ~"
+        - "bd ~ {~ sd>} {sd sd}"                              # 32: back to the top
+    traps:
+      set: mezzopiano
+      play:
+        - "cy ph ~ ph"
+        - 11x: "~ ph ~ ph"
+        - 4x: "{~ wb} {~ wb} {~ wb} {~ wb}"                   # 13-16: woodblock on the off-beats
+        - "cy ph ~ ph"
+        - 15x: "~ ph ~ ph"
+
+  # The refrain again, forte, with the clarinet doubling the singer; second ending.
+  chorus_again:
+    loop: false
+    voice:
+      set: forte
+      play:
+        - "f4 {~ f4} _ _"                                     # 1
+        - "f#4 {~ f#4} _ _"
+        - "g4 {~ g4} {_ _ _ f#4} g4"
+        - "d5 {~ g4} _ _"
+        - "g4 {~ d5} _ _"                                     # 5
+        - "g4 {~ d5} _ _"
+        - "g4 {~ bb4} _ _"
+        - "{a4 c5} {a4 g4} {_ a4} {g4 gb4}"
+        - "f4 {~ f4} _ _"                                     # 9
+        - "f#4 {~ f#4} _ _"
+        - "g4 {~ g4} {_ _ _ f#4} g4"
+        - "d5 {~ d5} _ _"
+        - "{~ a4} {a4 a4} {_ g4} f4"                          # 13
+        - "{~ g4} {g4 g4} {_ f4} e4"
+        - "{~ a4} {a4 a4} {_ g4} f#4"
+        - "{~ a4} {a4 a4} {_ g4} f4"
+        - "f4 {~ f4} _ _"                                     # 17
+        - "f#4 {~ f#4} _ _"
+        - "g4 {~ g4} {_ _ _ f#4} g4"
+        - "d5 {~ g4} {_ ~} {g4 _ _ g4}"
+        - "g4 {~ d5} {_ _ _ c#5} d5"                          # 21
+        - "g4 {~ d5} _ _"
+        - "g4 {~ bb4} _ bb4"
+        - "{a4 c5} {a4 g4} _ f4"
+        - "bb4 {~ bb4} _ _"                                   # 25
+        - "~ c5 {_ _ _ bb4} c5"
+        - "bb4 {~ bb4} _ _"
+        - "~ {bb4 c5} {_ bb4} c5"
+        - "g4 {~ g4} _ _"                                     # 29
+        - "{~ f4} {g4 a4} {_ g4} f4"
+        - "bb4 _ _ _"
+        - "{_ ~} ~ ~ ~"                                       # 32, second ending
+    clarinet:
+      set: forte
+      play:
+        - "f4 {~ f4} _ _"                                     # 1
+        - "f#4 {~ f#4} _ _"
+        - "g4 {~ g4} {_ _ _ f#4} g4"
+        - "d5 {~ g4} _ _"
+        - "g4 {~ d5} _ _"                                     # 5
+        - "g4 {~ d5} _ _"
+        - "g4 {~ bb4} _ _"
+        - "{a4 c5} {a4 g4} {_ a4} {g4 gb4}"
+        - "f4 {~ f4} _ _"                                     # 9
+        - "f#4 {~ f#4} _ _"
+        - "g4 {~ g4} {_ _ _ f#4} g4"
+        - "d5 {~ d5} _ _"
+        - "{~ a4} {a4 a4} {_ g4} f4"                          # 13
+        - "{~ g4} {g4 g4} {_ f4} e4"
+        - "{~ a4} {a4 a4} {_ g4} f#4"
+        - "{~ a4} {a4 a4} {_ g4} f4"
+        - "f4 {~ f4} _ _"                                     # 17
+        - "f#4 {~ f#4} _ _"
+        - "g4 {~ g4} {_ _ _ f#4} g4"
+        - "d5 {~ g4} {_ ~} {g4 _ _ g4}"
+        - "g4 {~ d5} {_ _ _ c#5} d5"                          # 21
+        - "g4 {~ d5} _ _"
+        - "g4 {~ bb4} _ bb4"
+        - "{a4 c5} {a4 g4} _ f4"
+        - "bb4 {~ bb4} _ _"                                   # 25
+        - "~ c5 {_ _ _ bb4} c5"
+        - "bb4 {~ bb4} _ _"
+        - "~ {bb4 c5} {_ bb4} c5"
+        - "g4 {~ g4} _ _"                                     # 29
+        - "{~ f4} {g4 a4} {_ g4} f4"
+        - "bb4 _ _ _"
+        - "{_ ~} ~ ~ ~"
+    rh:
+      set: forte
+      play:
+        - "f4 {~ f4>} _ _"                                    # 1
+        - "f#4 {~ f#4>} _ _"
+        - "g4 {~ g4>} {_ _ _ f#4} g4"
+        - "[f4 b4 d5] {~ g4>} _ _"
+        - "g4 {~ [bb4 d5]>} {_ _ _ c#5} [bb4 d5]"             # 5
+        - "g4 {~ [a4 d5]>} {_ _ _ c#5} [a4 d5]"
+        - "[f4 g4] {~ bb4>} {_ _ _ g4} bb4"
+        - "{[a3 eb4 a4] c5} {a4 [a3 eb4 g4]>} {_ a4} {[a3 eb4 g4] gb4}"
+        - "f4 {~ f4>} _ _"                                    # 9
+        - "f#4 {~ f#4>} _ _"
+        - "g4 {~ g4>} {_ _ _ f#4} g4"
+        - "d5 {~ d5>} _ _"
+        - "{~ [f4 a4]} {[f4 a4] [f4 a4]>} {_ [e4 g4]} [d4 f4]"           # 13
+        - "{~ [e4 g4]} {[e4 g4] [e4 g4]>} {_ [d4 f4]} [c#4 e4]"
+        - "{~ [c4 f#4 a4]} {[c4 f#4 a4] [c4 f#4 a4]>} {_ [bb3 e4 g4]} [a3 d4 f#4]"
+        - "{~ a4} {a4 a4>} {_ g4} f4"
+        - "f4 {~ f4>} _ _"                                    # 17
+        - "f#4 {~ f#4>} _ _"
+        - "g4 {~ g4>} {_ _ _ f#4} g4"
+        - "[f4 b4 d5] {~ g4>} {_ ~} {g4 _ _ g4}"
+        - "g4 {~ [bb4 d5]>} {_ _ _ c#5} [bb4 d5]"             # 21
+        - "g4 {~ [a4 d5]>} {_ _ _ c#5} [a4 d5]"
+        - "[f4 g4] {~ bb4>} {_ _ _ g4} bb4"
+        - "{[a3 eb4 a4] c5} {a4 [a3 eb4 g4]>} _ [a3 eb4 f4]"
+        - "bb4 {~ bb4} _ _"                                   # 25
+        - "~ [ab4 c5]> {_ _ _ bb4} [ab4 c5]"
+        - "[bb3 bb4] {~ [bb3 bb4]} _ _"
+        - "~ {[c4 e4 bb4] [c4 e4 c5]>} {_ [c4 e4 bb4]} [c4 e4 c5]"
+        - "g4 {~ g4} _ _"                                     # 29
+        - "{g4 f4} {g4 [c4 eb4 a4]>} {_ [bb3 g4]} [a3 eb4 f4]>"
+        - "bb4 _ _ _"
+        - "_ ~ [bb3 d4 f4 bb4]>> ~"                           # 32, second ending: fz
+    rh2:
+      set: forte
+      play:
+        - "[bb3 d4] {~ [bb3 d4]} {_ _ _ c#4} [bb3 d4]"        # 1
+        - "[c4 d4] {~ [c4 d4]} {_ _ _ c#4} [c4 d4]"
+        - "[b3 f4] {~ [b3 f4]} {_ _ _ ~} [b3 f4]"
+        - "~ {~ [b3 f4]} {_ _ _ c#4} [b3 d4]"
+        - "[bb3 e4] {~ e4} _ e4"                              # 5
+        - "[a3 eb4] {~ eb4} _ eb4"
+        - "bb3 {~ [bb3 f4]} {_ _ _ ~} [bb3 e4]"
+        - "~"
+        - "[bb3 d4] {~ [bb3 d4]} {_ _ _ c#4} [bb3 d4]"        # 9
+        - "[c4 d4] {~ [c4 d4]} {_ _ _ c#4} [c4 d4]"
+        - "[b3 f4] {~ [b3 f4]} {_ _ _ ~} [b3 f4]"
+        - "[d4 bb4] {~ [d4 bb4]} {_ _ _ a4} [d4 g4]"
+        - "~"                                                 # 13
+        - "~"
+        - "~"
+        - "{~ [c4 gb4]} {[c4 gb4] [c4 gb4]} _ [a3 eb4]"
+        - "[bb3 d4] {~ [bb3 d4]} {_ _ _ c#4} [bb3 d4]"        # 17
+        - "[c4 d4] {~ [c4 d4]} {_ _ _ c#4} [c4 d4]"
+        - "[b3 f4] {~ [b3 f4]} {_ _ _ ~} [b3 f4]"
+        - "~ {~ [b3 f4]} {_ _ _ c#4} [b3 d4 f4]"
+        - "[bb3 e4] {~ e4} _ e4"                              # 21
+        - "[a3 eb4] {~ eb4} _ eb4"
+        - "bb3 {~ [bb3 f4]} {_ _ _ ~} [bb3 e4]"
+        - "~"
+        - "[bb3 d4] {~ [bb3 d4]} _ [bb3 d4 g4]"               # 25
+        - "[bb3 d4 ab4]> d4 _ d4"
+        - "g4 {~ g4} {g4 gb4} f4"
+        - "[bb3 e4] ~ ~ ~"
+        - "[bb3 f4] {~ [bb3 f4]} _ [bb3 e4]"                  # 29
+        - "{[a3 eb4] _} {_ ~} ~ ~"
+        - "[bb3 d4] {[d4 f4] [c4 eb4]>} {_ [d4 f4]} [c4 eb4]"
+        - "[bb3 d4] ~ ~ ~"
+    lh:
+      set: forte
+      play:
+        - "[bb1 bb2] {~ [bb1 bb2]>} _ _"                      # 1
+        - "[a1 a2] {~ [a1 a2]>} _ _"
+        - "[g1 g2] {~ [g1 g2]>} _ _"
+        - "[g1 g2] {~ [g1 g2]>} _ _"
+        - "[c2 c3] {~ [c2 c3]>} _ _"                          # 5
+        - "[f2 c3] {~ [f2 c3]>} _ _"
+        - "[d2 d3] {~ [d2 d3]>} _ [db2 db3]"
+        - "[c2 c3] {~ [f2 c3]>} _ [f2 c3]"
+        - "[bb1 bb2] {~ [bb1 bb2]>} _ _"                      # 9
+        - "[a1 a2] {~ [a1 a2]>} _ _"
+        - "[g1 g2] {~ [g1 g2]>} _ _"
+        - "[e2 e3] {~ [e2 e3]>} _ {_ _ _ _ _ _ g2 g#2}"
+        - "a2> _ _ {_ _ _ _ _ _ g2 g#2}"              # 13
+        - "a2> _ _ {_ _ _ _ _ _ c3 c#3}"
+        - "d3> _ _ {_ _ _ _ _ _ a2 bb2}"
+        - "c3> _ _ f2"
+        - "[bb1 bb2] {~ [bb1 bb2]>} _ _"                      # 17
+        - "[a1 a2] {~ [a1 a2]>} _ _"
+        - "[g1 g2] {~ [g1 g2]>} _ _"
+        - "[g1 g2] {~ [g1 g2]>} _ _"
+        - "[c2 c3] {~ [c2 c3]>} _ _"                          # 21
+        - "[f2 c3] {~ [f2 c3]>} _ _"
+        - "[d2 d3] {~ [d2 d3]>} _ [db2 db3]"
+        - "[c2 c3] {~ [f2 c3]>} _ [f2 c3]"
+        - "[g2 g3] ~ ~ [g2 g3]>"                              # 25
+        - "[f2 f3]> _ ~ [bb1 bb2]"
+        - "[eb2 eb3] ~ {~ [e2 e3]} [f2 f3]"
+        - "[gb2 gb3] _ _ ~"
+        - "[d2 d3] ~ ~ [db2 db3]"                             # 29
+        - "{[c2 c3] _} {_ [f2 f3]>} _ [f2 f3]>"
+        - "bb2 _ _ _"
+        - "_ ~ [bb1 bb2]>> ~"
+    lh2:
+      set: forte
+      play:
+        - 30x: "~"
+        - "~ {ab3 gb3>} {_ ab3} gb3"                          # 31
+        - "f3 ~ ~ ~"
+    bass:
+      set: forte
+      play:
+        - "bb1 {~ bb1} _ _"                                   # 1
+        - "a1 {~ a1} _ _"
+        - "g1 {~ g1} _ _"
+        - "g1 {~ g1} _ _"
+        - "c2 {~ c2} _ _"                                     # 5
+        - "f1 {~ f1} _ _"
+        - "d2 {~ d2} _ db2"
+        - "c2 {~ f1} _ f1"
+        - "bb1 {~ bb1} _ _"                                   # 9
+        - "a1 {~ a1} _ _"
+        - "g1 {~ g1} _ _"
+        - "e2 {~ e2} _ _"
+        - "a1 _ e2 _"                                         # 13
+        - "a1 _ e2 _"
+        - "d2 _ a1 _"
+        - "c2 _ _ f1"
+        - "bb1 {~ bb1} _ _"                                   # 17
+        - "a1 {~ a1} _ _"
+        - "g1 {~ g1} _ _"
+        - "g1 {~ g1} _ _"
+        - "c2 {~ c2} _ _"                                     # 21
+        - "f1 {~ f1} _ _"
+        - "d2 {~ d2} _ db2"
+        - "c2 {~ f1} _ f1"
+        - "g1 ~ ~ g1"                                         # 25
+        - "f1 _ ~ bb1"
+        - "eb2 ~ {~ e2} f2"
+        - "gb1 _ _ ~"
+        - "d2 ~ ~ db2"                                        # 29
+        - "{c2 _} {_ f1} _ f1"
+        - "bb1 _ _ _"
+        - "_ ~ bb1>> ~"
+    drums:
+      set: mezzoforte
+      play:
+        - 12x: "bd {sd bd>} ~ sd"                             # the snare instead of the rim, louder
+        - 4x: "bd ~ bd ~"
+        - 8x: "bd {sd bd>} ~ sd"
+        - "bd ~ ~ bd>"                                        # 25
+        - "bd> ~ ~ bd"
+        - "bd ~ {~ bd} bd"
+        - "bd ~ ~ ~"
+        - "bd ~ ~ bd"                                         # 29
+        - "bd ~ {~ bd>} bd>"
+        - "bd ~ {~ sd} {sd sd}"
+        - "bd ~ [bd sd]>> ~"                                  # 32: the last hit
+    traps:
+      set: mezzoforte
+      play:
+        - "cy ph ~ ph"
+        - 11x: "~ ph ~ ph"
+        - 4x: "{~ wb} {~ wb} {~ wb} {~ wb}"
+        - "cy ph ~ ph"
+        - 14x: "~ ph ~ ph"
+        - "~ ~ cy>> ~"
