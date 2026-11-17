@@ -554,14 +554,34 @@ export const PRESET_PROGRAMS: Record<string, number> = {
   vibraphone: 11,
   xylophone: 13,
   'tubular-bells': 14,
+  chimes: 14,
+  bells: 14,
+  glock: 9,
+  vibes: 11,
+  clav: 7,
+  pluck: 45,
+  synth: 80,
+  synth_piano: 4,
+  voice: 52,
+  voices: 52,
+  vocals: 52,
+  sopranos: 52,
+  women: 52,
+  tenors: 52,
+  men: 52,
   bass: 33,
   violin: 40,
   violins: 40,
+  '2nd-violins': 40, // GM has one violin program; the second section shares it
+  fiddle: 40,
   viola: 41,
   violas: 41,
   cello: 42,
   cellos: 42,
   contrabass: 43,
+  'double-bass': 43,
+  'string-bass': 43,
+  'upright-bass': 32,
   basses: 43,
   harp: 46,
   timpani: 47,
@@ -576,11 +596,13 @@ export const PRESET_PROGRAMS: Record<string, number> = {
   'bass-trombone': 57,
   tuba: 58,
   horn: 60,
+  'french-horn': 60,
   horns: 60,
   brass: 61,
   oboe: 68,
   oboes: 68,
   'english-horn': 69,
+  'cor-anglais': 69,
   bassoon: 70,
   bassoons: 70,
   contrabassoon: 70,
@@ -596,3 +618,9 @@ export const PRESET_PROGRAMS: Record<string, number> = {
   lead: 81,
   pad: 89,
 };
+
+/** The GM program for a `preset:` name ("French Horn" → 60), or undefined when we have none. */
+export function presetProgram(preset: string): number | undefined {
+  return PRESET_PROGRAMS[preset.trim().toLowerCase().replace(/[\s_]+/g, '-')]
+    ?? PRESET_PROGRAMS[preset.trim().toLowerCase()];
+}

@@ -12,7 +12,7 @@ import {
 } from './theory';
 import {
   ACCENT_STEP, ControlSpec, DEFAULT_GATE, DEFAULT_STRUM, DRUM_CHANNEL, PedalPattern,
-  PRESET_PROGRAMS, controlValue, drumName, resolveControl, resolveDrum,
+  controlValue, presetProgram, drumName, resolveControl, resolveDrum,
 } from './vocabulary';
 import { SetPatch, isDirectiveString, parseSet } from './set';
 import {
@@ -1796,7 +1796,7 @@ export function compileDoc(doc: SongDoc, options: CompileOptions = {}): Compiled
         // `kit: 808` reads as a YAML number — normalize so consumers compare strings.
         kit: props.kit != null ? String(props.kit) : undefined,
         program: props.kit != null ? undefined
-          : props.program ?? PRESET_PROGRAMS[preset.toLowerCase()],
+          : props.program ?? presetProgram(preset),
         timeline,
         controls: [...opening, ...controls],
       });

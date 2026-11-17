@@ -90,7 +90,7 @@ export const VPO_INSTRUMENTS: Record<string, VpoVoicing> = {
   'choir-male': { sustain: 'Vocals/choir-MALE-normal-mod-wheel.sfz' },
 };
 
-const VPO_ALIASES: Record<string, string> = {
+export const VPO_ALIASES: Record<string, string> = {
   fiddle: 'violin',
   'double-bass': 'contrabass',
   'upright-bass': 'bass',
