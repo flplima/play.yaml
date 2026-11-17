@@ -1,33 +1,5 @@
-# Claude Debussy — Clair de lune, from Suite bergamasque, L. 75 (1890, pub. 1905)
-#
-# 72 bars, 9/8, D-flat major, "Andante très expressif". The third movement of
-# the suite and the most famous piece Debussy wrote — a piece he seems to have
-# half disowned, and which does almost nothing but rise and fall.
-#
-# WHAT TO LISTEN FOR
-#   1. It opens in thirds, not in a melody: two lines a third apart moving
-#      together, which is why it sounds like one voice with a shadow.
-#   2. The 9/8 is real. Debussy groups it in threes and then refuses to,
-#      pulling triplets across the beat so the bar line goes soft.
-#   3. The middle section (the arpeggiated one) is the only place the left
-#      hand stops accompanying and starts singing underneath.
-#
-# WHERE THE NOTES COME FROM (2026-08-07)
-#   The Mutopia Project's LilyPond edition, imported from its rendered MIDI
-#   with `play-yaml-import --verify`: 1468 source notes in, 1468 in the score,
-#   0 missing, 0 extra, 0 moved. Mutopia's typesetters place their engravings
-#   in the public domain and Debussy has been there since 1988 in the EU; by
-#   this repo's rule only the transcription is committed.
-#     https://www.mutopiaproject.org/ftp/DebussyC/L75/debussy_Ste_Bergamesq_Clair/
-#
-#   Cross-checked against `examples/clair-de-lune.play.yaml`, which was built
-#   independently from a MuseTrainer MusicXML engraving: **1462 of Mutopia's
-#   1468 notes appear in it at the same beat and pitch (99.6%)**. That example
-#   carries 146 notes this edition does not — the two editions differ over
-#   written-out repeats and doublings, not over the piece.
-#
-#   The six voices below are the two hands split into the independent lines
-#   the writing actually holds, so a held note can ring under a moving one.
+# Claude Debussy: Clair de lune, from Suite bergamasque, L. 75 (1890, pub. 1905)
+# Public domain. Transcribed from the Mutopia Project's LilyPond edition (public domain).
 
 title: "Clair de lune"
 composer: "Claude Debussy"

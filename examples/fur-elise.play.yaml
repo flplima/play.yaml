@@ -1,12 +1,5 @@
-# Ludwig van Beethoven — Bagatelle in A minor "Für Elise", WoO 59 (1810)
-# 3/8, Poco moto. Rondo A–B–A–C–A. Two hands → two piano lines (rh/lh).
-# The 3 grace notes are omitted (the notated melody is exact otherwise).
-#
-# Tempo is quarter=100; nudge to taste.
-# Auto-transcribed from the MuseTrainer public-domain library (musetrainer.github.io/library),
-# which re-hosts community MuseScore engravings. The .mxl was parsed to notes
-# and this score verifies NOTE-IDENTICAL against it (every onset+pitch matches;
-# reproduce with scripts/musicxml-to-play.py). The music itself is public domain.
+# Ludwig van Beethoven: Bagatelle in A minor "Für Elise", WoO 59 (1810)
+# Public domain. Transcribed from the MuseTrainer public-domain library (musetrainer.github.io/library).
 
 title: "Für Elise, WoO 59"
 tempo: 100

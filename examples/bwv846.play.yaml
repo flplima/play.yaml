@@ -1,8 +1,5 @@
-# J.S. Bach — Prelude No. 1 in C major, BWV 846
-# The Well-Tempered Clavier, Book I (1722). 4/4, 35 bars.
-# Single piano track representation with natural dynamic swells, pedalling written
-# as a pattern (`pedale sincopato`) rather than raw CC values,
-# and expressive rubato/tempo shaping across the harmonic arc.
+# J.S. Bach: Prelude No. 1 in C major, BWV 846 (The Well-Tempered Clavier, Book I, 1722)
+# Public domain (Bach d. 1750).
 
 title: "Prelude in C major, BWV 846"
 tempo: 72
@@ -13,15 +10,10 @@ tracks:
     sample: epiano
     dynamic: mezzopiano
     controls:
-      # cc, plus how far the pedal words are allowed to push it. The curve is
-      # the damper's own travel: the first part of the pedal barely lifts the
-      # felts, most of the damping happens late, and it stops short of 118
-      # because a fully floored damper on this instrument rings into mud.
+      # cc, and how far the pedal words may push it; the curve stops short of 118 (a floored damper rings into mud)
       pedal: { cc: 64, range: [0, 24, 96, 118] }
       soft: { cc: 67, range: 90 }
-    # Bar-by-bar syncopated pedalling, the way this prelude is always played:
-    # each bar is one harmony, so the pedal lifts exactly on the new bass note
-    # and takes it again at once. Written once here instead of per bar.
+    # Syncopated pedalling: the pedal lifts on each new bass note and retakes at once
     set: legato, pedale sincopato
 
 sections:
@@ -89,10 +81,7 @@ sections:
         # --- Cadenza & Grand Resolution (Bars 33-35) ---
         - "fortissimo"
         - "ritardando over 2 to 54"
-        # The tenor doubles the C pedal an octave up on the second sixteenth
-        # of each of these two bars (c3 here, b2 in the next). Both were
-        # missing, which pushed every later note of the bar a sixteenth early
-        # and left a filler note at the end — 30 notes wrong across the two.
+        # The tenor doubles the C pedal an octave up on the second sixteenth of these two bars
         - "{c2 c3 f3 a3} {c4 f4 c4 a3} {c4 a3 f3 a3} {f3 d3 f3 d3}"
         - "{c2 b2 g4 b4} {d5 f5 d5 b4} {d5 b4 g4 b4} {d4 f4 e4 d4}"
         - "piano"

@@ -1,15 +1,5 @@
-# Frédéric Chopin — Nocturne in E-flat major, Op. 9 No. 2 (1830-32)
-# 12/8, Andante. The singing right-hand melody over a rocking left-hand
-# broken-chord accompaniment; the reprises are increasingly ornamented and the
-# coda opens into a cadenza — hence the bars that slip into 6/4 and 2/4 before
-# the final 12/8 (the meter changes are written inline as bare "N/D" directives).
-# The 15 ornamental grace notes / small-note fioriture are omitted; every full-size
-# note matches. Tempo is quarter=66 (the ♪=132 tradition).
-#
-# Auto-transcribed from the MuseTrainer public-domain library (musetrainer.github.io/library),
-# which re-hosts community MuseScore engravings. The .mxl was parsed to notes
-# and this score verifies NOTE-IDENTICAL against it (every onset+pitch matches;
-# reproduce with scripts/musicxml-to-play.py). The music itself is public domain.
+# Frédéric Chopin: Nocturne in E-flat major, Op. 9 No. 2 (1830-32)
+# Public domain. Transcribed from the MuseTrainer public-domain library (musetrainer.github.io/library).
 
 title: "Nocturne in E-flat major, Op. 9 No. 2"
 tempo: 66

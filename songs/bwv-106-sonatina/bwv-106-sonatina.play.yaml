@@ -1,37 +1,9 @@
-# J.S. Bach — Cantata BWV 106 "Gottes Zeit ist die allerbeste Zeit"
-# (Actus tragicus), Mühlhausen 1707-08 — I. SONATINA.
-#
-# A funeral cantata written when Bach was 22. The Sonatina is its instrumental
-# prelude: twenty bars of E-flat major, marked Molto adagio, for two recorders,
-# two viole da gamba and continuo — no voices, no violins.
-#
-# WHAT TO LISTEN FOR
-#   1. The gambas never stop pulsing: bar after bar of repeated quavers on one
-#      note ({g4 g4} {g4 g4} …). That heartbeat is the whole accompaniment, and
-#      it is why the movement feels suspended rather than moving.
-#   2. Continuo alone in bar 1, gambas from bar 1, the two recorders entering
-#      only in bar 4 — and from there they move together, a third or a sixth
-#      apart, in sighing appoggiatura figures.
-#   3. The D-flats. Bar 5 answers bar 4 by flattening one note, tipping E-flat
-#      major toward its minor side; the shadow returns at bars 14 and 18.
-#   4. Bach writes the key with two flats, not three — the old "Dorian"
-#      signature — and adds the missing flats as accidentals. That is why the
-#      lines below are full of written a-flats and d-flats.
-#
-# WHERE THE NOTES COME FROM (2026-08-06)
-#   Ramon Casadesus-Masanell's engraving of the complete cantata (IMSLP
-#   #752782, "Engraving files", CC BY-SA-NC 4.0, 2021), imported from its
-#   MusicXML/MIDI export with `play-yaml-import --verify`. Bach's notes are
-#   public domain; the engraving is not, so no file from it is committed —
-#   only this transcription. Structure cross-checked against the Wikipedia
-#   movement table; see ../bwv-106-sonatina/research/ for the full report.
-#
-# CASTING: recorders -> flute, viole da gamba -> cello, continuo -> keys
-# (the DSL has no organ sample; `keys` sustains where `bass` would pluck).
+# J.S. Bach: Cantata BWV 106 "Gottes Zeit ist die allerbeste Zeit" (Actus tragicus, 1707-08), 1. Sonatina
+# Public domain (Bach). Notes from Ramon Casadesus-Masanell's engraving (IMSLP #752782); only the transcription is committed.
 
 title: "BWV 106: I. Sonatina (Actus tragicus)"
 composer: "Johann Sebastian Bach"
-tempo: 50           # Molto adagio — no metronome mark survives
+tempo: 50           # Molto adagio: no metronome mark survives
 measure: 4/4
 scale: eb major
 dynamic: piano

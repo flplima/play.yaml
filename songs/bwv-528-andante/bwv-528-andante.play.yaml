@@ -1,36 +1,5 @@
-# J.S. Bach — Trio Sonata No. 4 in E minor, BWV 528: II. ANDANTE
-#
-# The slow movement of the fourth of the six organ trio sonatas (c.1730),
-# written for Wilhelm Friedemann Bach. A trio in the strict sense: three real
-# voices, one per limb — right hand, left hand, and pedal — each on its own
-# manual so that none can hide inside another. **B minor**, common time.
-#
-# WHAT TO LISTEN FOR
-#   1. The two hands are equals, trading the same material a bar apart, while
-#      the pedal walks underneath in a line of its own. Nothing here is
-#      accompaniment.
-#   2. The right hand's opening — f#, b, e, c#, e, a, d — is a chain of
-#      falling fourths, and it comes back transposed all through the movement.
-#   3. It is the only movement of the sonata in B minor; the outer two are in
-#      E minor.
-#
-# WHERE THE NOTES COME FROM (2026-08-06)
-#   The Mutopia Project's LilyPond edition, imported from its rendered MIDI
-#   with `play-yaml-import --verify`: 1356 source notes in, 1356 in the score,
-#   none missing, none invented, none moved. Mutopia's typesetter placed the
-#   engraving in the public domain outright, and Bach has been there since
-#   1750 — but by this repo's rule only the transcription is committed.
-#     https://www.mutopiaproject.org/ftp/BachJS/BWV528/SonataIV/
-#
-#   Two things the previous version of this file had wrong, both fixed by the
-#   import: the movement is in common time, not 3/8 (that is the third
-#   movement, Un poco allegro), and it runs 45 bars, not 32. It also asked for
-#   `sample: organ`, which is not a sample the DSL knows — the request fell
-#   through to the default synth.
-#
-# CASTING: the DSL has no organ sample; `keys` sustains where `bass` would
-# pluck, so all three voices take it and the pedal simply sits an octave down
-# where Bach put it.
+# J.S. Bach: Trio Sonata No. 4 in E minor, BWV 528, II. Andante (c.1730)
+# Public domain. Transcribed from the Mutopia Project's LilyPond edition (public domain).
 
 title: "BWV 528: II. Andante (Trio Sonata No. 4)"
 composer: "Johann Sebastian Bach"
