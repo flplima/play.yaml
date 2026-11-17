@@ -58,6 +58,16 @@ are at the end.
 - Draws the engraved SVG pages into the PDF as vectors. Loaded only when a
   PDF is made.
 
+## Paper Mono
+
+- Variable webfont `PaperMono[wght].woff2`, self-hosted as
+  `packages/web/public/fonts/PaperMono-Variable.woff2`. Licence: SIL Open Font
+  License 1.1, copyright 2025 The Paper-Mono.Git Project Authors. The full
+  text is next to the font, in `PaperMono-OFL.txt`.
+  https://github.com/paper-design/paper-mono
+- The font of the whole studio: interface, editor and canvases. The engraved
+  sheet music keeps its own music fonts.
+
 ## The command line (`packages/cli`)
 
 The cli does not bundle these. npm installs them as normal dependencies, each
