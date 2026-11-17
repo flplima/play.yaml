@@ -1,28 +1,5 @@
-# J.S. Bach — Invention No. 13 in A minor, BWV 784
-#
-# One of the fifteen two-part Inventions (1723), written for Bach's eldest son
-# and still the standard first encounter with two-voice counterpoint. Two
-# voices, one idea: a rising arpeggio answered by a falling scale, handed
-# between the hands and pulled through A minor, E minor and back.
-#
-# WHAT TO LISTEN FOR
-#   1. The subject is stated by the right hand alone and answered a bar later
-#      by the left, a fifth lower — the imitation that gives the piece its
-#      whole shape.
-#   2. Neither hand ever accompanies. Wherever one has the subject the other
-#      has counterpoint of its own; there is no chordal filler anywhere.
-#   3. The sequences in the middle are the modulation: watch the g-sharps
-#      arrive and A minor turn into E minor, then the naturals return.
-#
-# WHERE THE NOTES COME FROM (2026-08-06)
-#   The Mutopia Project's LilyPond edition, imported from its rendered MIDI
-#   with `play-yaml-import --verify`: 564 source notes in, 564 in the score,
-#   none missing, none invented, none moved. Mutopia's typesetter placed the
-#   engraving in the public domain outright, and Bach has been there since
-#   1750 — but by this repo's rule only the transcription is committed.
-#     https://www.mutopiaproject.org/ftp/BachJS/BWV784/bach-invention-13/
-#
-# CASTING: both voices on `piano` — it is keyboard music for one player.
+# J.S. Bach: Invention No. 13 in A minor, BWV 784 (1723)
+# Public domain. Transcribed from the Mutopia Project's LilyPond edition (public domain).
 
 title: "Invention No. 13 in A minor, BWV 784"
 composer: "Johann Sebastian Bach"

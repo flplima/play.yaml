@@ -1,37 +1,5 @@
-# Zequinha de Abreu - "Tico-Tico no Fuba" (1917)
-#
-#   Composed in 1917 in Santa Rita do Passa Quatro (first titled "Tico-Tico
-#   no Farelo") by Jose Gomes de Abreu ("Zequinha de Abreu", 1880-1935).
-#   Published by Irmaos Vitale, Sao Paulo (Plate I. 620 V.). Public domain
-#   worldwide.
-#
-#   Form (84 bars of 2/4 at 100 bpm, 168 beats):
-#     - intro      (bars 1-4):   4-bar descending choro flourish in A minor
-#                                over chromatic sixths (G3 -> F#3 -> F3 -> E3)
-#     - part_a1    (bars 5-20):  16-bar main theme in A minor; flute leads the
-#                                first 8 bars (E4-E5), clarinet answers in the
-#                                chalumeau register for bars 13-20 (D#3-D4)
-#     - part_a2    (bars 21-36): 16-bar repeat of Part A, closing with the
-#                                A-major pickup ({a3 c#4 e4}) into the Trio
-#     - trio_c1    (bars 37-52): 16-bar Trio in the parallel key of A major,
-#                                capped by the 16th-note cascade (bars 49-51)
-#     - trio_c2    (bars 53-68): 16-bar repeat of the Trio, pivoting back to
-#                                A minor on {e4 d#4 e4}
-#     - reprise_a  (bars 69-84): 16-bar da capo restatement of Part A, ending
-#                                on a crisp Picardy-third A major chord
-#
-#   Sources & verification:
-#     Transcribed from Eugene Kirpichov's 2/4 guitar engraving MIDI
-#     (abreu_ticotico.mid, 783 notes, verified 100% exact via play-yaml-import
-#     and 97.8/100 via play-yaml-fidelity), cross-checked against the Irmaos
-#     Vitale solo score (IMSLP #211430), MIDIfind two-track score (#64805),
-#     and Steve Owen's concert-pitch ABC transcription (The Session #4357).
-#     See research/report.md and research/sources.md.
-#
-#   Casting (Brazilian choro regional on Virtual Playing Orchestra samples):
-#     - flute:    lead choro melody & upper offbeat chord stabs
-#     - clarinet: syncopated inner harmony & chalumeau-register melody answers
-#     - cello:    walking bass & chromatic baixaria counter-lines
+# Zequinha de Abreu: "Tico-Tico no Fuba" (1917)
+# Public domain. Transcribed from Eugene Kirpichov's guitar engraving MIDI, cross-checked against IMSLP #211430.
 
 title: "Tico-Tico no Fuba"
 composer: "Zequinha de Abreu"
@@ -191,9 +159,7 @@ sections:
   trio_c1:
     loop: false
     flute:
-      # Trio in the parallel major (A major): syncopated dotted-eighth/sixteenth
-      # leaps {a4 _ _ g#4} {_ _ _ f#4} answered by the blazing 16th-note scale
-      # cascade across bars 49-51 ({e4..f#5..b3}).
+      # Trio in A major: syncopated leaps answered by the 16th-note cascade across bars 49-51
       play:
         - "{a4 _ _ g#4} {_ _ _ f#4}"
         - "{f#4 _ _ e4} {_ _ c#4 f#4}"

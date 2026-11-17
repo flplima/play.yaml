@@ -1,15 +1,5 @@
-# Claude Debussy — Clair de Lune, from Suite bergamasque, L. 75 (pub. 1905)
-# 9/8, Andante très expressif, D-flat major. Debussy's densest polyphony here:
-# up to six independent left-hand voices under the melody, so it compiles to nine
-# piano lines that hold their own sustains. Onsets were snapped to a 1/24-beat
-# grid (max shift ~0.019 beat, inaudible) so the cross-rhythms stay readable; it
-# still verifies note-identical against that grid. 1 grace note omitted.
-#
-# Tempo is quarter=50 (dreamy); adjust to taste.
-# Auto-transcribed from the MuseTrainer public-domain library (musetrainer.github.io/library),
-# which re-hosts community MuseScore engravings. The .mxl was parsed to notes
-# and this score verifies NOTE-IDENTICAL against it (every onset+pitch matches;
-# reproduce with scripts/musicxml-to-play.py). The music itself is public domain.
+# Claude Debussy: Clair de Lune, from Suite bergamasque, L. 75 (pub. 1905)
+# Public domain. Transcribed from the MuseTrainer public-domain library (musetrainer.github.io/library).
 
 title: "Clair de Lune"
 tempo: 50

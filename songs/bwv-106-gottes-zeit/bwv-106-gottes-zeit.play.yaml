@@ -1,32 +1,5 @@
-# J.S. Bach — Cantata BWV 106 "Gottes Zeit ist die allerbeste Zeit"
-# (Actus tragicus) — 2a. CHORUS: "Gottes Zeit ist die allerbeste Zeit".
-#
-# The first vocal movement, and one movement in three tempi. Bars 1-6 are a
-# slow choral statement of the title line ("God's time is the very best time");
-# bars 7-40 break into a 3/4 Allegro on "In ihm leben, weben und sind wir"
-# ("in him we live and move and have our being"); bars 41-47 collapse into a
-# 4/4 Adagio assai for "in ihm sterben wir zur rechten Zeit" ("in him we die at
-# the appointed time"). The meter changes are written below as bare "3/4" and
-# "4/4" directive lines, exactly where Bach puts them.
-#
-# WHAT TO LISTEN FOR
-#   1. The recorders double and decorate the voices throughout — they are not
-#      an accompaniment so much as a fifth and sixth voice.
-#   2. The Allegro is where the young Bach shows off: the four voices enter in
-#      imitation and the tempo nearly doubles.
-#   3. The Adagio assai at bar 41 is the hinge of the whole cantata. Everything
-#      slows for the word "sterben".
-#
-# WHERE THE NOTES COME FROM (2026-08-06)
-#   Ramon Casadesus-Masanell's engraving of the complete cantata (IMSLP
-#   #752782, "Engraving files", CC BY-SA-NC 4.0, 2021), imported from its
-#   MusicXML/MIDI export with `play-yaml-import --verify`. Bach's notes are
-#   public domain; the engraving is not, so no file from it is committed —
-#   only this transcription. Structure cross-checked against the Wikipedia
-#   movement table; see ../bwv-106-sonatina/research/ for the full report.
-#
-# CASTING: voices -> strings (the DSL has no vocal sample), recorders -> flute,
-# viole da gamba -> cello, continuo -> keys.
+# J.S. Bach: Cantata BWV 106 "Gottes Zeit ist die allerbeste Zeit" (Actus tragicus, 1707-08), 2a. Chorus
+# Public domain (Bach). Notes from Ramon Casadesus-Masanell's engraving (IMSLP #752782); only the transcription is committed.
 
 title: "BWV 106: 2a. Gottes Zeit ist die allerbeste Zeit"
 composer: "Johann Sebastian Bach"

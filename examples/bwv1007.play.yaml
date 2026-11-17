@@ -1,55 +1,24 @@
-# J.S. Bach — Suite No. 1 in G major for solo cello, BWV 1007 — 1. Prélude
-# Transcribed from cs1-1pre.mid (David J. Grossman's sequence, jsbach.net).
-#
-# HOW TO READ THIS FILE
-#   Numbers are scale degrees of the CURRENT key: 1 is its key note ("do"),
-#   2 the next note up, and so on — the numbers keep climbing past the octave,
-#   so 8 is "do" again one octave higher and 15 two octaves higher. Degrees
-#   here run 1–16, which covers the cello's range in almost every bar. For the
-#   few notes that fall below that, a trailing '-' drops one octave (5- is the
-#   fifth, an octave down). {…} fits its notes into one beat (four sixteenths
-#   per beat); [x y z] is a chord.
-#   Each measure is numbered: '- 5: "…"' is measure five. A '- set: …' line
-#   changes key, scale, or octave from that point on — when the music
-#   modulates, it moves "do" itself (e.g. "set: d maj" makes 1 = d).
-#   Besides key and octave, a 'set:' line shapes the PERFORMANCE, written
-#   the way a score marks it: dynamics ('mf', 'ff', 'crescendo to f over 2'),
-#   tempo ('allargando over 3', 'stringendo', 'a tempo'), articulation
-#   ('legato' slurs by overlapping the notes, 'detached' separates them),
-#   character marks ('dolce', 'agitato', 'maestoso') that stand for a
-#   dynamic and a bowing together, and playing techniques ('sul ponticello',
-#   'ordinario', 'molto vibrato') that move the bow and vibrato on a real
-#   instrument through the MIDI controls listed under `controls:`.
-#   A # or b after a degree raises/lowers it a half step — kept only where
-#   Bach writes a true chromatic note that belongs to no scale of the moment.
-#
-# THE SHAPE OF THE PIECE (after Allen Winold, "Bach's Cello Suites", 2007)
-#   Part 1 (mm.1–22): home key G major, a modulation to D major (mm.5–10),
-#   a few secondary dominants — little leading-tone chords that briefly
-#   point at other keys — ending on a fermata. Part 2 (mm.23–38): one long
-#   D7 chord over a D pedal. The close (mm.39–42) finally resolves it to G.
+# J.S. Bach: Suite No. 1 in G major for solo cello, BWV 1007, 1. Prélude
+# Public domain. Transcribed from David J. Grossman's sequence (jsbach.net).
 
 title: "Prelude — Cello Suite No. 1, BWV 1007"
 tempo: 77
 sample: cello
-articulation: tenuto  # a connected détaché — the default bowing here
+articulation: tenuto  # a connected détaché: the default bowing here
 dynamic: mezzoforte   # on a physical model this drives the expression, i.e. the bow speed
 controls: { bow: 74, vibrato: 1 }   # only if your instrument's MIDI map differs
 set: g major, octave 2
 play:
 
-  # ══ PART 1 (mm.1–22) — from home, out into tension ══
-  # mm.1–4 — the "cadence circle": G (home) → C (subdominant) → D7
-  # (dominant) → G, all floating over a low G pedal note. Pure G major.
+  # ══ PART 1 (mm.1-22): from home, out into tension ══
+  # mm.1-4: the cadence circle G, C, D7, G over a low G pedal
   - "a tempo"   # reset the pulse so a second time through starts fresh
   - 1: "{1 5 10 9} {10 5 10 5} {1 5 10 9} {10 5 10 5}"
   - 2: "{1 6 11 10} {11 6 11 6} {1 6 11 10} {11 6 11 6}"
   - 3: "{1 7 11 10} {11 7 11 7} {1 7 11 10} {11 7 11 7}"
   - 4: "{1 8 10 9} {10 8 10 8} {1 8 10 9} {10 8 10 7}" # end of the opening statement
 
-  # mm.5–10 — the music MODULATES to D major, the dominant. Modulation
-  # means the key note moves: from here 1 = d, and the c# in these bars
-  # is degree 7 — D major's leading tone ("ti"), pulling up to 8 ("do").
+  # mm.5-10: modulation to D major (1 = d; c# is degree 7, the leading tone)
   - "d maj"
   - "crescendo over 2"   # the move to D major lifts the line
   - 5: "{4 9 13 12} {13 11 10 11} {9 11 10 11} {6 8 7 6}"
@@ -59,66 +28,58 @@ play:
   - 9: "{2 7 8 9} {8 7 6 5} {11 10 9 15} {14 13 12 11}"
   - 10: "{10 9 8 15} {12 15 10 12} {8 9 10 12} {11 10 9 8}" # the D major region ends
 
-  # m.11 — a diminished-seventh sweep on E (E7b9, the chord that pulls
-  # toward a minor). Diminished chords live in the OCTATONIC scale, so
-  # for one measure 1 = e and the degrees renumber into its 8-note ladder.
+  # m.11: diminished sweep on E7b9; octatonic scale with 1 = e
   - "e octatonic"
   - "agitato, poco sul ponticello"   # diminished tension: nearer the bridge, restless
   - 11: "{12 8 10 9} {10 8 12 8} {14 8 10 9} {10 8 12 8}"
 
-  # mm.12–15 — back home: 1 = g again.
+  # mm.12-15: back home, 1 = g
   - "g maj"
   - "mezzoforte, tenuto, ordinario"   # settle back to an ordinary bow
   - 12: "{4 6 9 10} {11 9 6 5} {4 6 9 10} {11 9 7 6}"
-  # m.13 — a d#°7 chord pulling toward e minor. E HARMONIC MINOR holds
-  # this chord natively: 1 = e, and the d# is its degree 7 — a leading
-  # tone, not an accidental.
+  # m.13: d#°7 chord, held natively by E harmonic minor (1 = e)
   - "e harm min"
   - 13: "{7 9 7 9} {11 9 11 9} {7 9 7 9} {11 9 11 9}"
-  # mm.14–15 — home again (1 = g).
+  # mm.14-15: home again (1 = g).
   - "g maj, oct 1"
   - 14: "{15 14 13 15} {14 15 16 14} {15 14 13 12} {11 10 9 8}"
   - 15: "{7 11 12 11} {12 11 12 11} {7 11 12 11} {12 11 12 11}"
 
-  # m.16 — our home chord G grows a flat seventh: G7, which points at C.
+  # m.16: our home chord G grows a flat seventh: G7, which points at C.
   # MIXOLYDIAN is "major with a flat 7", rooted on the chord: degree 7 = f.
   - "g mix"
   - 16: "{8 10 14 13} {14 10 14 10} {8 10 14 13} {14 10 14 10}"
-  # m.17 — …and C major (the subdominant) arrives. Back to 1 = g.
+  # m.17: …and C major (the subdominant) arrives. Back to 1 = g.
   - "g maj, oct 2"
   - 17: "{1 4 6 5} {6 4 6 4} {1 4 6 5} {6 4 6 4}"
-  - 18: "{1 7 11 10} {11 7 11 7} {1 7 11 10} {11 7 11 7}" # f#–a–c diminished over the G pedal
-  - "tranquillo"   # home again — relax
-  - 19: "{1 5 10 9} {10 8 7 6} {5 4 3 2} {1 7- 6- 5-}" # home again — the opening gesture returns
+  - 18: "{1 7 11 10} {11 7 11 7} {1 7 11 10} {11 7 11 7}" # f#-a-c diminished over the G pedal
+  - "tranquillo"   # home again: relax
+  - 19: "{1 5 10 9} {10 8 7 6} {5 4 3 2} {1 7- 6- 5-}" # home again: the opening gesture returns
 
-  # m.20 — A7, the dominant OF the dominant: mixolydian on a (1 = a,
+  # m.20: A7, the dominant OF the dominant: mixolydian on a (1 = a,
   # and the c# is simply the chord's third)…
   - "a mix, oct 1"
   - 20: "{3 8 12 13} {14 12 13 14} {3 8 12 13} {14 12 13 14}"
-  # m.21 — …resolving to D7, the true dominant. 1 = g (c = D7's 7th).
+  # m.21: …resolving to D7, the true dominant. 1 = g (c = D7's 7th).
   - "g maj, oct 2"
   - "crescendo to forte over 2, allargando over 2"   # broaden into the fermata closing Part 1
   - 21: "{4- 2 5 6} {7 5 6 7} {4- 2 5 6} {7 5 6 7}"
   - 22: "{4- 2 5 7} {9 11# 12 _} {_ 2 3 4} {5 6 7 8}" # the run to the fermata: the midpoint (4# = a passing c#)
 
-  # ══ PART 2 (mm.23–38) — one long D7 chord ══
-  # Winold: a "dominant prolongation" — sixteen bars of pure dominant
-  # tension over a D pedal, released only by the final cadence.
+  # ══ PART 2 (mm.23-38): one long D7 chord over a D pedal ══
   - "a tempo, sotto voce"   # Part 2 starts hushed over the pedal, in tempo again
   - 23: "{9 7 5 6} {7 8 9 10} {11 9 7 8} {9 10 11 12}"
-  - 24: "{12# 12 11# 12} {12 11 10 11} {11 9 7 6} {5 2 3 4}" # chromatic TURN ornaments — decoration, not harmony, hence the #s
+  - 24: "{12# 12 11# 12} {12 11 10 11} {11 9 7 6} {5 2 3 4}" # chromatic TURN ornaments: decoration, not harmony, hence the #s
   - 25: "{5- 2 5 7} {9 10 11 9} {10 8 5 4} {3 1 2 3}"
   - 26: "{5- 1 3 5} {8 9 10 8} {11# 9# 9 9#} {9# 9 8# 9}" # more chromatic turns around the pedal
-  # (that second note of beat 3 is a B flat — the same pitch the bar already
-  # spells 9# twice. It read as a natural B here, the one wrong note in the
-  # movement; both Mutopia and the Cellofun/IMSLP edition have B flat.)
+  # m.26: beat 3's second note is B flat (9#), as in Mutopia and IMSLP
 
-  # mm.27–28 — the harmony leans into D major once more: 1 = d.
+  # mm.27-28: the harmony leans into D major once more: 1 = d.
   - "d maj"
   - 27: "{12 11 10 11} {11 9 7 6} {5 7 9 11} {12 14 15 14}"
   - 28: "{15 12 10 9} {10 12 8 10} {5 8 7 6} {5 4 3 2}"
 
-  # mm.29–36 — 1 = g; from m.31 the famous BARIOLAGE: a repeated
+  # mm.29-36: 1 = g; from m.31 the famous BARIOLAGE: a repeated
   # open-string pedal alternates with moving notes (double pedal, d + a).
   - "g maj"
   - "crescendo to forte over 8"   # the long climb over the pedal begins
@@ -132,16 +93,12 @@ play:
   - 35: "{11 9 10 9} {11 9 9 9} {10 9 9 9} {10 9 8 9}"
   - 36: "{9 9 8 9} {9 9 7 9} {8 9 7 9} {8 9 6 9}" # bariolage ends
 
-  # mm.37–38 — an ascending CHROMATIC scale, one half-step at a time —
-  # among the earliest extended chromatic scales in music (Winold). No
-  # scale contains this by design, so here the accidentals ARE the point.
+  # mm.37-38: an ascending chromatic scale; here the accidentals are the point
   - "legato, fortissimo, stringendo over 1, sul ponticello"   # the chromatic climax: slurred, pressing forward
   - 37: "{7 9 5 6} {7b 5 7 5} {8 5 8# 5} {9 5 9# 5}"
   - 38: "{10 5 11 5} {11# 5 12 5} {12# 5 13 5} {14b 5 14 5}"
 
-  # ══ THE CLOSE (mm.39–42) ══
-  # Tonic six-four chord, then D7 with a 4–3 suspension, and at last the
-  # plain G major chord — tension resolved.
+  # ══ THE CLOSE (mm.39-42): tonic six-four, D7 with a 4-3 suspension, then G ══
   - "tenuto, forte, allargando to andante over 3, ordinario"   # the close broadens: a warm bow, easing off
   - 39: "{15 10 5 10} {15 10 15 10} {15 10 5 10} {15 10 15 10}"
   - 40: "{15 9 5 9} {15 9 15 9} {15 9 5 9} {15 9 15 9}"

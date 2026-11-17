@@ -1,27 +1,5 @@
-# J.S. Bach — Prelude No. 12 in F minor, BWV 881
-# The Well-Tempered Clavier, Book II (1742). 2/4, 70 bars written as 140 of
-# the half-bars this edition bars it in.
-#
-# The most galant thing in either book: a singing right hand over a left hand
-# that mostly walks in even eighths, closer to a Scarlatti sonata than to the
-# counterpoint of Book I. The two hands are written here as two tracks so the
-# held notes in one can ring under the other.
-#
-# WHERE THE NOTES COME FROM (2026-08-06)
-#   Prelude — Yo Tomita's sequence of Book II, recovered from the Internet
-#     Archive's copy of his Queen's University Belfast page (the live host now
-#     500s). Imported with `play-yaml-import --snap 16 --verify`: 1473 notes
-#     in, 1473 out, none lost; 20 nudged by at most 0.02 beat, which is the
-#     sequence's own jitter, not a decision.
-#   Fugue — Kyle Rother's edition, typeset in LilyPond from the 1866
-#     Bach-Gesellschaft with reference to the Henle and Bärenreiter urtexts
-#     and Alfred Dürr's commentary, and released with "no rights reserved"
-#     (IMSLP #497295). Rendered to MIDI and imported: 1118 notes, exact.
-#   The two are independent, and they agree: aligned at the fugue's eighth-note
-#   pickup, 1116 of 1118 notes match Tomita's sequence of the same movement
-#   note for note — 99.8%. The five that do not are ornaments Tomita writes out.
-#   Bach is public domain and both editions are freely licensed; by this repo's
-#   rule only the transcription is committed.
+# J.S. Bach: Prelude No. 12 in F minor, BWV 881 (The Well-Tempered Clavier, Book II, 1742)
+# Public domain. Notes from Yo Tomita's sequence (prelude) and Kyle Rother's edition (fugue, IMSLP #497295).
 
 title: "Prelude No. 12 in F minor, BWV 881"
 composer: "Johann Sebastian Bach"

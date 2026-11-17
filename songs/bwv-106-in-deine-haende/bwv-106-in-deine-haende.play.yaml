@@ -1,33 +1,5 @@
-# J.S. Bach — Cantata BWV 106 "Gottes Zeit ist die allerbeste Zeit"
-# (Actus tragicus) — 3a. ARIA (alto): "In deine Hände befehl ich meinen Geist".
-#
-# "Into your hands I commend my spirit; you have redeemed me, Lord, faithful
-# God" (Psalm 31:5). Twenty-four bars in B-flat minor — the darkest key in the
-# cantata — that open its second half, the New Testament's answer to the death
-# of the first.
-#
-# SCORING: alto and continuo, nothing else. Reference works often list this
-# aria as "alto with two viole da gamba"; in the score the gambas are silent
-# here and do not enter until bar 39, which is inside 3b ("Heute wirst du mit
-# mir im Paradies sein"). The two parts below are what actually sounds.
-#
-# WHAT TO LISTEN FOR
-#   1. The alto does not begin until bar 3 — the continuo lays the ground
-#      first, and it never stops walking underneath.
-#   2. B-flat minor is spelled out in the line itself: b-flat, d-flat, g-flat,
-#      a-flat. Against the cantata's two-flat signature that is a lot of
-#      written accidentals, and it is what makes the movement sound so far from
-#      the E-flat major it started in.
-#
-# WHERE THE NOTES COME FROM (2026-08-06)
-#   Ramon Casadesus-Masanell's engraving of the complete cantata (IMSLP
-#   #752782, "Engraving files", CC BY-SA-NC 4.0, 2021), imported from its
-#   MusicXML/MIDI export with `play-yaml-import --verify`. Bach's notes are
-#   public domain; the engraving is not, so no file from it is committed —
-#   only this transcription. Structure cross-checked against the Wikipedia
-#   movement table; see ../bwv-106-sonatina/research/ for the full report.
-#
-# CASTING: alto -> strings (the DSL has no vocal sample), continuo -> keys.
+# J.S. Bach: Cantata BWV 106 "Gottes Zeit ist die allerbeste Zeit" (Actus tragicus, 1707-08), 3a. Aria (alto)
+# Public domain (Bach). Notes from Ramon Casadesus-Masanell's engraving (IMSLP #752782); only the transcription is committed.
 
 title: "BWV 106: 3a. In deine Hände befehl ich meinen Geist"
 composer: "Johann Sebastian Bach"
