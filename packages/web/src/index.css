@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/* Paper Mono (SIL OFL 1.1), self-hosted: see THIRD-PARTY-NOTICES.md. */
+@font-face {
+  font-family: 'Paper Mono';
+  src: url('/fonts/PaperMono-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 /*
  * shadcn/ui design tokens, Tailwind v4 style.
  *
@@ -43,6 +52,8 @@
 
 
 @theme inline {
+  --font-sans: 'Paper Mono', ui-monospace, monospace;
+  --font-mono: 'Paper Mono', ui-monospace, monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -78,6 +89,7 @@
     border-color: var(--border);
   }
   body {
+    font-family: var(--font-sans);
     background-color: var(--background);
     color: var(--foreground);
   }
@@ -125,4 +137,9 @@
 .score-paper .vf-stavenote.playing :is(path, rect, text) {
   fill: #e11d48;
   stroke: #e11d48;
+}
+
+/* CodeMirror sets its own monospace stack on the scroller; the editor uses the studio font. */
+.cm-editor.cm-editor .cm-scroller {
+  font-family: 'Paper Mono', ui-monospace, monospace;
 }

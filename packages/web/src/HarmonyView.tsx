@@ -186,7 +186,7 @@ export default function HarmonyView({ song, currentBeat }: Props) {
 
       if (!data.notes.length) {
         ctx.fillStyle = 'rgba(255,255,255,0.28)';
-        ctx.font = '13px ui-sans-serif, system-ui, sans-serif';
+        ctx.font = '13px "Paper Mono", ui-monospace, monospace';
         ctx.textAlign = 'center';
         ctx.fillText('Nothing to show yet. The score has no pitched notes.', w / 2, h / 2);
         return;
@@ -205,9 +205,15 @@ export default function HarmonyView({ song, currentBeat }: Props) {
     };
 
     draw();
+    // Canvas text falls back until the webfont arrives: draw again once it has.
+    let alive = true;
+    document.fonts.load('13px "Paper Mono"').then(() => alive && draw());
     const observer = new ResizeObserver(draw);
     observer.observe(wrap);
-    return () => observer.disconnect();
+    return () => {
+      alive = false;
+      observer.disconnect();
+    };
   }, [data, currentBeat, fifths]);
 
   return (
@@ -275,7 +281,7 @@ function drawClock(ctx: CanvasRenderingContext2D, box: Box, now: Harmony, chord:
     }
     ctx.fill();
     ctx.fillStyle = st ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.4)';
-    ctx.font = '11px ui-sans-serif, system-ui, sans-serif';
+    ctx.font = '11px "Paper Mono", ui-monospace, monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     const lx = cx + Math.cos(pos(pc).a) * (R + 24);
@@ -291,7 +297,7 @@ function drawClock(ctx: CanvasRenderingContext2D, box: Box, now: Harmony, chord:
       ? SHARP_NAMES[chord.root] + chord.suffix
       : now.held.map((p) => SHARP_NAMES[p]).join(' ');
     ctx.fillStyle = 'rgba(255,255,255,0.92)';
-    ctx.font = `600 ${chord ? Math.max(16, R * 0.28) : Math.max(12, R * 0.14)}px ui-sans-serif, system-ui, sans-serif`;
+    ctx.font = `600 ${chord ? Math.max(16, R * 0.28) : Math.max(12, R * 0.14)}px "Paper Mono", ui-monospace, monospace`;
     ctx.fillText(label, cx, cy);
   }
 }
@@ -390,7 +396,7 @@ function drawTonnetz(
   }
 
   // Nodes: lit ones carry the track hue and fade with the note.
-  ctx.font = '11px ui-sans-serif, system-ui, sans-serif';
+  ctx.font = '11px "Paper Mono", ui-monospace, monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   for (const n of nodes) {

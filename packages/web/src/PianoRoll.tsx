@@ -83,7 +83,7 @@ export default function PianoRoll({ song, currentBeat }: Props) {
       if (!notes.length) {
         keysRef.current?.press(new Map());
         ctx.fillStyle = 'rgba(255,255,255,0.28)';
-        ctx.font = '13px ui-sans-serif, system-ui, sans-serif';
+        ctx.font = '13px "Paper Mono", ui-monospace, monospace';
         ctx.textAlign = 'center';
         ctx.fillText('Nothing to show yet — the score has no notes.', w / 2, h / 2);
         return;
@@ -160,9 +160,15 @@ export default function PianoRoll({ song, currentBeat }: Props) {
     };
 
     draw();
+    // Canvas text falls back until the webfont arrives: draw again once it has.
+    let alive = true;
+    document.fonts.load('13px "Paper Mono"').then(() => alive && draw());
     const observer = new ResizeObserver(draw);
     observer.observe(wrap);
-    return () => observer.disconnect();
+    return () => {
+      alive = false;
+      observer.disconnect();
+    };
   }, [song, currentBeat, lo, hi]);
 
   return (
