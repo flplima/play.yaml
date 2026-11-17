@@ -592,7 +592,7 @@ node packages/cli/dist/export.js --input examples/fur-elise.play.yaml --output f
 What gets printed:
 
 - **Title and composer**: `title:` at the top of the first page, and `composer:` under it on the right (`composer: "Johann Sebastian Bach"`).
-- **The notes as written**: full note values, with no `gate`, `humanize`, `rubato` or strum. Ties, dots, tuplets, rests, beams and up to four voices per staff.
+- **The notes as written**: full note values, with no `gate`, `humanize`, `rubato` or strum. Ties, dots, tuplets, rests, beams and up to four voices per staff, the higher line with its stems up and the lower one with its stems down.
 - **Key**: `key: g major` names the key signature. Without it, the first `scale:` gives the key, and a score with neither prints with no key signature. A `scale:` set mid-piece changes what the degrees mean, never the printed key. To print real key changes, give `key:` the bars where they happen: `key: { 1: db major, 37: e major, 43: db major }`.
 - **Sharps and flats**: a note named by letter prints as written, so `d#4` is D sharp and `eb4` E flat in any key. A note named by degree is spelled from the `scale:` in force; a chromatic one follows its line, rising with sharps and falling with flats (the turn `{12# 12 11# 12}` in G major prints E flat, D, C sharp, D).
 - **Meter and tempo**: meter changes print where they happen, and so does every tempo change, a gradual one as rit. or accel. When those come from the performance rather than the text, `metronome marks: opening` prints only the opening mark and `metronome marks: none` prints none; either way the tempo still plays. `tempo text: Andante semplice` prints the tempo word over the first bar, with the opening mark or, under `metronome marks: none`, instead of it.

@@ -1289,6 +1289,37 @@ interface PartEnv {
   keys: (string | undefined)[];
 }
 
+/**
+ * Voice numbers for one staff in one measure: slot k is voice k + 1 and
+ * holds the index of a line (or undefined). The lines sounding in the bar
+ * are numbered by pitch, highest first, so the upper line is voice 1 with
+ * its stems up and the lower one voice 2 with stems down, whichever entered
+ * first. A line tied in over the bar line keeps the number it had. Slot 0
+ * always exists: a bar where nothing sounds is a rest in voice 1.
+ */
+function voiceSlots(inBars: TickNote[][], m0: number, last: Map<number, number>): (number | undefined)[] {
+  const mean = (notes: TickNote[]) => notes.reduce((sum, n) => sum + n.midi, 0) / notes.length;
+  const present = inBars.map((_, i) => i).filter((i) => inBars[i].length > 0)
+    .sort((a, b) => mean(inBars[b]) - mean(inBars[a]) || a - b);
+  const slots: (number | undefined)[] = [];
+  const placed = new Set<number>();
+  for (const i of present) {
+    const slot = last.get(i);
+    if (slot !== undefined && slots[slot] === undefined && inBars[i].some((n) => n.start < m0)) {
+      slots[slot] = i;
+      placed.add(i);
+    }
+  }
+  for (const i of present) {
+    if (placed.has(i)) continue;
+    let slot = 0;
+    while (slots[slot] !== undefined) slot++;
+    slots[slot] = i;
+  }
+  if (slots.length === 0) slots.push(0);
+  return Array.from(slots);
+}
+
 /** One or more compiled tracks → one part: staves, voices, measures, spelling. */
 function buildPart(tracks: CompiledTrack[], indices: number[], index: number, name: string, env: PartEnv): Part {
   const { measures, T, tick, warn, measureAt, keys } = env;
@@ -1403,20 +1434,29 @@ function buildPart(tracks: CompiledTrack[], indices: number[], index: number, na
   // ── Measures ──
   const instruments = new Map<number, PartInstrument>();
   let lastKey: NotationKey | undefined;
+  // Which voice number each line of a staff had in the previous measure, so
+  // a line tied over the bar line keeps it (the tie joins two notes of one voice).
+  const lastSlot: Map<number, number>[] = Array.from({ length: staves }, () => new Map());
   const partMeasures: PartMeasure[] = measures.map((measure, mi) => {
     const m0 = measure.start;
     const m1 = m0 + measure.length;
     const levels = meterLevels(measure.time, measure.length, T);
     const voices: NotationVoice[] = [];
     for (let s = 0; s < staves; s++) {
-      const staffVoices = voicesByStaff[s].length ? voicesByStaff[s] : [[]];
-      staffVoices.forEach((voiceNotes, vi) => {
-        const inBar = voiceNotes.filter((n) => n.start < m1 && n.end > m0);
-        if (vi > 0 && inBar.length === 0) return;
+      const lines = voicesByStaff[s].length ? voicesByStaff[s] : [[]];
+      const inBars = lines.map((line) => line.filter((n) => n.start < m1 && n.end > m0));
+      const slots = percussion
+        ? lines.map((_, i) => (i === 0 || inBars[i].length ? i : undefined))
+        : voiceSlots(inBars, m0, lastSlot[s]);
+      lastSlot[s] = new Map(slots.flatMap((line, slot) => (line === undefined ? [] : [[line, slot] as [number, number]])));
+      slots.forEach((line, vi) => {
+        if (line === undefined && vi > 0) return;
         const voice: NotationVoice = { voice: s * 4 + vi + 1, staff: s + 1, events: [] };
+        const inBar = line === undefined ? [] : inBars[line];
         if (inBar.length === 0) {
-          // Voice 1 silent under another voice's notes: its rest is padding too.
-          const othersSound = staffVoices.some((other, oi) => oi !== vi && other.some((n) => n.start < m1 && n.end > m0));
+          // Voice 1 with nothing to play: a whole-bar rest, printed only
+          // when no other voice of the staff sounds.
+          const othersSound = inBars.some((notes) => notes.length > 0);
           voice.events.push({
             kind: 'rest', offset: 0, duration: measure.length, dots: 0, measureRest: true, notes: [],
             ...(othersSound ? { hidden: true } : {}),
@@ -1444,7 +1484,12 @@ function buildPart(tracks: CompiledTrack[], indices: number[], index: number, na
           }
           for (const seg of segments) seg.midis.sort((a, b) => a - b);
           voice.events = buildVoiceEvents(segments, measure.length, levels, measure.time, T, (msg) => partWarn(mi, msg));
-          if (vi > 0) for (const e of voice.events) if (e.kind === 'rest') e.hidden = true;
+          // A lower voice's rests print where it is a line of its own in
+          // this bar, sounding through most of it (a tenor entering after a
+          // 16th rest). Where it splits off for a few notes, they are padding
+          // and stay hidden.
+          const sounding = voice.events.reduce((sum, e) => sum + (e.kind === 'note' ? e.duration : 0), 0);
+          if (vi > 0 && sounding * 2 <= measure.length) for (const e of voice.events) if (e.kind === 'rest') e.hidden = true;
         }
         voices.push(voice);
       });
@@ -1462,7 +1507,7 @@ function buildPart(tracks: CompiledTrack[], indices: number[], index: number, na
     const pm: PartMeasure = { voices };
     if (!percussion) {
       for (let st = 1; st <= staves; st++) {
-        const onStaff = voices.filter((v) => v.staff === st);
+        const onStaff = voices.filter((v) => v.staff === st && v.events.some((e) => e.kind === 'note'));
         if (onStaff.length < 2) continue;
         onStaff.forEach((v, i) => {
           for (const e of v.events) if (e.kind === 'note') e.stem = i === 0 ? 'up' : 'down';
