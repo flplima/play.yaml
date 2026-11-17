@@ -108,6 +108,14 @@ export default function App() {
   const [text, setText] = useState(firstExample?.content ?? '');
   const [dirty, setDirty] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  // A status line is news, not state: it clears itself after a few seconds.
+  // A running job ("Rendering MP3...") waits for the status that replaces it,
+  // and a failure stays until the next action.
+  useEffect(() => {
+    if (!status || status.endsWith('…') || /^Could not|failed/i.test(status)) return;
+    const timer = window.setTimeout(() => setStatus(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [status]);
   const [playing, setPlaying] = useState(false);
   const [rendering, setRendering] = useState(false);
   const [makingPdf, setMakingPdf] = useState(false);

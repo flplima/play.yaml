@@ -50,7 +50,7 @@ export default function SongPicker({ value, placeholder, onSelect }: SongPickerP
           role="combobox"
           aria-expanded={open}
           aria-label="Score"
-          className="w-56 justify-between font-normal"
+          className="w-72 justify-between font-normal"
           title={label}
         >
           <span className="flex min-w-0 items-center gap-1.5">
