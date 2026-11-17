@@ -1851,6 +1851,35 @@ check('every example matches its golden digest', () => {
   );
 });
 
+console.log('\n||…|| fences inside groups:');
+{
+  const run = (play: string) => compileDoc({ play } as any).tracks[0].timeline;
+  const piano = run('||piano|| c4').map((e) => e.velocity)[0];
+  const forte = run('||forte|| c4').map((e) => e.velocity)[0];
+  check('a fence in a {} group takes no slot and applies where it stands', () => {
+    const tl = run('||piano|| {c4 ||forte|| d4} e4');
+    assert.deepStrictEqual(tl.map((e) => e.time), [0, 1, 2]);
+    assert.ok(tl[0].duration <= 1 && tl[1].duration <= 1 && tl[0].duration > 0.5, "c4 and d4 are one beat each");
+    assert.deepStrictEqual(tl.map((e) => e.velocity), [piano, forte, forte]);
+  });
+  check('a fence in a nested group applies, and the groups still divide evenly', () => {
+    const tl = run('||piano|| {c4 {d4 ||forte|| e4}} f4');
+    assert.deepStrictEqual(tl.map((e) => e.time), [0, 1, 1.5, 2]);
+    assert.deepStrictEqual(tl.map((e) => e.velocity), [piano, piano, forte, forte]);
+  });
+  check('a fence next to a chord does not count as a chord note', () => {
+    const tl = run('||piano|| {[c4 e4] ||forte|| [d4 f4]} g4');
+    assert.deepStrictEqual(tl.map((e) => e.time), [0, 0, 1, 1, 2]);
+    assert.deepStrictEqual(tl.map((e) => e.velocity), [piano, piano, forte, forte, forte]);
+    const inside = run('||piano|| [c4 ||forte|| e4]');
+    assert.deepStrictEqual(inside.map((e) => e.time), [0, 0]);
+  });
+  check('a fence at either end of a group changes nothing about its division', () => {
+    assert.deepStrictEqual(run('{||forte|| c4 d4} e4').map((e) => e.time), [0, 1, 2]);
+    assert.deepStrictEqual(run('{c4 d4 ||forte||} e4').map((e) => e.time), [0, 1, 2]);
+  });
+}
+
 console.log('\npreset → General MIDI program:');
 
 check('every preset name resolves to a GM program, and only keyboards are piano', () => {

@@ -458,6 +458,8 @@ const clampVelocity = (v: number) => Math.max(1, Math.min(127, Math.round(v)));
 
 interface EmitCtx {
   events: TimelineEvent[];
+  /** Apply a `||…||` or `==…==` fence found inside a group or chord at beat `at`. */
+  applyMark?: (token: string, at: number) => void;
   /** Kit track: tokens are drum names / raw GM keys, not pitches. */
   drums: boolean;
   scale: ScaleInfo;
@@ -609,10 +611,16 @@ function placeToken(token: string, start: number, span: number, ctx: EmitCtx, bo
     // stop or a guitar strum. The spread is clamped so fast subdivisions
     // never roll past their own slot.
     const spread = strumMarks
-      ? Math.min(strumMarks * ctx.strum, (span * 0.6) / Math.max(1, parts.length - 1))
+      ? Math.min(strumMarks * ctx.strum, (span * 0.6) / Math.max(1, parts.filter((q) => !isMarkToken(q)).length - 1))
       : 0;
-    parts.forEach((part, i) => {
-      const offset = round(i * spread);
+    // A fence inside the chord applies at its start and is not a chord note.
+    let n = 0;
+    parts.forEach((part) => {
+      if (isMarkToken(part)) {
+        ctx.applyMark?.(part, start);
+        return;
+      }
+      const offset = round(n++ * spread);
       placeToken(part, start + offset, span - offset, ctx, boost);
     });
     const chord = ctx.events.slice(before);
@@ -640,9 +648,20 @@ function placeToken(token: string, start: number, span: number, ctx: EmitCtx, bo
 
   if (tok[0] === '{' && tok[tok.length - 1] === '}') {
     const parts = splitTopLevel(tok.slice(1, -1));
-    divideByWeight(parts, span).forEach((slot, i) => {
-      placeToken(parts[i], start + slot.offset, slot.span, ctx, boost);
-    });
+    // Fences take no time: only the notes share the span, as in a measure.
+    const timed = parts.filter((t) => !isMarkToken(t));
+    const slots = divideByWeight(timed, span);
+    let k = 0;
+    let at = start;
+    for (const part of parts) {
+      if (isMarkToken(part)) {
+        ctx.applyMark?.(part, at);
+        continue;
+      }
+      const slot = slots[k++];
+      placeToken(part, start + slot.offset, slot.span, ctx, boost);
+      at = start + slot.offset + slot.span;
+    }
     return;
   }
 
@@ -1123,6 +1142,10 @@ export function parsePlayFull(
       bars[i] = { start: round(start - (index - i) * measureBeats), beats: measureBeats, meter: meterText, scale: keyText };
     }
     bars[index] = { start, beats: measureBeats, meter: meterText, scale: keyText };
+  };
+  ctx.applyMark = (tok, at) => {
+    if (isScaleToken(tok)) ctx.scale = parseScale(setTokenBody(tok));
+    else applySet(setTokenBody(tok), at);
   };
   const compileMeasure = (raw: string) => {
     const measure = raw.trim();
