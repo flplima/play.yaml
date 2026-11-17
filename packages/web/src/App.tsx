@@ -4,10 +4,13 @@ import { yaml } from '@codemirror/lang-yaml';
 import type { EditorView } from '@codemirror/view';
 import { parseYaml, compileDoc, CompiledSong, encodeMidi } from '@play.yaml/core';
 import {
-  CircleCheck,
+  ChevronDown,
   CircleX,
   Download,
+  FileMusic,
+  FileText,
   FolderOpen,
+  Music,
   Link2,
   PanelRight,
   Play,
@@ -23,7 +26,15 @@ import ScoreView from './ScoreView';
 import OutputPanel, { OutputMode } from './OutputPanel';
 import RoutingPanel, { SampleEntry } from './RoutingPanel';
 import TrackMonitor from './TrackMonitor';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -60,6 +71,15 @@ function download(blob: Blob, filename: string): void {
   a.click();
   // A large file (a PDF of a long score) is still being read when click() returns.
   setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}
+
+/** lucide-react dropped brand icons, so the GitHub mark is inline. */
+function GithubMark() {
+  return (
+    <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z" />
+    </svg>
+  );
 }
 
 const canOpenFiles = 'showOpenFilePicker' in window;
@@ -346,6 +366,12 @@ export default function App() {
     }
   };
 
+  const downloadYaml = () => {
+    const name = `${downloadSlug()}.play.yaml`;
+    download(new Blob([text], { type: 'text/yaml' }), name);
+    setStatus(`Downloaded ${name}`);
+  };
+
   const downloadMp3 = async () => {
     if (!song || rendering) return;
     setRendering(true);
@@ -391,14 +417,20 @@ export default function App() {
     });
   };
 
-  const noteCount = song?.tracks.reduce((n, t) => n + t.timeline.length, 0) ?? 0;
-
   return (
     <TooltipProvider delayDuration={400} skipDelayDuration={200}>
     <div className="flex h-full flex-col bg-background text-foreground">
       <header className="flex flex-wrap items-center gap-2 border-b border-border bg-card px-4 py-2.5">
         <h1 className="text-sm font-semibold tracking-tight">
-          play<span className="text-primary">.yaml</span> studio
+          <button
+            type="button"
+            aria-label={playing ? 'Stop' : 'Play'}
+            onClick={playing ? stop : () => void play()}
+            disabled={!playing && !song}
+            className="cursor-pointer rounded-sm px-1 -mx-1 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:hover:bg-transparent"
+          >
+            play<span className="text-primary">.yaml</span>
+          </button>
         </h1>
 
         <Separator orientation="vertical" className="mx-1" />
@@ -444,26 +476,35 @@ export default function App() {
           {playing ? 'Stop' : 'Play'}
         </Button>
 
-        <Hint label="Download the compiled score as a Standard MIDI File (.mid)">
-          <Button onClick={downloadMid} disabled={!song}>
-            <Download />
-            MIDI
-          </Button>
-        </Hint>
-
-        <Hint label="Render the song offline with the built-in sounds and download it as MP3">
-          <Button onClick={() => void downloadMp3()} disabled={!song || rendering}>
-            <Download />
-            {rendering ? 'Rendering…' : 'MP3'}
-          </Button>
-        </Hint>
-
-        <Hint label="Engrave the score as sheet music and download it as a PDF">
-          <Button onClick={() => void downloadPdf()} disabled={!song || makingPdf}>
-            <Download />
-            {makingPdf ? 'Engraving…' : 'PDF'}
-          </Button>
-        </Hint>
+        <DropdownMenu>
+          <Hint label="Download this score as MIDI, MP3, a PDF of the sheet music or the play.yaml text">
+            <DropdownMenuTrigger asChild>
+              <Button disabled={!text} aria-label="Download">
+                <Download />
+                {rendering ? 'Rendering…' : makingPdf ? 'Engraving…' : 'Download'}
+                <ChevronDown className="opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+          </Hint>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem disabled={!song} onSelect={downloadMid}>
+              <Music />
+              MIDI (.mid)
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={!song || rendering} onSelect={() => void downloadMp3()}>
+              <FileMusic />
+              {rendering ? 'Rendering MP3…' : 'MP3'}
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={!song || makingPdf} onSelect={() => void downloadPdf()}>
+              <FileText />
+              {makingPdf ? 'Engraving PDF…' : 'PDF (sheet music)'}
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={!text} onSelect={downloadYaml}>
+              <FileText />
+              play.yaml
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <Hint label="Copy a link that carries this whole score in the URL — no server involved">
           <Button onClick={() => void shareLink()} disabled={!text}>
@@ -475,6 +516,7 @@ export default function App() {
         <Hint label="The source, the docs and the format reference">
           <Button asChild variant="ghost">
             <a href="https://github.com/flplima/play.yaml" target="_blank" rel="noreferrer">
+              <GithubMark />
               GitHub
             </a>
           </Button>
@@ -494,6 +536,7 @@ export default function App() {
       </header>
 
       <main className="flex min-h-0 flex-1">
+        <div className="relative flex min-w-0 flex-1">
         <Tabs
           value={mainTab}
           onValueChange={(v) => setMainTab(v as typeof mainTab)}
@@ -543,8 +586,56 @@ export default function App() {
             <ScoreView text={text} visible={mainTab === 'score'} playing={playing} currentBeat={currentBeat} />
           </TabsContent>
         </Tabs>
-        {showPanel && (
-          <aside className="flex w-80 shrink-0 flex-col overflow-y-auto border-l border-border bg-card">
+
+        {/* Compile errors, warnings and the last action's status, only when there is one. */}
+        {(error || song?.warnings?.length || status) && (
+          <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 flex flex-col items-start gap-1.5">
+            {error && (
+              <Alert variant="destructive" className="pointer-events-auto max-h-32 w-auto max-w-full overflow-auto py-2 text-xs">
+                <CircleX />
+                <AlertDescription className="text-xs text-destructive">{error}</AlertDescription>
+              </Alert>
+            )}
+            {/* A score with unreadable tokens still plays: they just went silent.
+                Say which bar, so a mistyped mark is visible instead of just heard. */}
+            {!error && song?.warnings?.length ? (
+              <Alert
+                className="pointer-events-auto w-auto max-w-full py-2 text-xs text-warning"
+                title={song.warnings.join('\n')}
+              >
+                <TriangleAlert />
+                <AlertDescription className="text-xs text-warning">
+                  {song.warnings[0]}
+                  {song.warnings.length > 1 ? ` (+${song.warnings.length - 1} more)` : ''}
+                </AlertDescription>
+              </Alert>
+            ) : null}
+            {status && (
+              <span className="pointer-events-auto max-w-full truncate rounded-md border border-border bg-card px-2.5 py-1 text-xs text-muted-foreground">
+                {status}
+              </span>
+            )}
+          </div>
+        )}
+        </div>
+        {/*
+          The side panel stays mounted and animates its width: the fixed-width
+          inner column slides while the outer one shrinks, so nothing reflows
+          inside it. The canvases' ResizeObservers redraw as the main area
+          resizes, and once more at the final size.
+        */}
+        <div
+          className={cn(
+            'shrink-0 overflow-hidden border-l border-border bg-card transition-[width,border-color,visibility] duration-200 ease-in-out motion-reduce:transition-none',
+            showPanel ? 'w-80' : 'invisible w-0 border-transparent',
+          )}
+        >
+          <aside
+            className={cn(
+              'flex h-full w-80 flex-col overflow-y-auto transition-transform duration-200 ease-in-out motion-reduce:transition-none',
+              showPanel ? 'translate-x-0' : 'translate-x-full',
+            )}
+          >
             <OutputPanel
               outputMode={outputMode}
               onOutputModeChange={setOutputMode}
@@ -567,38 +658,9 @@ export default function App() {
             />
             <TrackMonitor song={lastGoodSong} currentBeat={currentBeat} playing={playing} />
           </aside>
-        )}
+        </div>
       </main>
 
-      <footer className="flex items-center gap-3 border-t border-border bg-card px-4 py-1.5 text-xs">
-        {error ? (
-          <span className="flex items-center gap-1.5 text-destructive">
-            <CircleX className="size-3.5 shrink-0" />
-            {error}
-          </span>
-        ) : (
-          <span className="flex items-center gap-1.5 text-muted-foreground">
-            <CircleCheck className="size-3.5 shrink-0 text-primary" />
-            {song!.tracks.length} track(s) · {noteCount} notes · {song!.bpm} bpm
-          </span>
-        )}
-        {/* A score with unreadable tokens still plays — they just went silent.
-            Say which bar, so a mistyped mark is visible instead of just heard. */}
-        {!error && song?.warnings?.length ? (
-          <span
-            className="flex min-w-0 items-center gap-1.5 truncate text-warning"
-            title={song.warnings.join('\n')}
-          >
-            <TriangleAlert className="size-3.5 shrink-0" />
-            <span className="truncate">
-              {song.warnings[0]}
-              {song.warnings.length > 1 ? ` (+${song.warnings.length - 1} more)` : ''}
-            </span>
-          </span>
-        ) : null}
-        <div className="flex-1" />
-        {status && <span className="text-muted-foreground">{status}</span>}
-      </footer>
     </div>
     </TooltipProvider>
   );
