@@ -19,7 +19,7 @@
   "scripts": {
     "build": "vite build",
     "start": "tsx src/cli.ts",
-    "test": "tsc --noEmit"
+    "test": "tsc --noEmit && tsx test.ts"
   },
   "dependencies": {
     "@play.yaml/core": "^1.0.0",

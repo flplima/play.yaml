@@ -80,6 +80,51 @@ function readVarLen(bytes: Uint8Array, pos: number): { value: number; next: numb
 }
 
 /**
+ * Every note-on (velocity > 0) in the file's raw track bytes, found by a
+ * second, deliberately simple walk that never pairs note-ons with note-offs.
+ * `--verify` compares this count with what `decodeMidi` returned, so a note
+ * the decoder loses (e.g. one still sounding at end-of-track) cannot hide.
+ */
+export function rawNoteOns(bytes: Uint8Array): { track: number; channel: number; beat: number }[] {
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const out: { track: number; channel: number; beat: number }[] = [];
+  if (bytes.length < 14) return out;
+  const tpqn = dv.getInt16(12);
+  const ntrks = dv.getUint16(10);
+  let p = 8 + dv.getUint32(4);
+  for (let t = 0; t < ntrks && p + 8 <= bytes.length; t++) {
+    const len = dv.getUint32(p + 4);
+    const end = Math.min(bytes.length, p + 8 + len);
+    p += 8;
+    let tick = 0;
+    let status = 0;
+    while (p < end) {
+      const vl = readVarLen(bytes, p);
+      tick += vl.value;
+      p = vl.next;
+      if (bytes[p] & 0x80) status = bytes[p++];
+      const hi = status & 0xf0;
+      if (hi === 0x90 || hi === 0x80) {
+        const vel = bytes[p + 1];
+        if (hi === 0x90 && vel > 0) out.push({ track: t, channel: status & 0x0f, beat: tick / tpqn });
+        p += 2;
+      } else if (hi === 0xa0 || hi === 0xb0 || hi === 0xe0) p += 2;
+      else if (hi === 0xc0 || hi === 0xd0) p += 1;
+      else if (status === 0xff) {
+        p++;
+        const ml = readVarLen(bytes, p);
+        p = ml.next + ml.value;
+      } else if (status === 0xf0 || status === 0xf7) {
+        const sl = readVarLen(bytes, p);
+        p = sl.next + sl.value;
+      } else break;
+    }
+    p = end;
+  }
+  return out;
+}
+
+/**
  * Parse Standard MIDI File bytes (format 0 or 1) into notes + a tempo map,
  * both measured in quarter-note beats. Running status, meta events and sysex
  * are handled; SMPTE time division is rejected (we only speak ticks-per-beat).
