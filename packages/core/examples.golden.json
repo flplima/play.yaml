@@ -96,10 +96,10 @@
     "sha256": "4df23ba8a717e73a6ab26a021ae61c92c74100e3426567a4b4f404c28dfe89d5"
   },
   "songs/bwv-881-prelude-and-fugue-12/bwv-881-prelude-and-fugue-12.play.yaml": {
-    "tracks": 5,
+    "tracks": 8,
     "notes": 2591,
     "lengthBeats": 452,
-    "sha256": "5e6c724dd0ce7c4c59a82764611ea5ceb8965df4c1e7a0c69fb377d2a38658e2"
+    "sha256": "73bc318eed8023e481eb62268830fc9bdc68a71b32a3561648fb036ee1870455"
   },
   "songs/debussy-clair-de-lune/debussy-clair-de-lune.play.yaml": {
     "tracks": 6,
