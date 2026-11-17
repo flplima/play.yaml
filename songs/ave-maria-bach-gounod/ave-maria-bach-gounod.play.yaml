@@ -45,6 +45,42 @@ tracks:
       vibrato_rate: 76
     # The default vibrato is nearly straight; the marks below open it at the climaxes.
     set: legato, cantabile, vibrato 26, slow vibrato
+    # The Latin prayer, one line per bar from bar 5. Underlay after a public-domain
+    # 19th-century edition; bars 23-29 are fitted to Heugel's pickups.
+    lyrics: |
+      A-               # 5
+      ve
+      Ma- ri-
+      a
+      gra- _ ti- a     # 9
+      ple- _ na
+      Do- _ mi- nus
+      te- _ cum
+      be- _ ne- _      # 13
+      dic- _ _ ta
+      tu in
+      mu- _ li- e-
+      ri- bus          # 17
+      et _ be- ne-
+      dic- tus
+      fruc- _ tus _
+      ven- _ tris _    # 21
+      tu- i Je- _
+      sus, Sanc-
+      _ ta Ma-
+      ri- a, sanc-     # 25
+      _ ta Ma-
+      ri- a, Ma-
+      ri- a, O- ra
+      pro no- bis,
+      no- bis pec- ca- # 30
+      to- ri- bus,
+      nunc _ et in
+      ho- _ ra, in
+      ho- _ _ ra
+      mor- _ tis _ no- _ strae. _   # 35
+      A-
+      men.
 
 sections:
   # Gounod's opening: Bach's first four bars alone, voice tacet, before they come round again with the melody.
