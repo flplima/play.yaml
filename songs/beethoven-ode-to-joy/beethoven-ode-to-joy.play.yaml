@@ -1,0 +1,223 @@
+# Ludwig van Beethoven: the "Freude" theme from the finale of Symphony No. 9, Op. 125 (1824), with Friedrich Schiller's words
+# Public domain (Beethoven d. 1827, Schiller d. 1805). The theme and the first stanza's underlay were read from the 1826 Schott
+# first edition of the full score (Wikimedia Commons, public domain) and checked against Mutopia's "Ode to Joy" (public domain).
+# The orchestration and the chord accompaniment are our own short arrangement, not Beethoven's.
+
+title: "Ode to Joy (Freude, schöner Götterfunken)"
+composer: "Ludwig van Beethoven / Friedrich Schiller"
+tempo: 92
+tempo text: Allegro assai
+measure: 4/4
+scale: d major
+
+tracks:
+  # The baritone sings the theme as written in the score (bass clef, F#3 to A3).
+  baritone:
+    preset: choir-male
+    set: legato, cantabile
+    # Schiller's first stanza, one syllable per note. "_" lets a note pass: bars 10 and 11 slur two eighths on one syllable,
+    # and bar 13 starts on the F# tied over the barline from bar 12 ("al-" is held, "le" comes on the next note).
+    lyrics: |
+      Freu- de schö- ner        # 1
+      Göt- ter- fun- ken,
+      Toch- ter aus E-
+      ly- si- um!
+      Wir be- tre- ten          # 5
+      Feu- er- trun- ken,
+      Himm- li- sche, dein
+      Hei- lig- tum.
+      Dei- ne Zau- ber          # 9
+      bin- den _ wie- der,
+      was die _ Mo- de
+      streng ge- teilt, al-
+      le Men- schen             # 13
+      wer- den Brü- der,
+      wo dein sanf- ter
+      Flü- gel weilt.
+      Dei- ne Zau- ber          # 17, the last eight bars again
+      bin- den _ wie- der,
+      was die _ Mo- de
+      streng ge- teilt, al-
+      le Men- schen             # 21
+      wer- den Brü- der,
+      wo dein sanf- ter
+      Flü- gel weilt.
+  # The mixed choir joins for the repeat, an octave above the baritone.
+  choir:
+    preset: choir
+    set: legato
+    lyrics: |
+      Dei- ne Zau- ber          # 17
+      bin- den _ wie- der,
+      was die _ Mo- de
+      streng ge- teilt, al-
+      le Men- schen             # 21
+      wer- den Brü- der,
+      wo dein sanf- ter
+      Flü- gel weilt.
+  cellos: { preset: cellos }
+  basses: { preset: basses }
+  # Chord tokens: each bar of the harmony is written as chord symbols (slash chords name the bass).
+  strings:
+    preset: strings
+    octave: 4
+  timpani: { preset: timpani }
+
+sections:
+  # Beethoven gives the theme first to cellos and basses alone, very softly.
+  intro:
+    loop: false
+    cellos:
+      play:
+        - "pianissimo"
+        - "f#3 f#3 g3 a3"
+        - "a3 g3 f#3 e3"
+        - "d3 d3 e3 f#3"
+        - "f#3 _ _ e3 e3 _ _ _"
+        - "f#3 f#3 g3 a3"
+        - "a3 g3 f#3 e3"
+        - "d3 d3 e3 f#3"
+        - "e3 _ _ d3 d3 _ _ _"
+    basses:
+      play:
+        - "pianissimo"
+        - "f#2 f#2 g2 a2"
+        - "a2 g2 f#2 e2"
+        - "d2 d2 e2 f#2"
+        - "f#2 _ _ e2 e2 _ _ _"
+        - "f#2 f#2 g2 a2"
+        - "a2 g2 f#2 e2"
+        - "d2 d2 e2 f#2"
+        - "e2 _ _ d2 d2 _ _ _"
+
+  # The first stanza, sixteen bars, over chords.
+  verse:
+    loop: false
+    baritone:
+      play:
+        - "mezzopiano"
+        - "f#3 f#3 g3 a3"
+        - "a3 g3 f#3 e3"
+        - "d3 d3 e3 f#3"
+        - "f#3 _ _ e3 e3 _ _ _"
+        - "f#3 f#3 g3 a3"
+        - "a3 g3 f#3 e3"
+        - "d3 d3 e3 f#3"
+        - "e3 _ _ d3 d3 _ _ _"
+        - "e3 e3 f#3 d3"
+        - "e3 {f#3 g3} f#3 d3"
+        - "e3 {f#3 g3} f#3 e3"
+        # bar 12: the F# on beat 4 is tied into bar 13, as Beethoven wrote it
+        - "d3 e3 a2 f#3"
+        - "_ f#3 g3 a3"
+        - "a3 g3 f#3 e3"
+        - "d3 d3 e3 f#3"
+        - "e3 _ _ d3 d3 _ _ _"
+    strings:
+      play:
+        - "piano"
+        - "D _ D _"
+        - "D D/F# A7/E _"
+        - "D/F# _ A7/E D"
+        - "D _ A _"
+        - "D _ D _"
+        - "D D/F# A7/E _"
+        - "D/F# _ A7/E D"
+        - "A7 _ D _"
+        - "A _ A7 _"
+        - "A7 _ A _"
+        - "A7 _ _ _"
+        - "Bm E7 A7 _"
+        - "D D/C G/B A7"
+        - "D G D/F# A7/E"
+        - "G D/F# A7/E D"
+        - "A7 _ D _"
+    basses:
+      play:
+        - "piano"
+        - "d2 _ d2 _"
+        - "d2 f#2 e2 _"
+        - "f#2 _ e2 d2"
+        - "a1 _ _ _"
+        - "d2 _ d2 _"
+        - "d2 f#2 e2 _"
+        - "f#2 _ e2 d2"
+        - "a1 _ d2 _"
+        - "a1 _ _ _"
+        - "a1 _ _ _"
+        - "a1 _ _ _"
+        - "b1 e2 a1 _"
+        - "d2 c2 b1 a1"
+        - "d2 g2 f#2 e2"
+        - "g2 f#2 e2 d2"
+        - "a1 _ d2 _"
+
+  # The last eight bars again, now with the choir, the timpani and more weight.
+  repeat:
+    loop: false
+    baritone:
+      play:
+        - "mezzoforte"
+        - "e3 e3 f#3 d3"
+        - "e3 {f#3 g3} f#3 d3"
+        - "e3 {f#3 g3} f#3 e3"
+        - "d3 e3 a2 f#3"
+        - "_ f#3 g3 a3"
+        - "a3 g3 f#3 e3"
+        - "d3 d3 e3 f#3"
+        - "e3 _ _ d3 d3 _ _ _"
+    choir:
+      play:
+        - "forte"
+        - "e4 e4 f#4 d4"
+        - "e4 {f#4 g4} f#4 d4"
+        - "e4 {f#4 g4} f#4 e4"
+        - "d4 e4 a3 f#4"
+        - "_ f#4 g4 a4"
+        - "a4 g4 f#4 e4"
+        - "d4 d4 e4 f#4"
+        - "e4 _ _ d4 d4 _ _ _"
+    strings:
+      play:
+        - "forte"
+        - "A _ A7 _"
+        - "A7 _ A _"
+        - "A7 _ _ _"
+        - "Bm E7 A7 _"
+        - "D D/C G/B A7"
+        - "D G D/F# A7/E"
+        - "G D/F# A7/E D"
+        - "A7 _ D _"
+    basses:
+      play:
+        - "forte"
+        - "a1 _ _ _"
+        - "a1 _ _ _"
+        - "a1 _ _ _"
+        - "b1 e2 a1 _"
+        - "d2 c2 b1 a1"
+        - "d2 g2 f#2 e2"
+        - "g2 f#2 e2 d2"
+        - "a1 _ d2 _"
+    cellos:
+      play:
+        - "forte"
+        - "a2 _ _ _"
+        - "a2 _ _ _"
+        - "a2 _ _ _"
+        - "b2 e3 a2 _"
+        - "d3 c3 b2 a2"
+        - "d3 g3 f#3 e3"
+        - "g3 f#3 e3 d3"
+        - "a2 _ d3 _"
+    timpani:
+      play:
+        - "forte"
+        - "a1 ~ a1 ~"
+        - "a1 ~ a1 ~"
+        - "a1 ~ a1 ~"
+        - "a1 ~ ~ ~"
+        - "d2 ~ d2 ~"
+        - "d2 ~ d2 ~"
+        - "d2 ~ a1 ~"
+        - "a1 ~ d2 _"
