@@ -3,6 +3,7 @@
 
 title: "Tico-Tico no Fuba"
 composer: "Zequinha de Abreu"
+key: { 1: a minor, 37: a major, 69: a minor }   # the trio is in A major
 tempo: 100
 measure: 2/4
 scale: a minor

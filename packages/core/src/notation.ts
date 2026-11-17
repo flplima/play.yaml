@@ -333,6 +333,36 @@ export function keyFromScale(scale: string | undefined): NotationKey {
   return { fifths, mode };
 }
 
+/**
+ * The score's `key:`, one entry per measure: the key text where the printed
+ * key is set, undefined where it holds. `key: g major` names the opening key;
+ * a mapping of bar numbers (`{ 1: db major, 37: e major }`) names changes.
+ * Without one, every part opens in its first `scale:` and keeps it: a
+ * `scale:` set mid-piece moves the degrees, not the key signature.
+ */
+function printedKeys(value: unknown, count: number, warn: (message: string) => void): (string | undefined)[] {
+  const out: (string | undefined)[] = new Array(count).fill(undefined);
+  if (value == null) return out;
+  const entries: [string, unknown][] = typeof value === 'object' && !Array.isArray(value)
+    ? Object.entries(value as Record<string, unknown>)
+    : [['1', value]];
+  for (const [bar, raw] of entries) {
+    const n = Number(bar);
+    const text = String(raw ?? '').trim();
+    if (!Number.isInteger(n) || n < 1) {
+      throw new Error(`key: "${bar}" is not a bar number; write the bars where the key changes, e.g. key: { 1: db major, 37: e major }`);
+    }
+    try {
+      parseScale(text);
+    } catch {
+      throw new Error(`key: "${text}" is not a key; write it like a scale, e.g. "g major" or "c# minor"`);
+    }
+    if (n > count) warn(`key: bar ${n} is past the last bar`);
+    else out[n - 1] = text;
+  }
+  return out;
+}
+
 /** A spelling for every pitch class under a key: the key's own notes, then the chromatic ones. */
 function spellingTable(key: NotationKey, preferFlats: boolean): [Step, number][] {
   const alters = keyAlters(key.fifths);
@@ -1010,7 +1040,8 @@ function scoreFromWritten(song: CompiledSong, doc: SongDoc): Score {
 
   // ── Parts ──
   const rootTrack = doc && doc.play != null ? song.tracks[0] : undefined;
-  const env: PartEnv = { measures, T, tick, warn, measureAt };
+  const keys = printedKeys((doc as { key?: unknown } | undefined)?.key, measures.length, warn);
+  const env: PartEnv = { measures, T, tick, warn, measureAt, keys };
   const parts = groupParts(song.tracks).map((indices, index) => {
     const tracks = indices.map((i) => song.tracks[i]);
     // One track keeps its own name (the instrument's, for the document's
@@ -1134,11 +1165,13 @@ interface PartEnv {
   warn: (message: string) => void;
   /** Index of the measure holding a tick. */
   measureAt: (t: number) => number;
+  /** The score's `key:`, per measure (see `printedKeys`). */
+  keys: (string | undefined)[];
 }
 
 /** One or more compiled tracks → one part: staves, voices, measures, spelling. */
 function buildPart(tracks: CompiledTrack[], indices: number[], index: number, name: string, env: PartEnv): Part {
-  const { measures, T, tick, warn, measureAt } = env;
+  const { measures, T, tick, warn, measureAt, keys } = env;
   const first = tracks[0];
   const id = `P${index + 1}`;
   const percussion = first.kit != null;
@@ -1225,7 +1258,9 @@ function buildPart(tracks: CompiledTrack[], indices: number[], index: number, na
   // ── Measures ──
   const instruments = new Map<number, PartInstrument>();
   let lastKey: NotationKey | undefined;
-  let lastScale = 'c major';
+  // The printed key: the score's `key:` where it says, else the part's
+  // opening `scale:`, held to the end.
+  let keyText = keys[0] ?? tracks.map((t) => t.bars?.[0]?.scale).find((x) => x !== undefined) ?? 'c major';
   const partMeasures: PartMeasure[] = measures.map((measure, mi) => {
     const m0 = measure.start;
     const m1 = m0 + measure.length;
@@ -1272,15 +1307,15 @@ function buildPart(tracks: CompiledTrack[], indices: number[], index: number, na
     }
 
     // ── Key, spelling, accidentals ──
-    // The key in force: the first track with this bar says; the others should
-    // agree, and a part that disagrees with itself is worth a warning.
+    // With no `key:`, the opening key comes from the first track's scale;
+    // the others should agree, and a part that disagrees with itself is
+    // worth a warning.
     const scales = [...new Set(tracks.map((t) => t.bars?.[mi]?.scale).filter((x): x is string => x !== undefined))];
-    if (scales.length > 1 && keyFromScale(scales[0]).fifths !== keyFromScale(scales[1]).fifths) {
+    if (mi === 0 && !keys[0] && scales.length > 1 && keyFromScale(scales[0]).fifths !== keyFromScale(scales[1]).fifths) {
       partWarn(mi, `its tracks are in different keys (${scales.join(', ')}); written in ${scales[0]}`);
     }
-    const scale = scales[0] ?? lastScale;
-    lastScale = scale;
-    const key = percussion ? { fifths: 0, mode: 'none' } : keyFromScale(scale);
+    keyText = keys[mi] ?? keyText;
+    const key = percussion ? { fifths: 0, mode: 'none' } : keyFromScale(keyText);
     const pm: PartMeasure = { voices };
     if (!percussion) {
       for (let st = 1; st <= staves; st++) {
@@ -1308,7 +1343,7 @@ function buildPart(tracks: CompiledTrack[], indices: number[], index: number, na
       }
       for (const v of voices) for (const e of v.events) if (e.kind === 'note') e.stem = v.voice === 1 ? 'up' : 'down';
     } else {
-      const table = spellingTable(key, /^[a-gA-G]b/.test(scale.trim()));
+      const table = spellingTable(key, /^[a-gA-G]b/.test(keyText));
       for (let st = 1; st <= staves; st++) spellStaff(voices.filter((v) => v.staff === st), key, table);
     }
     return pm;
