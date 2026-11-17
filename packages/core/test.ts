@@ -2439,6 +2439,19 @@ check('keyboard tracks with the same sample are one part on one grand staff', ()
   assert.deepStrictEqual(['manual', 'manual1', 'manual2', 'Manual II'].map(handOf), [0, 0, 1, 1],
     'an organ trio plays the second manual with the left hand');
 });
+check('a keyboard part of several tracks is named for its instrument, and an electric piano prints as Piano', () => {
+  const score = scoreFromDoc({
+    tracks: {
+      rh: { sample: 'epiano', play: ['c5 c5 c5 c5'] },
+      tenor: { sample: 'epiano', play: ['e3 e3'] },
+      bass: { sample: 'epiano', play: ['c3 c3'] },
+      voice: { sample: 'pad', play: ['g5 _ _ _'] },
+    },
+  });
+  assert.deepStrictEqual(score.parts.map((p) => p.name), ['Piano', 'voice']);
+  assert.deepStrictEqual(scoreFromDoc({ sample: 'epiano', play: 'c d e f' }).parts[0].name, 'Piano');
+  assert.deepStrictEqual(scoreFromDoc({ tracks: { a: { sample: 'organ', play: 'c' }, b: { sample: 'organ', play: 'c3' } } }).parts[0].name, 'Organ');
+});
 check('a left hand above middle C stays on the lower staff, under a treble clef', () => {
   const score = scoreFromDoc({ tracks: { rh: { sample: 'piano', play: 'c6 d6 e6 f6' }, lh: { sample: 'piano', play: 'e4 g4 c5 g4' } } });
   const part = score.parts[0];
