@@ -125,6 +125,12 @@
     "lengthBeats": 447,
     "sha256": "e08e791aa9c9c93e1d438cb6ae323dc56464d5572be07446fb9781290d8b761d"
   },
+  "songs/pachelbel-canon-in-d/pachelbel-canon-in-d.play.yaml": {
+    "tracks": 4,
+    "notes": 1956,
+    "lengthBeats": 228,
+    "sha256": "6d78031dcb90fa57895cbf724eef2d2d9cda1b0653d3747ca2731f1f2870c670"
+  },
   "songs/tico-tico-no-fuba/tico-tico-no-fuba.play.yaml": {
     "tracks": 3,
     "notes": 780,
