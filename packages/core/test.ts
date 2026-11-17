@@ -2287,6 +2287,20 @@ check('overlapping lines in one track become two voices, each filling the bar', 
   assert.deepStrictEqual(after.parts[0].measures[1].voices.map((v) => [v.voice, shape(v.events).length]), [[1, 4]],
     'once the lines stop overlapping, a lower line moves back into voice 1');
 });
+check('lines sharing a staff are numbered by pitch: the upper one is voice 1, stems up, its rests printed', () => {
+  const score = scoreFromDoc({
+    tracks: {
+      rh: { sample: 'piano', play: ['c5 c5 c5 c5'] },
+      tenor: { sample: 'piano', play: ['{~ e3 _ _ _ _ _ _} {~ e3 _ _ _ _ _ _}'] },
+      bass: { sample: 'piano', play: ['c3 c3'] },
+    },
+  });
+  const lower = score.parts[0].measures[0].voices.filter((v) => v.staff === 2);
+  const first = (v: (typeof lower)[number]) => v.events.find((e) => e.kind === 'note')!;
+  assert.deepStrictEqual(lower.map((v) => [v.voice, first(v).notes[0].midi, first(v).stem]), [[5, 52, 'up'], [6, 48, 'down']],
+    'the tenor is voice 1 though the bass enters first');
+  assert.ok(lower[0].events.some((e) => e.kind === 'rest' && !e.hidden), "the tenor's 16th rest prints");
+});
 check('keyboards get a grand staff, chords stay together', () => {
   const score = scoreFromDoc({ play: ['[c3 e3 g3] [e5 g5 c6] [c4 e4 g4] ~'] });
   const part = score.parts[0];
