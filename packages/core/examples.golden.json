@@ -131,6 +131,12 @@
     "lengthBeats": 228,
     "sha256": "6d78031dcb90fa57895cbf724eef2d2d9cda1b0653d3747ca2731f1f2870c670"
   },
+  "songs/satie-gymnopedie-no-1/satie-gymnopedie-no-1.play.yaml": {
+    "tracks": 4,
+    "notes": 455,
+    "lengthBeats": 234,
+    "sha256": "16e007718c1f4ed9c683a175013f6c1a248b804020dae43b707a028d80c3bc62"
+  },
   "songs/tico-tico-no-fuba/tico-tico-no-fuba.play.yaml": {
     "tracks": 3,
     "notes": 780,
