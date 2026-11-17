@@ -108,6 +108,8 @@ export function renderScore(xml: string): Promise<RenderedScore> {
         // MusicXML already carries the beams.
         autoBeam: false,
         drawTitle: true,
+        // Top right, under the title, as engraved editions print it.
+        drawComposer: true,
         drawPartNames: true,
         drawingParameters: 'compacttight',
         pageFormat: 'A4_P',
