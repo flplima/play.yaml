@@ -133,6 +133,8 @@ async function engrave(xml: string, pageFormat: string): Promise<string[]> {
       drawingParameters: 'compacttight',
       autoBeam: false,
       drawTitle: true,
+      // Top right, under the title, as engraved editions print it.
+      drawComposer: true,
       drawPartNames: true,
       pageFormat,
       pageBackgroundColor: '#FFFFFF',

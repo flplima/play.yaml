@@ -2283,6 +2283,11 @@ check('MusicXML escapes the title and parts', () => {
   assert.ok(xml.includes('<part-name>a&quot;b</part-name>'));
   assert.ok(!/&(?!amp;|lt;|gt;|quot;|apos;)/.test(xml), 'no bare ampersand anywhere');
 });
+check('the composer is written as the MusicXML creator, which the PDF prints top right', () => {
+  const xml = encodeMusicXml(scoreFromDoc({ title: 'Invention', composer: 'J.S. Bach', play: 'c d e f' }));
+  assert.ok(/<identification>\s*<creator type="composer">J\.S\. Bach<\/creator>/.test(xml));
+  assert.ok(!encodeMusicXml(scoreFromDoc({ play: 'c d e f' })).includes('<creator'), 'no composer, no creator');
+});
 check('MusicXML: header, element order and backups', () => {
   const xml = encodeMusicXml(scoreFromDoc({ sample: 'flute', play: ['[c5 {e4 f4 g4 a4}]: {b4 c5 d5} c5', 'c5 _ _ _', '_ d5 e5 f5'] }));
   assert.ok(xml.startsWith('<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<!DOCTYPE score-partwise'));

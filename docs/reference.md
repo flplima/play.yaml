@@ -591,6 +591,7 @@ node packages/cli/dist/export.js --input examples/fur-elise.play.yaml --output f
 
 What gets printed:
 
+- **Title and composer**: `title:` at the top of the first page, and `composer:` under it on the right (`composer: "Johann Sebastian Bach"`).
 - **The notes as written**: full note values, with no `gate`, `humanize`, `rubato` or strum. Ties, dots, tuplets, rests, beams and up to four voices per staff.
 - **Key, meter and tempo**: the key signature comes from `scale:`. A score with no `scale:` prints with no key signature. Meter and tempo changes are printed where they happen.
 - **Keyboards**: tracks that share a keyboard `sample:` (piano, organ, harp and friends) print as one part on a grand staff. A track named `rh`, `right` or `upper` goes on the upper staff, and `lh`, `left` or `lower` on the lower one. Other names are split around middle C. A track named `pedal` gets a staff of its own.
