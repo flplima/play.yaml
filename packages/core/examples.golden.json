@@ -119,6 +119,12 @@
     "lengthBeats": 304,
     "sha256": "372c12d21207c694fb72c912981d8cc7fd98b530ecd661171b479d4bba229252"
   },
+  "songs/mozart-rondo-alla-turca/mozart-rondo-alla-turca.play.yaml": {
+    "tracks": 3,
+    "notes": 2810,
+    "lengthBeats": 447,
+    "sha256": "e08e791aa9c9c93e1d438cb6ae323dc56464d5572be07446fb9781290d8b761d"
+  },
   "songs/tico-tico-no-fuba/tico-tico-no-fuba.play.yaml": {
     "tracks": 3,
     "notes": 780,
