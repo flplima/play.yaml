@@ -19,9 +19,9 @@
   },
   "clair-de-lune.play.yaml": {
     "tracks": 9,
-    "notes": 1608,
+    "notes": 1603,
     "lengthBeats": 324,
-    "sha256": "a905d4bc871c0cd624b35512e5786d5f2111a70c507dc6dca2a481e5294102af"
+    "sha256": "2da81b6c39e8d6d9557e7a08f6e74863318490b830c8f895abe921af5ec466a7"
   },
   "drum-lab.play.yaml": {
     "tracks": 6,
