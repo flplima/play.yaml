@@ -4,6 +4,7 @@
 import assert from 'assert';
 import { spawnSync } from 'child_process';
 import fs from 'fs';
+import { createRequire } from 'module';
 import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -48,7 +49,8 @@ function smf(events: [number, ...number[]][]): Uint8Array {
 
 const BEAT = 480;
 const cliPath = path.join(__dirname, 'src', 'import-midi.ts');
-const tsx = path.join(__dirname, '..', '..', 'node_modules', '.bin', 'tsx');
+// Resolved like an import, so it works from a git worktree with no node_modules of its own.
+const tsxCli = createRequire(import.meta.url).resolve('tsx/cli');
 
 function runImport(bytes: Uint8Array, extra: string[] = []) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'import-test-'));
@@ -56,7 +58,7 @@ function runImport(bytes: Uint8Array, extra: string[] = []) {
     const mid = path.join(dir, 'a.mid');
     const out = path.join(dir, 'a.play.yaml');
     fs.writeFileSync(mid, bytes);
-    const r = spawnSync(tsx, [cliPath, mid, '-o', out, '--verify', ...extra], { encoding: 'utf8' });
+    const r = spawnSync(process.execPath, [tsxCli, cliPath, mid, '-o', out, '--verify', ...extra], { encoding: 'utf8' });
     return { status: r.status, stderr: r.stderr, yaml: fs.existsSync(out) ? fs.readFileSync(out, 'utf8') : '' };
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
