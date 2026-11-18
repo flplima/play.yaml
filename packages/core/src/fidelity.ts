@@ -697,7 +697,8 @@ export function compareMidi(
   const genBpm = medianBpm(g);
   let origBpm = medianBpm(o);
   let origBpmSource: 'header' | 'alignment' = 'header';
-  if (o.tempoMap.length <= 1) {
+  // A transcription's header often repeats one tempo in several entries: still one tempo.
+  if (o.tempoMap.every((t) => Math.abs(t.bpm - o.tempoMap[0].bpm) < 1e-6)) {
     const est = estimateTempoByAlignment(g, o, A.transpose);
     if (est) {
       origBpm = genBpm * est;

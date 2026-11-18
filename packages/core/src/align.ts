@@ -80,17 +80,23 @@ export interface AlignReport {
   transpose: number;
   /** mean distance at transposition 0, for comparison with `meanDistance`. */
   distanceAt0: number;
-  /** mean chroma distance along the path: 0 = same pitch classes, ~0.7 = nothing matches. */
+  /** mean chroma distance over all recording frames: 0 = same pitch classes, ~0.7 = nothing matches;
+   *  a frame the path discarded counts 0.7. */
   meanDistance: number;
-  /** fraction of recording frames with distance < 0.25. */
+  /** fraction of recording frames with distance < 0.25 (frames the path discarded count as bad). */
   goodFraction: number;
+  /** seconds of the recording the path matched to the score (not lead-in, tail or extra material). */
+  matchedSec: number;
+  /** where in the recording the path starts and ends, seconds (before/after: talk, silence, applause). */
+  startSec: number;
+  endSec: number;
   /** our seconds per recording second, over the whole path (jumps excluded). */
   ratio: number;
   chunks: AlignChunk[];
   jumps: AlignJump[];
   /** weakest bars first, smoothed over neighbours. */
   worstBars: { bar: number; distance: number }[];
-  /** first and last score bar the path touches. */
+  /** lowest and highest score bar the path matched. */
   barsCovered: [number, number];
   recSeconds: number;
   scoreSeconds: number;
@@ -138,14 +144,22 @@ interface Path {
   rec: number[];
   sc: number[];
   cost: number[]; // per pair
+  /** the DP's own total: matched costs, jump penalties, 0.3 per discarded frame (lead-in and tail too). */
+  total: number;
 }
+
+/** Cost of a recording frame the path throws away (extra material, lead-in, tail). */
+const EXTRA = 0.3;
 
 /**
  * The DP. D[i][j] = best total cost of a path that pairs recording frame i
  * with score frame j, starting anywhere in the score and ending anywhere.
  * Moves: (1,1) (1,2) (2,1) cost a small tempo penalty; a skip forward in the
  * score (≥3 frames) or a step back costs `penalty`; and recording frames with
- * no score counterpart cost `penalty` plus 0.3 each.
+ * no score counterpart cost `penalty` plus 0.3 each. The path may also start after
+ * skipping leading recording frames and end before trailing ones (talk, silence,
+ * applause), at 0.3 each and no penalty. `total` is the cost of the whole
+ * recording, discarded frames included, so keys can be compared by it.
  */
 function dtw(R: Chroma, S: Chroma, penalty: number): Path | null {
   const n = R.n;
@@ -166,6 +180,7 @@ function dtw(R: Chroma, S: Chroma, penalty: number): Path | null {
   for (let i = 0; i < n; i++) for (let j = 0; j < m; j++) cc[i * m + j] = cost(i, j);
 
   for (let j = 0; j < m; j++) D[j] = cc[j];
+  // Starting at row i means skipping i leading frames: 0.3 each, no jump.
 
   // best D[i'][j] - 0.3 i' over rows i' ≤ i-3, per column: the "extra material" move.
   const colBest = new Float32Array(m).fill(INF);
@@ -177,7 +192,7 @@ function dtw(R: Chroma, S: Chroma, penalty: number): Path | null {
     if (i >= 3) {
       const r = (i - 3) * m;
       for (let j = 0; j < m; j++) {
-        const v = D[r + j] - 0.3 * (i - 3);
+        const v = D[r + j] - EXTRA * (i - 3);
         if (v < colBest[j]) {
           colBest[j] = v;
           colArg[j] = r + j;
@@ -230,30 +245,35 @@ function dtw(R: Chroma, S: Chroma, penalty: number): Path | null {
         if (v < best) { best = v; arg = sufArg[j]; }
       }
       if (colArg[j - 1] >= 0) {
-        v = colBest[j - 1] + 0.3 * i + penalty + c; // recording has extra material
+        v = colBest[j - 1] + EXTRA * i + penalty + c; // recording has extra material
         if (v < best) { best = v; arg = colArg[j - 1]; }
       }
+      if (EXTRA * i + c < best) { best = EXTRA * i + c; arg = -1; }
       D[i * m + j] = best;
       P[i * m + j] = arg;
     }
   }
 
+  // End anywhere: trailing frames cost 0.3 each.
+  let bi = n - 1;
   let bj = 0;
   let bv = INF;
-  for (let j = 0; j < m; j++) {
-    const v = D[(n - 1) * m + j];
-    if (v < bv) { bv = v; bj = j; }
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < m; j++) {
+      const v = D[i * m + j] + EXTRA * (n - 1 - i);
+      if (v < bv) { bv = v; bi = i; bj = j; }
+    }
   }
   const rec: number[] = [];
   const sc: number[] = [];
   const cost2: number[] = [];
-  for (let cur = (n - 1) * m + bj; cur >= 0; cur = P[cur]) {
+  for (let cur = bi * m + bj; cur >= 0; cur = P[cur]) {
     rec.push(Math.floor(cur / m));
     sc.push(cur % m);
     cost2.push(cc[cur]);
   }
   rec.reverse(); sc.reverse(); cost2.reverse();
-  return { rec, sc, cost: cost2 };
+  return { rec, sc, cost: cost2, total: bv };
 }
 
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
@@ -297,9 +317,12 @@ export function alignPerformance(
   const coarse = hop * 2;
   const scoreCoarse = chromaOf(score.notes, coarse, 0, frames(scEnd, coarse));
   const dist = new Map<number, number>();
+  const coarseFrames = frames(recEnd, coarse);
   for (const t of new Set([0, ...transposes])) {
-    const path = dtw(chromaOf(rec.notes, coarse, -t, frames(recEnd, coarse)), scoreCoarse, penalty);
-    if (path) dist.set(t, mean(path.cost));
+    const path = dtw(chromaOf(rec.notes, coarse, -t, coarseFrames), scoreCoarse, penalty);
+    // Rank by the whole recording's cost, not the matched cells': a path that matches
+    // two bars and discards the rest must not look best.
+    if (path) dist.set(t, path.total / coarseFrames);
   }
   // Leave key 0 unless another key is clearly better: noise should not move it.
   let transpose = 0;
@@ -313,6 +336,29 @@ export function alignPerformance(
 
   const barOf = (frame: number) => barAt(score.barStarts, frame * hop);
   const L = path.rec.length;
+  const nRec = R.n;
+  // Quality over recording frames: a frame the path left out is a miss, not absent.
+  // A (2,1) step is a slower performer, not a lost frame; only lead-in, tail and gaps of 3+ count.
+  const w = (p: Path, k: number) => (k > 0 && p.rec[k] - p.rec[k - 1] <= 2 ? p.rec[k] - p.rec[k - 1] : 1);
+  const quality = (p: Path) => {
+    let unpaired = p.rec[0] + (nRec - 1 - p.rec[p.rec.length - 1]);
+    for (let k = 1; k < p.rec.length; k++) if (p.rec[k] - p.rec[k - 1] > 2) unpaired += p.rec[k] - p.rec[k - 1] - 1;
+    return {
+      mean: (p.cost.reduce((a, c, k) => a + c * w(p, k), 0) + SILENT_VS_NOTES * unpaired) / nRec,
+      good: p.cost.reduce(
+        (a, c, k) => a + (c < GOOD ? w(p, k) : 0), 0) / nRec,
+    };
+  };
+  const q = quality(path);
+  let matchedFrames = 1;
+  let lowBar = Infinity;
+  let highBar = 0;
+  for (let k = 0; k < L; k++) {
+    const b = barOf(path.sc[k]);
+    if (b < lowBar) lowBar = b;
+    if (b > highBar) highBar = b;
+    if (k > 0 && path.rec[k] - path.rec[k - 1] <= 2) matchedFrames += path.rec[k] - path.rec[k - 1];
+  }
 
   // Steps: regular (di,dj both ≤ 2, dj ≥ 1) or a jump.
   const jumps: AlignJump[] = [];
@@ -374,14 +420,17 @@ export function alignPerformance(
 
   return {
     transpose,
-    distanceAt0: mean(at0 ? at0.cost : path.cost),
-    meanDistance: mean(path.cost),
-    goodFraction: path.cost.filter((c) => c < GOOD).length / L,
+    distanceAt0: quality(at0 ?? path).mean,
+    meanDistance: q.mean,
+    goodFraction: q.good,
+    matchedSec: matchedFrames * hop,
+    startSec: path.rec[0] * hop,
+    endSec: path.rec[L - 1] * hop,
     ratio,
     chunks,
     jumps,
     worstBars: smooth.slice(0, opts.worstCount ?? 12),
-    barsCovered: [barOf(path.sc[0]), barOf(path.sc[L - 1])],
+    barsCovered: [lowBar, highBar],
     recSeconds: recEnd,
     scoreSeconds: scEnd,
   };

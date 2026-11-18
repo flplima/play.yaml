@@ -335,7 +335,10 @@ export function alignReport(recNotes, song) {
   return { ...report, oursBpm: song.bpm, meanBpm: input.meanBpm, theirsBpm: input.meanBpm * report.ratio };
 }
 
-const mmss = (sec) => `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}`;
+const mmss = (sec) => {
+  const t = Math.round(sec);
+  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+};
 
 export function formatAlign(r, name) {
   const pct = (x) => `${(100 * x).toFixed(0)}%`;
@@ -352,7 +355,12 @@ export function formatAlign(r, name) {
   }
   out.push(
     `  match       mean distance ${r.meanDistance.toFixed(2)}, ${pct(r.goodFraction)} of frames under 0.25` +
-    `  (0 = same pitch classes, ~0.7 = nothing in common)`,
+    `  (0 = same pitch classes, ~0.7 = nothing in common; frames the path left out count as misses)`,
+  );
+  out.push(
+    `  matched     ${r.matchedSec.toFixed(0)} s of ${r.recSeconds.toFixed(0)} s of recording (${pct(r.matchedSec / Math.max(r.recSeconds, 1e-9))})` +
+    (r.startSec >= 3 ? `, starts at ${mmss(r.startSec)}` : '') +
+    (r.recSeconds - r.endSec >= 3 ? `, ends at ${mmss(r.endSec)}` : ''),
   );
   out.push(
     r.transpose === 0
