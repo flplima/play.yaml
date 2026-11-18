@@ -13,15 +13,18 @@ piano arrangement. B minor, 4/4.
   beat. The largest shift is 0.02 beat. This is a quantized match, not
   EXACT. The bars with the grace note slides (74 to 88) were then rewritten
   by hand from the LilyPond file: see below.
-- **Form**: 88 bars, one pass, no repeats in the edition. About 2 minutes 25
+- **Form**: 88 bars, one pass, no repeats in the edition. About 2 minutes 32
   seconds.
 - **Tracks**: `right1`, `right2`, `right3` (the importer split the right hand
   into three voices, most bars use one or two) and `left`, all `piano`.
-- **Tempo**: 138 bpm with the marking "Alla marcia molto marcato", then 154 bpm
-  from bar 50 ("Più vivo"). The tempo change is written by hand, because the
-  importer reads only the first tempo of a file. From bar 58 the edition says
-  "sempre stretto sin al fine", so the tempo speeds up bar by bar to 176 bpm
-  at the end. The 176 is my guess. The edition's MIDI stays at 154.
+- **Tempo**: the edition marks "Alla marcia molto marcato" at quarter = 138,
+  "Più vivo" at 154 from bar 50, and "sempre stretto sin al fine" from bar 58.
+  The score doesn't use those numbers: it follows two piano recordings
+  (Paul Barton and Stanislav Stanchev), checked with
+  `scripts/audio-to-midi.mjs`. Both start slow, about 75 to 90 bpm, speed up
+  all the way and end above 210. So the score starts at 100, speeds up to 140
+  by bar 49, jumps to 160 at bar 50 and speeds up to 200 at the end. For the
+  edition's tempo, set `tempo: 138`, drop the `accelerando` and use 154.
 - **Grace notes**: from bar 74 the edition has a slide of three grace notes
   (G sharp, A, A sharp) before each `sfz` chord. They are written as three
   short notes in the tail of the beat before the chord, so the chord lands on
