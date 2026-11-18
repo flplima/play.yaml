@@ -175,6 +175,60 @@ tuned thresholds are fitted to them. Real recordings are worse. The harness is
 still the right thing to have: it makes regressions visible and gives a place
 to plug a real annotated clip in.
 
+### Checking a score against a real recording: `--align`
+
+`--score` is for the self-test: it compares onsets at the score's own tempo,
+and no performer plays at the score's tempo. On a YouTube recording it reports
+2 to 9 % however good the score is. Use `--align` there:
+
+```bash
+yt-dlp -x -o rec.m4a <url>
+node scripts/audio-to-midi.mjs rec.m4a --align songs/x/x.play.yaml     # transcribe, then align
+node scripts/audio-to-midi.mjs rec.mid --align songs/x/x.play.yaml     # a .mid you already have
+node scripts/audio-to-midi.mjs rec.mid --align songs/x/x.play.yaml --json
+```
+
+```
+align: x.play.yaml
+  tempo       ours 72 bpm, theirs ~64 bpm  (ratio 0.89: they are slower)
+  per 20 s    0.91 0.88 0.89 0.88
+  match       mean distance 0.21, 68% of frames under 0.25
+  key         same key (distance at 0: 0.21)
+  covers      bars 1-152 of the score
+  jumps       none: the recording follows the score in order
+  worst bars  150:0.41 80:0.38 34:0.35
+```
+
+`alignPerformance` (`packages/core/src/align.ts`, no dependencies) turns both
+sides into chroma vectors, 12 pitch classes per 0.25 s frame, and runs a DTW
+over them in seconds, not beats. Skipping ahead, going back and recording
+material the score lacks are penalised moves in the path, so a cut or repeated
+section shows up as one jump (`bars 8 → 17`) instead of smearing the tempo.
+
+- **tempo**: the ratio is our seconds per recording second, so the
+  recording's bpm is ours × ratio. Per 20 s it shows an opening that creeps
+  or an ending that is faster than the score's marking.
+- **match**: mean distance 0 means the same pitch classes, about 0.7 means
+  nothing in common. Transcription noise alone sits around 0.2.
+- **key**: the best of −6..+5 semitones (the recording above the score), kept
+  at 0 unless another key is clearly better (by 0.02).
+- **jumps** and **worst bars** point at the passages to read against the
+  edition.
+
+**What it cannot see.** It works on pitch classes, so a single wrong note is
+the same size as transcription noise, and an octave slip is invisible. It
+catches a wrong key, a missing or extra section and a wrong tempo. A run of
+identical bars (an ostinato) cannot be counted: the path may skip or repeat
+inside it, so a jump there is a flag to check, not a verdict. Mixes and
+sparse transcriptions give noisy numbers; look at `% under 0.25` before
+trusting the rest.
+
+`play-yaml-fidelity` uses the same alignment for tempo when the performance
+`.mid` has no real tempo (one tempo event, or none: a transcription's 120
+header). It estimates the performer's tempo from the alignment, scores tempo
+closeness from that and prints `~64 bpm, from the alignment`. A file with a
+real tempo map keeps its own tempo.
+
 ### The whole chain
 
 ```bash

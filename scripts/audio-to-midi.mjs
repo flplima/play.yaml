@@ -9,6 +9,36 @@
  *   node scripts/audio-to-midi.mjs take.wav -o take.mid --bpm 120
  *   node scripts/audio-to-midi.mjs --render examples/twinkle.play.yaml --score
  *   node scripts/audio-to-midi.mjs mix.wav --score songs/x/x.play.yaml --sweep
+ *   node scripts/audio-to-midi.mjs rec.wav --align songs/x/x.play.yaml
+ *   node scripts/audio-to-midi.mjs rec.mid --align songs/x/x.play.yaml --json
+ *
+ * ── --align: checking a score against a real recording ────────────────────
+ *
+ * `--score` compares onsets at the score's own tempo, so on a real recording
+ * (nobody plays at the score's tempo) it reports 2 to 9 % whatever the score is
+ * like. `--align <song.play.yaml>` instead follows the performer through the
+ * score (`alignPerformance`, core/src/align.ts: chroma frames, DTW with
+ * penalised jumps) and prints what the path says:
+ *
+ *   tempo       ours vs the recording's (ours × the measured ratio), and the
+ *               ratio per ~20 s so a creeping start or a rit. shows
+ *   match       mean pitch-class distance (0 = same, ~0.7 = nothing in
+ *               common) and the % of frames under 0.25
+ *   key         the transposition (−6..+5) with the best distance, and the
+ *               distance at 0
+ *   jumps       score bar a → b: a section the performer skipped, repeated,
+ *               or material the score does not have
+ *   worst bars  where the pitch classes disagree most
+ *
+ * The input may be audio (transcribed first) or a `.mid` you already have,
+ * which skips the model. `--json` prints the report as JSON on stdout.
+ *
+ * What it cannot see: a single wrong note. It works on pitch classes, and
+ * transcription noise (missed grace notes, octave doublings, quiet passages)
+ * is as large as one wrong note; an octave error is invisible. It does catch a
+ * wrong key, a missing or extra section and a wrong tempo. A run of identical
+ * bars (an ostinato) cannot be counted: the path may skip or repeat inside it,
+ * so a jump there is a flag to check against the edition, not a verdict.
  *
  * ── Why this shape ────────────────────────────────────────────────────────
  *
@@ -52,11 +82,11 @@ import * as http from 'http';
 import * as path from 'path';
 import { createRequire } from 'module';
 import { execFileSync } from 'child_process';
-import { fileURLToPath } from 'url';
-import { compileDoc, encodeMidi, parseYaml } from '../packages/core/src/index.ts';
+import {
+  alignPerformance, beatToSec, compileDoc, decodeMidi, encodeMidi, parseYaml, songAlignInput,
+} from '../packages/core/src/index.ts';
 
 const require = createRequire(import.meta.url);
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 /** Basic Pitch's fixed input rate. */
 const MODEL_RATE = 22050;
@@ -128,7 +158,8 @@ export async function runModel(audio) {
   // tfjs's browser build can only fetch a model over HTTP, and pulling in
   // tfjs-node just for a file:// loader means a native build. A throwaway
   // server over the package's own model directory is cheaper.
-  const modelDir = path.join(ROOT, 'node_modules/@spotify/basic-pitch/model');
+  // Next to wherever require found the package (hoisted, NODE_PATH or a worktree).
+  const modelDir = path.join(path.dirname(require.resolve('@spotify/basic-pitch/package.json')), 'model');
   const server = http.createServer((req, res) => {
     try {
       res.end(fs.readFileSync(path.join(modelDir, path.basename(req.url))));
@@ -280,6 +311,68 @@ export function notesToMidi(notes, bpm) {
   }, { bpm, tpqn: 480 });
 }
 
+// ───────────────────────────────── align ──────────────────────────────────
+
+/** A `.mid` as notes in seconds, with the tempo map applied. */
+export function notesFromMidiFile(file) {
+  const m = decodeMidi(new Uint8Array(fs.readFileSync(file)));
+  return m.notes
+    .filter((n) => n.channel !== 9)
+    .map((n) => {
+      const start = beatToSec(m, n.startBeat);
+      return { pitch: n.pitch, start, dur: beatToSec(m, n.startBeat + n.durBeat) - start };
+    });
+}
+
+/** Notes in the transcriber's shape → the alignment's. */
+export const toAlignNotes = (notes) => notes.map((n) => ({ pitch: n.midi, start: n.t, dur: n.dur }));
+
+/** Align a recording's notes with a compiled score; null when there is too little music. */
+export function alignReport(recNotes, song) {
+  const input = songAlignInput(song);
+  const report = alignPerformance({ notes: recNotes, barStarts: [] }, input);
+  if (!report) return null;
+  return { ...report, oursBpm: song.bpm, meanBpm: input.meanBpm, theirsBpm: input.meanBpm * report.ratio };
+}
+
+const mmss = (sec) => `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}`;
+
+export function formatAlign(r, name) {
+  const pct = (x) => `${(100 * x).toFixed(0)}%`;
+  const out = [];
+  out.push(`align: ${name}`);
+  out.push(
+    `  tempo       ours ${r.oursBpm.toFixed(0)} bpm` +
+    `${Math.abs(r.meanBpm - r.oursBpm) > 1 ? ` (${r.meanBpm.toFixed(0)} on average)` : ''}` +
+    `, theirs ~${r.theirsBpm.toFixed(0)} bpm  (ratio ${r.ratio.toFixed(2)}: ` +
+    `${r.ratio < 0.98 ? 'they are slower' : r.ratio > 1.02 ? 'they are faster' : 'same tempo'})`,
+  );
+  if (r.chunks.length > 1) {
+    out.push(`  per 20 s    ${r.chunks.map((c) => c.ratio.toFixed(2)).join(' ')}`);
+  }
+  out.push(
+    `  match       mean distance ${r.meanDistance.toFixed(2)}, ${pct(r.goodFraction)} of frames under 0.25` +
+    `  (0 = same pitch classes, ~0.7 = nothing in common)`,
+  );
+  out.push(
+    r.transpose === 0
+      ? `  key         same key (distance at 0: ${r.distanceAt0.toFixed(2)})`
+      : `  key         recording is ${r.transpose > 0 ? '+' : ''}${r.transpose} semitones: ` +
+        `distance ${r.meanDistance.toFixed(2)} there, ${r.distanceAt0.toFixed(2)} at 0`,
+  );
+  out.push(`  covers      bars ${r.barsCovered[0]}-${r.barsCovered[1]} of the score`);
+  if (!r.jumps.length) out.push('  jumps       none: the recording follows the score in order');
+  for (const j of r.jumps) {
+    const what = j.kind === 'skip' ? `skips bars ${j.fromBar} → ${j.toBar}`
+      : j.kind === 'repeat' ? `goes back, bar ${j.fromBar} → ${j.toBar}`
+      : `${j.extraSec.toFixed(0)} s with nothing in the score, after bar ${j.fromBar}`;
+    out.push(`  jump        ${what}  (at ${mmss(j.recSec)} in the recording)`);
+  }
+  out.push(`  worst bars  ${r.worstBars.map((b) => `${b.bar}:${b.distance.toFixed(2)}`).join(' ')}`);
+  out.push('  (pitch classes only: a single wrong note or an octave slip is not visible here)');
+  return out.join('\n');
+}
+
 // ───────────────────────────────── main ───────────────────────────────────
 
 const HELP = `audio → MIDI, and how much to trust it
@@ -287,9 +380,10 @@ const HELP = `audio → MIDI, and how much to trust it
 Usage:
   node scripts/audio-to-midi.mjs <audio> [-o out.mid] [options]
   node scripts/audio-to-midi.mjs --render <score.play.yaml> [options]
+  node scripts/audio-to-midi.mjs <audio|.mid> --align <score.play.yaml> [--json]
 
 Input:
-  <audio>              any file ffmpeg can read
+  <audio>              any file ffmpeg can read; with --align, a .mid works too
   --render <score>     render a play.yaml score and transcribe that instead —
                        the self-test path, with exact ground truth for free
 
@@ -306,6 +400,10 @@ Options:
   --sweep              try a grid of thresholds and print an F1 table
   --track <name>       when scoring, compare against just this track of the
                        score — what you want when the audio is one stem
+  --align <score>      follow the performer through <score>: tempo ratio, key,
+                       jumps (skipped / repeated sections), worst bars. For real
+                       recordings, where --score's F1 means nothing
+  --json               with --align: print the report as JSON on stdout
   --seconds <n>        only transcribe the first n seconds. A sweep decodes the
                        model output 72 times and decoding is linear in length,
                        so fit thresholds on 30s, then run the piece once
@@ -332,6 +430,8 @@ function parseArgs(argv) {
         args.score = argv[i + 1] && !argv[i + 1].startsWith('-') ? next() : true;
         break;
       case '--sweep': args.sweep = true; break;
+      case '--align': args.align = next(); break;
+      case '--json': args.json = true; break;
       case '--seconds': args.seconds = Number(next()); break;
       case '--track': args.track = next(); break;
       case '-h': case '--help': args.help = true; break;
@@ -348,6 +448,15 @@ async function main() {
   if (args.help || (!args.input && !args.render)) {
     console.log(HELP);
     process.exit(args.input || args.render ? 0 : 1);
+  }
+
+  // A .mid already is a transcription: align it without touching the model.
+  if (args.align && args.input && /\.midi?$/i.test(args.input)) {
+    const target = compileDoc(parseYaml(fs.readFileSync(path.resolve(process.cwd(), args.align), 'utf8')));
+    const r = alignReport(notesFromMidiFile(path.resolve(process.cwd(), args.input)), target);
+    if (!r) throw new Error('too few notes to align');
+    console.log(args.json ? JSON.stringify(r, null, 1) : formatAlign(r, path.basename(args.align)));
+    return;
   }
 
   let audio;
@@ -428,6 +537,13 @@ async function main() {
   const notes = post(decodeNotes(raw, args));
   console.error(`# notes: ${notes.length}`);
 
+  if (args.align) {
+    const target = compileDoc(parseYaml(fs.readFileSync(path.resolve(process.cwd(), args.align), 'utf8')));
+    const r = alignReport(toAlignNotes(notes), target);
+    if (!r) throw new Error('too few notes to align');
+    console.log(args.json ? JSON.stringify(r, null, 1) : formatAlign(r, path.basename(args.align)));
+  }
+
   if (truth) {
     const s = score(truth, notes);
     console.error(
@@ -442,7 +558,7 @@ async function main() {
     if (/\.json$/i.test(out)) fs.writeFileSync(out, JSON.stringify(notes, null, 1));
     else fs.writeFileSync(out, notesToMidi(notes, args.bpm));
     console.error(`# wrote ${path.relative(process.cwd(), out)}`);
-  } else if (!truth) {
+  } else if (!truth && !args.align) {
     process.stdout.write(JSON.stringify(notes, null, 1) + '\n');
   }
 }

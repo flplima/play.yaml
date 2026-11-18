@@ -14,6 +14,7 @@ import { isDirectiveString } from './src/set';
 import { bjorklund, expandArp, expandSpread, expandWalk, hash01 } from './src/generate';
 import { encodeMidi } from './src/exporter';
 import { decodeMidi, compareMidi } from './src/fidelity';
+import { alignPerformance, songAlignInput, barAt, AlignInput } from './src/align';
 import { notateMeasures, separateVoices } from './src/notate';
 import { parseYaml } from './src/yaml';
 import { tempoSegments, beatsToSeconds, secondsToBeats, TempoSegment } from './src/time';
@@ -2703,6 +2704,95 @@ check('lyrics go into the .mid as lyric events and print under the staff', () =>
   const xml = encodeMusicXml(scoreFromDoc(doc));
   const sung = [...xml.matchAll(/<syllabic>(\w+)<\/syllabic>\s*<text>([^<]*)<\/text>/g)].map((m) => `${m[2]}:${m[1]}`);
   assert.deepStrictEqual(sung, ['A:begin', 've:end', 'Ma:begin', 'ri:middle', 'a:end']);
+});
+
+console.log('\nalign (alignPerformance / fidelity tempo):');
+
+// 24 bars of a melody that never repeats a bar, so the alignment can tell them apart.
+const alignNames = ['c', 'd', 'e', 'f', 'g', 'a', 'b', 'c5'];
+const alignBars: string[] = [];
+for (let b = 0; b < 24; b++) {
+  const oct = (i: number) => (alignNames[(b * 3 + i * (b % 5 + 1) + (b >> 2)) % 8].endsWith('5') ? '' : '4');
+  alignBars.push([0, 1, 2, 3].map((i) => { const n = alignNames[(b * 3 + i * (b % 5 + 1) + (b >> 2)) % 8]; return n + oct(i); }).join(' '));
+}
+const alignSong = compileDoc(parseYaml(`
+tempo: 120
+measure: 4/4
+tracks:
+  lead: { velocity: 90 }
+sections:
+  a:
+    loop: false
+    lead: { play: ${JSON.stringify(alignBars)} }
+`));
+const alignIn = songAlignInput(alignSong);
+const retime = (inp: AlignInput, f: (t: number) => number): AlignInput => ({
+  barStarts: inp.barStarts.map(f),
+  notes: inp.notes.map((n) => ({ ...n, start: f(n.start), dur: f(n.start + n.dur) - f(n.start) })),
+});
+const alignOpts = { transposes: [-2, 0, 2] };
+
+check('songAlignInput lists the bars and notes in seconds', () => {
+  assert.strictEqual(alignIn.barStarts.length, 24);
+  assert.strictEqual(alignIn.barStarts[1], 2);
+  assert.strictEqual(barAt(alignIn.barStarts, 2.5), 2);
+  assert.strictEqual(alignIn.notes.length, 96);
+});
+
+check('a song played 15% slower reports a ratio near 0.87 and no jumps', () => {
+  const r = alignPerformance(retime(alignIn, (t) => t * 1.15), alignIn, alignOpts)!;
+  assert.ok(r.ratio > 0.84 && r.ratio < 0.9, `ratio ${r.ratio.toFixed(3)}`);
+  assert.strictEqual(r.jumps.length, 0, JSON.stringify(r.jumps));
+  assert.strictEqual(r.transpose, 0);
+  assert.ok(r.meanDistance < 0.1 && r.goodFraction > 0.85, `distance ${r.meanDistance} good ${r.goodFraction}`);
+});
+
+check('a song with an 8-bar section cut out reports one jump over it', () => {
+  const cutFrom = alignIn.barStarts[8];
+  const cutTo = alignIn.barStarts[16];
+  const gone = cutTo - cutFrom;
+  const rec: AlignInput = {
+    barStarts: [],
+    notes: alignIn.notes
+      .filter((n) => n.start < cutFrom || n.start >= cutTo)
+      .map((n) => (n.start >= cutTo ? { ...n, start: n.start - gone } : n)),
+  };
+  const r = alignPerformance(rec, alignIn, alignOpts)!;
+  assert.strictEqual(r.jumps.length, 1, JSON.stringify(r.jumps));
+  const j = r.jumps[0];
+  assert.strictEqual(j.kind, 'skip');
+  assert.ok(Math.abs(j.fromBar - 8) <= 1 && Math.abs(j.toBar - 17) <= 1, JSON.stringify(j));
+  assert.ok(Math.abs(r.ratio - 1) < 0.05, `ratio ${r.ratio}`);
+});
+
+check('a song transposed +2 reports +2', () => {
+  const rec = { ...alignIn, notes: alignIn.notes.map((n) => ({ ...n, pitch: n.pitch + 2 })) };
+  const r = alignPerformance(rec, alignIn, alignOpts)!;
+  assert.strictEqual(r.transpose, 2);
+  assert.ok(r.meanDistance < r.distanceAt0, `${r.meanDistance} vs at 0: ${r.distanceAt0}`);
+});
+
+check('fidelity takes the tempo of a single-tempo file from the alignment', () => {
+  const gen = encodeMidi(alignSong, { bpm: 120 });
+  // The same notes, 15% slower, in a file that still says 120 bpm: a transcription.
+  const slow = alignSong;
+  // Re-time the beats so the header says 120 while the music is 15% slower.
+  const stretched = {
+    ...slow,
+    tracks: slow.tracks.map((t) => ({
+      ...t,
+      timeline: t.timeline.map((n) => ({ ...n, time: n.time * 1.15, duration: n.duration * 1.15 })),
+    })),
+    lengthBeats: slow.lengthBeats * 1.15,
+  };
+  const r = compareMidi(gen, encodeMidi(stretched, { bpm: 120 }));
+  assert.strictEqual(r.origBpmSource, 'alignment');
+  assert.ok(r.origBpm > 99 && r.origBpm < 109, `origBpm ${r.origBpm.toFixed(1)}`);
+  // 120 vs ~104 bpm scores 0.80; reading the header (120 vs 120) would say 1.
+  assert.ok(r.tempo > 0.75 && r.tempo < 0.87, `tempo ${r.tempo.toFixed(2)}`);
+  // A file with a real tempo map keeps today's reading.
+  const withMap = compareMidi(gen, encodeMidi({ ...alignSong, tempoMap: [{ time: 8, bpm: 100, rampBeats: 0 }] }, { bpm: 120 }));
+  assert.strictEqual(withMap.origBpmSource, 'header');
 });
 
 if (failed.length > 0) {

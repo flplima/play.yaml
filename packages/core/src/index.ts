@@ -7,6 +7,7 @@ export * from './song';
 export * from './yaml';
 export * from './exporter';
 export * from './fidelity';
+export * from './align';
 export * from './time';
 export * from './synth';
 export * from './midiPanic';

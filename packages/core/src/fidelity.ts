@@ -22,6 +22,8 @@
  * score so the weakest passages can be flagged.
  */
 
+import { alignPerformance, AlignInput } from './align';
+
 export interface MidiNote {
   startBeat: number;
   durBeat: number;
@@ -304,7 +306,7 @@ function medianBpm(m: ParsedMidi): number {
 }
 
 /** beat → seconds via a tempo map (piecewise-constant, ignores ramps). */
-function beatToSec(m: ParsedMidi, beat: number): number {
+export function beatToSec(m: ParsedMidi, beat: number): number {
   let sec = 0;
   const map = m.tempoMap;
   for (let i = 0; i < map.length; i++) {
@@ -349,6 +351,13 @@ export interface FidelityReport {
   offsetBeats: number;
   genBpm: number;
   origBpm: number;
+  /**
+   * Where `origBpm` came from: the file's own tempo map, or (when it has no
+   * real tempo: one event, or none, as in a transcription's 120 default) the
+   * alignment of the two files, in which case `origBpm` is `genBpm` × the
+   * measured tempo ratio.
+   */
+  origBpmSource: 'header' | 'alignment';
   genLengthBeats: number;
   origLengthBeats: number;
   windows: FidelityWindow[];
@@ -617,6 +626,38 @@ function alignAt(
   };
 }
 
+/** A parsed MIDI as note seconds and bar starts, for the alignment. */
+function midiAlignInput(m: ParsedMidi): AlignInput {
+  const notes = m.notes
+    .filter((n) => n.channel !== 9)
+    .map((n) => {
+      const start = beatToSec(m, n.startBeat);
+      return { pitch: n.pitch, start, dur: beatToSec(m, n.startBeat + n.durBeat) - start };
+    });
+  const barBeats = m.timeSignatures.length
+    ? (m.timeSignatures[0].numerator * 4) / m.timeSignatures[0].denominator
+    : 4;
+  const barStarts: number[] = [];
+  for (let b = 0; b < Math.max(m.lengthBeats, 1); b += barBeats) barStarts.push(beatToSec(m, b));
+  return { notes, barStarts };
+}
+
+/**
+ * The performer's tempo as a multiple of the generated file's, from the
+ * alignment: `orig` carries no tempo of its own. `fidelityTranspose` is the
+ * key the windowed search found (the original shifted by it to match `gen`),
+ * tried next to key 0 because either can be the true one. Null when the
+ * alignment is too poor to say (fewer than a third of the frames close).
+ */
+function estimateTempoByAlignment(g: ParsedMidi, o: ParsedMidi, fidelityTranspose: number): number | null {
+  const r = alignPerformance(midiAlignInput(o), midiAlignInput(g), {
+    transposes: [...new Set([0, -fidelityTranspose])],
+  });
+  if (!r || r.goodFraction < 0.33 || !(r.ratio > 0)) return null;
+  // ratio = gen seconds per original second; the original is that much faster.
+  return r.ratio;
+}
+
 /**
  * Compare two MIDI byte buffers and score how faithfully `gen` reproduces
  * `orig`. `gen` is the arrangement under test: harmony/register ask "when we
@@ -654,7 +695,15 @@ export function compareMidi(
   const A = best as Alignment;
 
   const genBpm = medianBpm(g);
-  const origBpm = medianBpm(o);
+  let origBpm = medianBpm(o);
+  let origBpmSource: 'header' | 'alignment' = 'header';
+  if (o.tempoMap.length <= 1) {
+    const est = estimateTempoByAlignment(g, o, A.transpose);
+    if (est) {
+      origBpm = genBpm * est;
+      origBpmSource = 'alignment';
+    }
+  }
   const tempo = Math.max(0, 1 - Math.abs(Math.log2(genBpm / origBpm)));
 
   const worst = A.windows
@@ -676,6 +725,7 @@ export function compareMidi(
     offsetBeats: A.offsetLag / spb,
     genBpm,
     origBpm,
+    origBpmSource,
     genLengthBeats: g.lengthBeats,
     origLengthBeats: o.lengthBeats,
     windows: A.windows,
