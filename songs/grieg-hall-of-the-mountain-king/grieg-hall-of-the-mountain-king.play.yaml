@@ -3,14 +3,16 @@
 # Public domain (Grieg d. 1907). Imported from the Mutopia Project's edition,
 # source "The University Society, 1918", typeset by Coyau (Mutopia-2013/12/07-1888),
 # placed in the public domain by the typesetter.
-# Bar 50 is the "Più vivo" (154 bpm). From bar 58 the edition says "sempre stretto
-# sin al fine", so the tempo speeds up to the last bar (to 176 bpm, my guess).
+# The edition marks quarter = 138, then 154 at bar 50. The tempo here follows two
+# piano recordings instead, which start slower and end faster:
+# 100 speeding up to 140 by bar 49, "Più vivo" 160 at bar 50, then "sempre stretto
+# sin al fine" from bar 58, speeding up to 200 at the last bar.
 # The grace notes before the sfz chords (bars 74 to 88) are three short written-out
 # notes in the tail of the beat before the chord, so the chord lands on the beat.
 
 title: "In the Hall of the Mountain King"
 composer: "Edvard Grieg"
-tempo: 138
+tempo: 100
 tempo text: Alla marcia molto marcato
 measure: 4/4
 scale: b minor
@@ -27,7 +29,7 @@ sections:
     loop: false
     right1:
       play:
-        - set: piano
+        - set: piano, accelerando to 140 over 49
         - "~ ~ ~ ~"
         - set: pianissimo
         - "~ ~ ~ ~"
@@ -82,7 +84,7 @@ sections:
         - "~ ~ ~ ~"
         - "~ ~ ~ ~"
         - set: fortissimo
-        - set: tempo 154
+        - set: tempo 160
         - "~ ~ ~ ~"
         - "~ ~ ~ ~"
         - "~ ~ ~ ~"
@@ -91,7 +93,7 @@ sections:
         - "b5 {_ _ _ ~} b5 {_ _ _ ~}"
         - "b5 {_ _ _ ~} b5 {_ _ _ ~}"
         - "a5 {_ _ _ ~} ~ ~"
-        - set: stringendo to 176 over 31
+        - set: stringendo to 200 over 31
         - "~ ~ ~ ~"
         - "~ ~ ~ ~"
         - "~ ~ ~ ~"
@@ -128,7 +130,7 @@ sections:
         - "{~:::: g#6 a6 a#6} ~ ~ ~"
     right2:
       play:
-        - set: piano
+        - set: piano, accelerando to 140 over 49
         - "~ ~ ~ ~"
         - set: pianissimo
         - "~ ~ ~ ~"
@@ -183,7 +185,7 @@ sections:
         - "~ {~ ~ e5 ~} {f#5 ~ ~ ~} {f#5 ~ b5 ~}"
         - "~ {[b4 d5] _ _ _ _ _ _ ~} b4 {_ _ _ ~}"
         - set: fortissimo
-        - set: tempo 154
+        - set: tempo 160
         - "{~ ~ c#6 ~} {d6 ~ e6 ~} {f#6 d6} {f#6 ~}"
         - "{f6 ~ c#6 ~} {f6 ~} {e6 ~ c6 ~} {e6 ~}"
         - "{~ ~ c#6 ~} {d6 ~ e6 ~} {f#6 ~ d6 ~} {f#6 ~ b6 ~}"
@@ -192,7 +194,7 @@ sections:
         - "f6 {f6 ~} e6 {e6 ~}"
         - "~ {~ ~ e6 ~} {f#6 ~ ~ ~} {f#6 ~ b6 ~}"
         - "{a6 ~ f#6 ~} {~ ~ f#6 ~} [a5 d6 a6] {_ _ _ ~}"
-        - set: stringendo to 176 over 31
+        - set: stringendo to 200 over 31
         - "f#6 {_ _ _ ~} {[c#6 f#6] _ _ _ _ _ _ ~} ~"
         - "~ ~ ~ ~"
         - "{f#6 ~ [f#6 g6] ~} ~ ~ ~"
@@ -229,7 +231,7 @@ sections:
         - "~ ~ ~ ~"
     right3:
       play:
-        - set: piano
+        - set: piano, accelerando to 140 over 49
         - "[f#3 f#4] _ _ {_ ~}"
         - set: pianissimo
         - "{b1 ~ c#2 ~} {d2 ~ e2 ~} {f#2 ~ d2 ~} {f#2 ~}"
@@ -284,7 +286,7 @@ sections:
         - "{b4 ~ c#5 ~} {d5 ~ ~ ~} {~ ~ d5 ~} {[b4 d5] _ _ _ _ _ _ ~}"
         - "{f#5 ~ d5 ~} {f#5 ~ b5 ~} ~ ~"
         - set: fortissimo
-        - set: tempo 154
+        - set: tempo 160
         - "b5 {_ _ _ ~} b5 {_ _ _ ~}"
         - "b5 {_ _ _ ~} b5 {_ _ _ ~}"
         - "b5 {_ _ _ ~} b5 {_ _ _ ~}"
@@ -293,7 +295,7 @@ sections:
         - "{~ ~ c#6 ~} ~ {~ ~ c6 ~} ~"
         - "{~ ~ c#6 ~} {d6 ~ ~ ~} {~ ~ d6 ~} ~"
         - "d6 {d6 _ _ ~} ~ ~"
-        - set: stringendo to 176 over 31
+        - set: stringendo to 200 over 31
         - "{~ ~ g#6 ~} {a#6 ~ b6 ~} {c#7 a#6} {[c#6 f#6 c#7] _ _ _ _ _ _ ~}"
         - "{[d6 f#6 d7] a#6} {[d6 f#6 d7] _ _ _ _ _ _ ~} {[c#6 f#6 c#7] a#6} {[c#6 f#6 c#7] _ _ _ _ _ _ ~}"
         - "~ {[f#6 a#6] ~ [f#6 b6] ~} {[c#6 f#6 c#7] [c#6 f#6 a#6]} {[c#6 f#6 c#7] _ _ _ _ _ _ ~}"
@@ -330,7 +332,7 @@ sections:
         - "~ [d6 b6] _ ~"
     left:
       play:
-        - set: piano
+        - set: piano, accelerando to 140 over 49
         - "~ ~ ~ ~"
         - set: pianissimo
         - "{b0 ~} {f#1 ~} {b0 ~} {f#1 ~}"
@@ -385,7 +387,7 @@ sections:
         - "{b1 f2 f#2} {[b2 b3] ~} {[a2 b2 a3] ~} {[g2 b2 g3] ~}"
         - "{[f#2 b2 f#3] _ _ _ _ _ _ ~} {[e2 b2 e3] _ _ _ _ _ _ ~} {[d2 b2 d3] _ _ _ _ _ _ ~} {[c#2 b2 c#3] _ _ _ _ _ _ ~}"
         - set: fortissimo
-        - set: tempo 154
+        - set: tempo 160
         - "{[b1 b2] a2} {g2 ~ f#2 ~} {[b1 b2] a2} {g2 ~ f#2 ~}"
         - "{[b1 b2] a2} {g2 ~ f#2 ~} {[b1 b2] a2} {g2 ~ f#2 ~}"
         - "{[b1 b2] a2} {g2 ~ f#2 ~} {[b1 b2] a2} {g2 ~ f#2 ~}"
@@ -394,7 +396,7 @@ sections:
         - "{[b1 b2] a2} {g2 ~ f#2 ~} {[b1 b2] a2} {g2 ~ f#2 ~}"
         - "{[b1 b2] a2} {g2 ~ f#2 ~} {[b1 b2] a2} {g2 ~ f#2 ~}"
         - "{[b1 b2] a2} {g2 ~ f#2 ~} {[b1 b2] a2} {g2 ~ f#2 ~}"
-        - set: stringendo to 176 over 31
+        - set: stringendo to 200 over 31
         - "{[f#2 f#3] e3} {d3 ~ c#3 ~} {[f#2 f#3] e3} {d3 ~ c#3 ~}"
         - "{[d2 d3] c#3} {d3 ~ e3 ~} {[f#2 f#3] e3} {d3 ~ c#3 ~}"
         - "{[f#2 f#3] e3} {d3 ~ c#3 ~} {[f#2 f#3] e3} {d3 ~ c#3 ~}"
