@@ -21,7 +21,8 @@
  * penalised jumps) and prints what the path says:
  *
  *   tempo       ours vs the recording's (ours × the measured ratio), and the
- *               ratio per ~20 s so a creeping start or a rit. shows
+ *               ratio per ~20 s so a creeping start or a rit. shows;
+ *               "unknown" when under 15 s of the recording matched closely
  *   match       mean pitch-class distance (0 = same, ~0.7 = nothing in
  *               common) and the % of frames under 0.25
  *   key         the transposition (−6..+5) with the best distance, and the
@@ -332,7 +333,12 @@ export function alignReport(recNotes, song) {
   const input = songAlignInput(song);
   const report = alignPerformance({ notes: recNotes, barStarts: [] }, input);
   if (!report) return null;
-  return { ...report, oursBpm: song.bpm, meanBpm: input.meanBpm, theirsBpm: input.meanBpm * report.ratio };
+  return {
+    ...report,
+    oursBpm: song.bpm,
+    meanBpm: input.meanBpm,
+    theirsBpm: report.tempoReliable ? input.meanBpm * report.ratio : null,
+  };
 }
 
 const mmss = (sec) => {
@@ -344,13 +350,16 @@ export function formatAlign(r, name) {
   const pct = (x) => `${(100 * x).toFixed(0)}%`;
   const out = [];
   out.push(`align: ${name}`);
-  out.push(
+  const ours =
     `  tempo       ours ${r.oursBpm.toFixed(0)} bpm` +
-    `${Math.abs(r.meanBpm - r.oursBpm) > 1 ? ` (${r.meanBpm.toFixed(0)} on average)` : ''}` +
-    `, theirs ~${r.theirsBpm.toFixed(0)} bpm  (ratio ${r.ratio.toFixed(2)}: ` +
-    `${r.ratio < 0.98 ? 'they are slower' : r.ratio > 1.02 ? 'they are faster' : 'same tempo'})`,
+    `${Math.abs(r.meanBpm - r.oursBpm) > 1 ? ` (${r.meanBpm.toFixed(0)} on average)` : ''}`;
+  out.push(
+    r.theirsBpm == null
+      ? `${ours}, theirs unknown  (only ${r.goodSec.toFixed(0)} s matched closely: too little to read a tempo)`
+      : `${ours}, theirs ~${r.theirsBpm.toFixed(0)} bpm  (ratio ${r.ratio.toFixed(2)}: ` +
+        `${r.ratio < 0.98 ? 'they are slower' : r.ratio > 1.02 ? 'they are faster' : 'same tempo'})`,
   );
-  if (r.chunks.length > 1) {
+  if (r.theirsBpm != null && r.chunks.length > 1) {
     out.push(`  per 20 s    ${r.chunks.map((c) => c.ratio.toFixed(2)).join(' ')}`);
   }
   out.push(

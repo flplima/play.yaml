@@ -341,8 +341,8 @@ export interface FidelityReport {
   pitch: number;
   /** how well note onsets line up in time, 0..1 */
   rhythm: number;
-  /** tempo closeness of the two files, 0..1 */
-  tempo: number;
+  /** tempo closeness of the two files, 0..1; null when the original's tempo is unknown */
+  tempo: number | null;
   /** fraction of the original's music our arrangement spans at all, 0..1 */
   coverage: number;
   /** semitones the original was shifted by to best match (its key vs ours) */
@@ -355,9 +355,11 @@ export interface FidelityReport {
    * Where `origBpm` came from: the file's own tempo map, or (when it has no
    * real tempo: one event, or none, as in a transcription's 120 default) the
    * alignment of the two files, in which case `origBpm` is `genBpm` × the
-   * measured tempo ratio.
+   * measured tempo ratio. `unknown` when the file has no real tempo (the bare
+   * 120 default) and too little matched to measure one: `tempo` is then null
+   * and left out of `score`.
    */
-  origBpmSource: 'header' | 'alignment';
+  origBpmSource: 'header' | 'alignment' | 'unknown';
   genLengthBeats: number;
   origLengthBeats: number;
   windows: FidelityWindow[];
@@ -646,14 +648,14 @@ function midiAlignInput(m: ParsedMidi): AlignInput {
  * The performer's tempo as a multiple of the generated file's, from the
  * alignment: `orig` carries no tempo of its own. `fidelityTranspose` is the
  * key the windowed search found (the original shifted by it to match `gen`),
- * tried next to key 0 because either can be the true one. Null when the
- * alignment is too poor to say (fewer than a third of the frames close).
+ * tried next to key 0 because either can be the true one. Null when too
+ * little matched to say (the same rule as `audio-to-midi --align`).
  */
 function estimateTempoByAlignment(g: ParsedMidi, o: ParsedMidi, fidelityTranspose: number): number | null {
   const r = alignPerformance(midiAlignInput(o), midiAlignInput(g), {
     transposes: [...new Set([0, -fidelityTranspose])],
   });
-  if (!r || r.goodFraction < 0.33 || !(r.ratio > 0)) return null;
+  if (!r || !r.tempoReliable || !(r.ratio > 0)) return null;
   // ratio = gen seconds per original second; the original is that much faster.
   return r.ratio;
 }
@@ -696,24 +698,29 @@ export function compareMidi(
 
   const genBpm = medianBpm(g);
   let origBpm = medianBpm(o);
-  let origBpmSource: 'header' | 'alignment' = 'header';
+  let origBpmSource: 'header' | 'alignment' | 'unknown' = 'header';
   // A transcription's header often repeats one tempo in several entries: still one tempo.
   if (o.tempoMap.every((t) => Math.abs(t.bpm - o.tempoMap[0].bpm) < 1e-6)) {
     const est = estimateTempoByAlignment(g, o, A.transpose);
     if (est) {
       origBpm = genBpm * est;
       origBpmSource = 'alignment';
+    } else if (Math.abs(origBpm - 120) < 1e-6) {
+      // 120 is what a file with no tempo event reads as (and what audio-to-midi
+      // writes): comparing against it would score a number nobody played.
+      origBpmSource = 'unknown';
     }
   }
-  const tempo = Math.max(0, 1 - Math.abs(Math.log2(genBpm / origBpm)));
+  const tempo = origBpmSource === 'unknown' ? null : Math.max(0, 1 - Math.abs(Math.log2(genBpm / origBpm)));
 
   const worst = A.windows
     .filter((x) => x.genActive)
     .sort((a, b) => a.harmony - b.harmony)
     .slice(0, worstCount);
 
-  const score =
-    100 * (0.5 * A.harmony + 0.18 * A.pitch + 0.15 * A.rhythm + 0.1 * A.coverage + 0.07 * tempo);
+  // Without a tempo to compare, the other four weights are scaled up to fill 100.
+  const rest = 0.5 * A.harmony + 0.18 * A.pitch + 0.15 * A.rhythm + 0.1 * A.coverage;
+  const score = 100 * (tempo === null ? rest / 0.93 : rest + 0.07 * tempo);
 
   return {
     score,

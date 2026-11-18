@@ -92,6 +92,15 @@ export interface AlignReport {
   endSec: number;
   /** our seconds per recording second, over the whole path (jumps excluded). */
   ratio: number;
+  /**
+   * Whether enough of the recording matched closely for `ratio` to be its
+   * tempo: at least 15 s of frames under 0.25, or a quarter of the score when
+   * the score is shorter than a minute. A two-bar match in a noisy
+   * transcription still yields a ratio, and it means nothing.
+   */
+  tempoReliable: boolean;
+  /** seconds of recording frames under 0.25 (what `tempoReliable` counts). */
+  goodSec: number;
   chunks: AlignChunk[];
   jumps: AlignJump[];
   /** weakest bars first, smoothed over neighbours. */
@@ -105,6 +114,14 @@ export interface AlignReport {
 /** A frame with no notes against one with notes: neither match nor perfect miss. */
 const SILENT_VS_NOTES = 0.7;
 const GOOD = 0.25;
+/**
+ * Seconds of close frames (under GOOD) below which the tempo is not reported.
+ * Close frames, not matched ones: a path can follow loosely related material
+ * (a pentatonic cluster fits most tonal music in some key) at distance ~0.4
+ * for its whole length. Real transcriptions that failed had about 4 s of
+ * close frames; one that worked, of a free stride version of the piece, 26 s.
+ */
+const MIN_TEMPO_SEC = 15;
 /** Bound on frames^2; beyond it the hop grows. */
 const MAX_CELLS = 36_000_000;
 
@@ -392,7 +409,11 @@ export function alignPerformance(
     }
     return di > 0 ? dj / di : null;
   };
-  const ratio = ratioOver(0, L - 1) ?? 1;
+  const overall = ratioOver(0, L - 1);
+  const ratio = overall ?? 1;
+  const matchedSec = matchedFrames * hop;
+  const goodSec = q.good * nRec * hop;
+  const tempoReliable = overall != null && goodSec >= Math.min(MIN_TEMPO_SEC, scEnd / 4);
   const chunks: AlignChunk[] = [];
   const per = Math.max(1, Math.round(chunkSeconds / hop));
   for (let a = 0; a + per < L; ) {
@@ -423,10 +444,12 @@ export function alignPerformance(
     distanceAt0: quality(at0 ?? path).mean,
     meanDistance: q.mean,
     goodFraction: q.good,
-    matchedSec: matchedFrames * hop,
+    matchedSec,
     startSec: path.rec[0] * hop,
     endSec: path.rec[L - 1] * hop,
     ratio,
+    tempoReliable,
+    goodSec,
     chunks,
     jumps,
     worstBars: smooth.slice(0, opts.worstCount ?? 12),
