@@ -26,6 +26,8 @@ Options:
   -h, --help               this help
 
 Fidelity blends five sub-scores (harmony, register, rhythm, coverage, tempo).
+When the original carries no real tempo (one tempo event, or none: a
+transcription's 120 default) its tempo is estimated by aligning the two files.
 It auto-detects a global key-transposition and time-offset first, so a cover in
 another key or with a pickup bar is aligned rather than penalized.`;
 
@@ -85,7 +87,10 @@ run(() => {
   console.log(`  register   ${bar(r.pitch)}   exact octave match`);
   console.log(`  rhythm     ${bar(r.rhythm)}   onset alignment`);
   console.log(`  coverage   ${bar(r.coverage)}   of the original spanned`);
-  console.log(`  tempo      ${bar(r.tempo)}   ${r.genBpm.toFixed(0)} vs ${r.origBpm.toFixed(0)} bpm`);
+  const origTempo = r.origBpmSource === 'alignment'
+    ? `~${r.origBpm.toFixed(0)} bpm, from the alignment`
+    : `${r.origBpm.toFixed(0)} bpm`;
+  console.log(`  tempo      ${bar(r.tempo)}   ${r.genBpm.toFixed(0)} vs ${origTempo}`);
   console.log('  ' + '─'.repeat(52));
   console.log(
     `  aligned:   key ${keyNote}, offset ${r.offsetBeats >= 0 ? '+' : ''}${r.offsetBeats.toFixed(2)} beats`,
