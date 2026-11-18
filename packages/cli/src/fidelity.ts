@@ -87,10 +87,17 @@ run(() => {
   console.log(`  register   ${bar(r.pitch)}   exact octave match`);
   console.log(`  rhythm     ${bar(r.rhythm)}   onset alignment`);
   console.log(`  coverage   ${bar(r.coverage)}   of the original spanned`);
-  const origTempo = r.origBpmSource === 'alignment'
-    ? `~${r.origBpm.toFixed(0)} bpm, from the alignment`
-    : `${r.origBpm.toFixed(0)} bpm`;
-  console.log(`  tempo      ${bar(r.tempo)}   ${r.genBpm.toFixed(0)} vs ${origTempo}`);
+  if (r.tempo === null) {
+    console.log(
+      `  tempo      ${'░'.repeat(20)} ?     ${r.genBpm.toFixed(0)} bpm vs unknown: the file has no tempo, ` +
+      'and too little of it matched to measure one (left out of the total)',
+    );
+  } else {
+    const origTempo = r.origBpmSource === 'alignment'
+      ? `~${r.origBpm.toFixed(0)} bpm, from the alignment`
+      : `${r.origBpm.toFixed(0)} bpm`;
+    console.log(`  tempo      ${bar(r.tempo)}   ${r.genBpm.toFixed(0)} vs ${origTempo}`);
+  }
   console.log('  ' + '─'.repeat(52));
   console.log(
     `  aligned:   key ${keyNote}, offset ${r.offsetBeats >= 0 ? '+' : ''}${r.offsetBeats.toFixed(2)} beats`,

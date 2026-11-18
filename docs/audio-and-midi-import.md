@@ -207,7 +207,10 @@ section shows up as one jump (`bars 8 → 17`) instead of smearing the tempo.
 
 - **tempo**: the ratio is our seconds per recording second, so the
   recording's bpm is ours × ratio. Per 20 s it shows an opening that creeps
-  or an ending that is faster than the score's marking.
+  or an ending that is faster than the score's marking. When less than 15 s
+  of the recording matched closely (frames under 0.25, or a quarter of a score
+  shorter than a minute), it says `theirs unknown` instead: a two-bar match
+  still gives a ratio, and it means nothing.
 - **match**: mean distance 0 means the same pitch classes, about 0.7 means
   nothing in common. Transcription noise alone sits around 0.2.
 - **key**: the best of −6..+5 semitones (the recording above the score), kept
@@ -221,13 +224,17 @@ catches a wrong key, a missing or extra section and a wrong tempo. A run of
 identical bars (an ostinato) cannot be counted: the path may skip or repeat
 inside it, so a jump there is a flag to check, not a verdict. Mixes and
 sparse transcriptions give noisy numbers; look at `% under 0.25` before
-trusting the rest.
+trusting the rest. Basic Pitch hears a solo piano well. On an orchestra, a
+choir or an acoustic 78 it finds few notes (89 in three minutes of the
+Ninth's finale), and the path matches one cadence and leaves the rest out.
 
 `play-yaml-fidelity` uses the same alignment for tempo when the performance
 `.mid` has no real tempo (one tempo event, or none: a transcription's 120
 header). It estimates the performer's tempo from the alignment, scores tempo
-closeness from that and prints `~64 bpm, from the alignment`. A file with a
-real tempo map keeps its own tempo.
+closeness from that and prints `~64 bpm, from the alignment`. When too little
+matched (the rule above), a file whose only tempo is the 120 default prints
+`vs unknown` and tempo is left out of the total. A file with a real tempo map,
+or a single tempo other than 120, keeps its own tempo.
 
 ### The whole chain
 

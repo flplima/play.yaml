@@ -1961,7 +1961,7 @@ check('a different tempo does not hurt harmony but shows in the tempo score', ()
   const b = encodeMidi(fidSong, { bpm: 135 }); // same notes/beats, +50% tempo
   const r = compareMidi(a, b);
   assert.ok(r.harmony > 0.999, `harmony unaffected by tempo (got ${r.harmony})`);
-  assert.ok(r.tempo < 0.5, `tempo score penalizes 90 vs 135 (got ${r.tempo.toFixed(2)})`);
+  assert.ok(r.tempo! < 0.5, `tempo score penalizes 90 vs 135 (got ${r.tempo!.toFixed(2)})`);
 });
 
 check('a wrong (scrambled) rendition scores far below a faithful one', () => {
@@ -2745,6 +2745,7 @@ check('a song played 15% slower reports a ratio near 0.87 and no jumps', () => {
   assert.strictEqual(r.jumps.length, 0, JSON.stringify(r.jumps));
   assert.strictEqual(r.transpose, 0);
   assert.ok(r.meanDistance < 0.1 && r.goodFraction > 0.85, `distance ${r.meanDistance} good ${r.goodFraction}`);
+  assert.strictEqual(r.tempoReliable, true);
 });
 
 check('a song with an 8-bar section cut out reports one jump over it', () => {
@@ -2789,7 +2790,7 @@ check('fidelity takes the tempo of a single-tempo file from the alignment', () =
   assert.strictEqual(r.origBpmSource, 'alignment');
   assert.ok(r.origBpm > 99 && r.origBpm < 109, `origBpm ${r.origBpm.toFixed(1)}`);
   // 120 vs ~104 bpm scores 0.80; reading the header (120 vs 120) would say 1.
-  assert.ok(r.tempo > 0.75 && r.tempo < 0.87, `tempo ${r.tempo.toFixed(2)}`);
+  assert.ok(r.tempo! > 0.75 && r.tempo! < 0.87, `tempo ${r.tempo!.toFixed(2)}`);
   // A file with a real tempo map keeps today's reading.
   const withMap = compareMidi(gen, encodeMidi({ ...alignSong, tempoMap: [{ time: 8, bpm: 100, rampBeats: 0 }] }, { bpm: 120 }));
   assert.strictEqual(withMap.origBpmSource, 'header');
@@ -2842,6 +2843,60 @@ check('fidelity reads a tempo map whose entries share one bpm as a single tempo'
   };
   const r = compareMidi(gen, encodeMidi(stretched, { bpm: 120 }));
   assert.strictEqual(r.origBpmSource, 'alignment');
+});
+
+// A failed transcription: 30 s of black-key clusters (pitch classes the white-key
+// melody never sounds), bars 9-10 of the score, then 10 s more of clusters.
+const BLACK = [61, 63, 66, 68, 70];
+const noisyRec = (): AlignInput => {
+  const a = alignIn.barStarts[8];
+  const b = alignIn.barStarts[10];
+  const clusters = (from: number, to: number) => {
+    const out: AlignInput['notes'] = [];
+    for (let t = from; t < to; t += 0.5) for (const p of BLACK) out.push({ pitch: p, start: t, dur: 0.45 });
+    return out;
+  };
+  return {
+    barStarts: [],
+    notes: [
+      ...clusters(0, 30),
+      ...alignIn.notes.filter((n) => n.start >= a && n.start < b).map((n) => ({ ...n, start: n.start - a + 30 })),
+      ...clusters(30 + b - a, 40 + b - a),
+    ],
+  };
+};
+
+check('two bars matched in a noisy recording give no tempo, even where the noise fits another key', () => {
+  // The full key search: the black-key cluster is a pentatonic scale, so one semitone off it
+  // sits inside C major and the path can follow it loosely for its whole length.
+  const r = alignPerformance(noisyRec(), alignIn)!;
+  assert.ok(r.goodSec < 12, `close ${r.goodSec} s`);
+  assert.strictEqual(r.tempoReliable, false);
+});
+
+check('fidelity says the tempo is unknown when a 120-default file barely matches, and keeps a real one', () => {
+  const gen = encodeMidi(alignSong, { bpm: 120 });
+  // The same noisy recording as a .mid (120 bpm: one beat is 0.5 s).
+  const notes = noisyRec().notes;
+  const noisy = {
+    ...alignSong,
+    tracks: alignSong.tracks.map((t) => ({
+      ...t,
+      timeline: notes.map((n) => ({ time: n.start * 2, duration: n.dur * 2, velocity: 90, midi: n.pitch, pitch: '' })),
+    })),
+    lengthBeats: Math.ceil(Math.max(...notes.map((n) => (n.start + n.dur) * 2))),
+  };
+  const r = compareMidi(gen, encodeMidi(noisy, { bpm: 120 }));
+  assert.strictEqual(r.origBpmSource, 'unknown');
+  assert.strictEqual(r.tempo, null);
+  // The total leaves tempo out: the four other weights fill 100.
+  const rest = 0.5 * r.harmony + 0.18 * r.pitch + 0.15 * r.rhythm + 0.1 * r.coverage;
+  assert.ok(Math.abs(r.score - (100 * rest) / 0.93) < 1e-9, `score ${r.score}`);
+  // A single tempo that is not the 120 default is the file's own: it is kept.
+  const own = compareMidi(gen, encodeMidi(noisy, { bpm: 92 }));
+  assert.strictEqual(own.origBpmSource, 'header');
+  assert.ok(Math.abs(own.origBpm - 92) < 0.01, `origBpm ${own.origBpm}`); // MIDI stores whole microseconds per beat
+  assert.ok(own.tempo !== null && own.tempo > 0, `tempo ${own.tempo}`);
 });
 
 if (failed.length > 0) {
