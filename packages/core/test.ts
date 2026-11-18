@@ -2795,6 +2795,55 @@ check('fidelity takes the tempo of a single-tempo file from the alignment', () =
   assert.strictEqual(withMap.origBpmSource, 'header');
 });
 
+check('the key search ranks by the whole recording: a clean two-bar match cannot win by ignoring the rest', () => {
+  // Bars 1-2 played +2 (clean), then bars 3-24 in the score's key with every fourth note a
+  // semitone off. Key +2 matches two bars perfectly and throws the other 22 away: ranked by
+  // matched cells alone it looks best, ranked by the whole recording it loses.
+  const cut = alignIn.barStarts[2];
+  const rec: AlignInput = {
+    barStarts: [],
+    notes: alignIn.notes.map((n, i) =>
+      n.start < cut ? { ...n, pitch: n.pitch + 2 } : { ...n, pitch: n.pitch + (i % 4 === 0 ? 1 : 0) }),
+  };
+  const r = alignPerformance(rec, alignIn, alignOpts)!;
+  assert.strictEqual(r.transpose, 0, `key ${r.transpose}`);
+  assert.ok(r.barsCovered[1] - r.barsCovered[0] >= 18, `covers ${r.barsCovered}`);
+  assert.ok(r.matchedSec > 0.8 * r.recSeconds, `matched ${r.matchedSec} of ${r.recSeconds}`);
+});
+
+check('covers is the lowest and highest bar matched; a lead-in is skipped, not a jump', () => {
+  // 4 s of bars 17-18 as a lead-in (talk that happens to sound like them), then the whole score at 12 s.
+  const lead = alignIn.notes.filter((n) => n.start >= alignIn.barStarts[16] && n.start < alignIn.barStarts[18]);
+  const shift = 12;
+  const rec: AlignInput = {
+    barStarts: [],
+    notes: [
+      ...lead.map((n) => ({ ...n, start: n.start - alignIn.barStarts[16] })),
+      ...alignIn.notes.map((n) => ({ ...n, start: n.start + shift })),
+    ],
+  };
+  const r = alignPerformance(rec, alignIn, alignOpts)!;
+  assert.deepStrictEqual(r.barsCovered, [1, 24]);
+  assert.strictEqual(r.jumps.length, 0, JSON.stringify(r.jumps));
+  assert.ok(Math.abs(r.startSec - shift) <= 1, `starts at ${r.startSec}`);
+  assert.ok(r.matchedSec > 44, `matched ${r.matchedSec}`);
+});
+
+check('fidelity reads a tempo map whose entries share one bpm as a single tempo', () => {
+  const gen = encodeMidi(alignSong, { bpm: 120 });
+  const stretched = {
+    ...alignSong,
+    tempoMap: [{ time: 8, bpm: 120, rampBeats: 0 }],
+    tracks: alignSong.tracks.map((t) => ({
+      ...t,
+      timeline: t.timeline.map((n) => ({ ...n, time: n.time * 1.15, duration: n.duration * 1.15 })),
+    })),
+    lengthBeats: alignSong.lengthBeats * 1.15,
+  };
+  const r = compareMidi(gen, encodeMidi(stretched, { bpm: 120 }));
+  assert.strictEqual(r.origBpmSource, 'alignment');
+});
+
 if (failed.length > 0) {
   console.error(`\n${passed} passed, ${failed.length} FAILED:\n  ${failed.join('\n  ')}`);
   process.exit(1);
