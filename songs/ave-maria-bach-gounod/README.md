@@ -66,7 +66,9 @@ bar sits over exactly the harmony he wrote it against.
   one place after bar 26 where our numbering runs one behind Gounod's.
 - **Coda compressed** from Gounod's five bars to four; the final G is held to
   the end rather than released early.
-- **Tempo** stays at the prelude's 72 rather than Gounod's ♩=66.
+- **Tempo** stays at the prelude's 72 rather than Gounod's ♩=66. From bar 36 it
+  slows to 48 over three bars, and the last chord is a fermata: about 5 s at
+  36 bpm, then a beat of silence before the pedal lifts, so the end breathes.
 
 Changelog:
 - v1: initial transcription; melody from the Mutopia/Heugel violin edition,
@@ -79,4 +81,6 @@ Changelog:
 - v4: Gounod's four-bar piano introduction added as an `intro` section, voice
   tacet through it. 35 → 39 bars; the voice now enters at bar 5, as written.
 - v5: two tracks, `piano` and `voice`. The three piano tracks became one line
-  of 16ths and the intro a `2x:` repeat, so the music starts on line 18.
+  of 16ths and the intro a `2x:` repeat, so the music starts on line 18. The
+  ending slows from bar 36 and holds the last chord, instead of jumping back
+  to 72 for it.
