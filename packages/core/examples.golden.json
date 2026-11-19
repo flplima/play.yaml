@@ -60,10 +60,10 @@
     "sha256": "c3db4fe1424376d2107ea03e8d5218fa149229014392e25aa79dc2e8ca8d7586"
   },
   "songs/ave-maria-bach-gounod/ave-maria-bach-gounod.play.yaml": {
-    "tracks": 4,
+    "tracks": 2,
     "notes": 716,
     "lengthBeats": 156,
-    "sha256": "90cf3bd0bf04927c27c12caa50b0dedfe150c748f79b04fb934c0034747f02db"
+    "sha256": "59738706be3401590f08c5745373e0271127234fb11afe25846b33f04484f67c"
   },
   "songs/beethoven-moonlight-sonata-1/beethoven-moonlight-sonata-1.play.yaml": {
     "tracks": 6,

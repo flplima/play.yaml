@@ -9,11 +9,13 @@ are public domain.
   used, so the piece is instrumental. See `research/report.md`.
 - **Form**: **39 bars** — Gounod's four-bar piano introduction, then the full
   35-bar prelude with the melody over it. One pass, no loop.
-- **The piano is `examples/bwv846.play.yaml`**, unchanged. The `intro` section
-  quotes its first four bars; the `piece` section is the whole prelude. Both
-  verified programmatically against that file: the intro's 64 notes and the
-  body's 549 notes match it exactly, every time / pitch / duration / velocity
-  equal.
+- **The piano** plays the notes of `examples/bwv846.play.yaml` as one line of
+  16ths per bar: bass, tenor, then the broken chord. The pedal holds the bass
+  and tenor, where Bach writes them as held notes. His first four bars play
+  twice (`2x:`), alone and then under the voice. Checked against the old
+  three-track version: the same 613 notes (64 in the intro, 549 in the body),
+  every onset, pitch and velocity equal. The studio's synth ignores the pedal
+  for now, so there the bass and tenor sound short. A `.mid` export keeps it.
 - **Key/meter/tempo**: C major, 4/4, 72 bpm (the prelude's own tempo; Gounod
   marks *Andante semplice* ♩=66).
 - **Casting**: `voice` is a warm synth pad (GM 89), `legato, cantabile`. It
@@ -76,3 +78,5 @@ Changelog:
   is no longer dropped. The prelude and this file were fixed together.
 - v4: Gounod's four-bar piano introduction added as an `intro` section, voice
   tacet through it. 35 → 39 bars; the voice now enters at bar 5, as written.
+- v5: two tracks, `piano` and `voice`. The three piano tracks became one line
+  of 16ths and the intro a `2x:` repeat, so the music starts on line 18.
