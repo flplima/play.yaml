@@ -7,43 +7,69 @@ tempo: 72
 tempo text: Andante semplice
 measure: 4/4
 
-# The piano is BWV 846 printed as Bach wrote it: the right hand's broken
-# chord over the left hand's tenor, tied across each half bar, and held bass.
 tracks:
-  rh:
+  # Bach's prelude in 16ths (bass, tenor, broken chord); the pedal holds each bar
+  piano:
     preset: epiano
-    dynamic: mezzopiano
-    controls:
-      # cc, and how far the pedal words may push it; the curve stops short of 118 (a floored damper rings into mud)
-      pedal: { cc: 64, range: [0, 24, 96, 118] }
-      soft: { cc: 67, range: 90 }
-    # Syncopated pedalling: the pedal lifts on each new bass note and retakes at once
-    set: legato, pedale sincopato
-  tenor:
-    preset: epiano
-    dynamic: mezzopiano
-    controls:
-      pedal: { cc: 64, range: [0, 24, 96, 118] }
-      soft: { cc: 67, range: 90 }
-    set: legato, pedale sincopato
-  bass:
-    preset: epiano
-    dynamic: mezzopiano
-    controls:
-      pedal: { cc: 64, range: [0, 24, 96, 118] }
-      soft: { cc: 67, range: 90 }
-    set: legato, pedale sincopato
-  # The added line. A warm synth pad (GM 89) stands in for the voice and sustains like a singer.
-  # Dynamics ride on expression (CC11) and vibrato on CC1, both ramped through the held notes.
+    controls: { pedal: { cc: 64, range: [0, 24, 96, 118] } }   # short of 118: a floored damper rings into mud
+    set: legato, pedale sincopato, dolce
+    play:
+      - 2x:   # Gounod plays Bach's first four bars alone, then again under the voice
+          - "{c4 e4 g4 c5} {e5 g4 c5 e5} {c4 e4 g4 c5} {e5 g4 c5 e5}"   # 1, 5
+          - "{c4 d4 a4 d5} {f5 a4 d5 f5} {c4 d4 a4 d5} {f5 a4 d5 f5}"
+          - "{b3 d4 g4 d5} {f5 g4 d5 f5} {b3 d4 g4 d5} {f5 g4 d5 f5}"
+          - "{c4 e4 g4 c5} {e5 g4 c5 e5} {c4 e4 g4 c5} {e5 g4 c5 e5}"
+      - crescendo over 4
+      - "{c4 e4 a4 e5} {a5 a4 e5 a5} {c4 e4 a4 e5} {a5 a4 e5 a5}"       # 9
+      - "{c4 d4 f#4 a4} {d5 f#4 a4 d5} {c4 d4 f#4 a4} {d5 f#4 a4 d5}"
+      - "{b3 d4 g4 d5} {g5 g4 d5 g5} {b3 d4 g4 d5} {g5 g4 d5 g5}"
+      - "{b3 c4 e4 g4} {c5 e4 g4 c5} {b3 c4 e4 g4} {c5 e4 g4 c5}"
+      - mezzoforte
+      - "{a3 c4 e4 g4} {c5 e4 g4 c5} {a3 c4 e4 g4} {c5 e4 g4 c5}"       # 13
+      - "{d3 a3 d4 f#4} {c5 d4 f#4 c5} {d3 a3 d4 f#4} {c5 d4 f#4 c5}"
+      - "{g3 b3 d4 g4} {b4 d4 g4 b4} {g3 b3 d4 g4} {b4 d4 g4 b4}"
+      - diminuendo over 3
+      - "{g3 bb3 e4 g4} {c#5 e4 g4 c#5} {g3 bb3 e4 g4} {c#5 e4 g4 c#5}"
+      - "{f3 a3 d4 a4} {d5 d4 a4 d5} {f3 a3 d4 a4} {d5 d4 a4 d5}"
+      - "{f3 ab3 d4 f4} {b4 d4 f4 b4} {f3 ab3 d4 f4} {b4 d4 f4 b4}"
+      - mezzopiano, cantabile, half pedal per bar
+      - "{e3 g3 c4 g4} {c5 c4 g4 c5} {e3 g3 c4 g4} {c5 c4 g4 c5}"       # 19
+      - "{e3 f3 a3 c4} {f4 a3 c4 f4} {e3 f3 a3 c4} {f4 a3 c4 f4}"
+      - "{d3 f3 a3 c4} {f4 a3 c4 f4} {d3 f3 a3 c4} {f4 a3 c4 f4}"
+      - "{g2 d3 g3 b3} {f4 g3 b3 f4} {g2 d3 g3 b3} {f4 g3 b3 f4}"
+      - "{c3 e3 g3 c4} {e4 g3 c4 e4} {c3 e3 g3 c4} {e4 g3 c4 e4}"
+      - crescendo over 5
+      - "{c3 g3 bb3 c4} {e4 bb3 c4 e4} {c3 g3 bb3 c4} {e4 bb3 c4 e4}"   # 24
+      - "{f2 f3 a3 c4} {e4 a3 c4 e4} {f2 f3 a3 c4} {e4 a3 c4 e4}"
+      - "{f#2 c3 a3 c4} {eb4 a3 c4 eb4} {f#2 c3 a3 c4} {eb4 a3 c4 eb4}"
+      - "{ab2 f3 b3 c4} {d4 b3 c4 d4} {ab2 f3 b3 c4} {d4 b3 c4 d4}"
+      - "{g2 f3 g3 b3} {d4 g3 b3 d4} {g2 f3 g3 b3} {d4 g3 b3 d4}"
+      - forte, sostenuto, pedale sincopato
+      - "{g2 e3 g3 c4} {e4 g3 c4 e4} {g2 e3 g3 c4} {e4 g3 c4 e4}"       # 29
+      - "{g2 d3 g3 c4} {f4 g3 c4 f4} {g2 d3 g3 c4} {f4 g3 c4 f4}"
+      - "{g2 d3 g3 b3} {f4 g3 b3 f4} {g2 d3 g3 b3} {f4 g3 b3 f4}"
+      - "{g2 eb3 a3 c4} {f#4 a3 c4 f#4} {g2 eb3 a3 c4} {f#4 a3 c4 f#4}"
+      - "{g2 e3 g3 c4} {g4 g3 c4 g4} {g2 e3 g3 c4} {g4 g3 c4 g4}"
+      - "{g2 d3 g3 c4} {f4 g3 c4 f4} {g2 d3 g3 c4} {f4 g3 c4 f4}"
+      - "{g2 d3 g3 b3} {f4 g3 b3 f4} {g2 d3 g3 b3} {f4 g3 b3 f4}"
+      - "{c2 c3 g3 bb3} {e4 g3 bb3 e4} {c2 c3 g3 bb3} {e4 g3 bb3 e4}"
+      - fortissimo, ritardando over 2 to 54
+      - "{c2 c3 f3 a3} {c4 f4 c4 a3} {c4 a3 f3 a3} {f3 d3 f3 d3}"       # 37
+      - "{c2 b2 g4 b4} {d5 f5 d5 b4} {d5 b4 g4 b4} {d4 f4 e4 d4}"
+      - piano, a tempo, senza pedale, pedal down   # hold the last chord under the fermata
+      - "[c2 c3 e4 g4 c5] _ _ _"
+
+  # Gounod's melody on a warm pad (GM 89), entering at bar 5. Dynamics ride on
+  # expression (CC11) and vibrato on CC1, both ramped through the held notes.
   voice:
     preset: pad
+    wait: 4
     dynamic: piano
     velocityRange: [114, 124]
     controls:
       expression: { cc: 11, range: [56, 127] }
       vibrato: 1
       vibrato_rate: 76
-    # The default vibrato is nearly straight; the marks below open it at the climaxes.
     set: legato, cantabile, vibrato 26, slow vibrato
     # The Latin prayer, one line per bar from bar 5. Underlay after a public-domain
     # 19th-century edition; bars 23-29 are fitted to Heugel's pickups.
@@ -81,324 +107,78 @@ tracks:
       mor- _ tis _ no- _ strae. _   # 35
       A-
       men.
+    play:
+      # the opening arch: four long notes, the tone warming from almost straight
+      - vibrato to 58 over 3
+      - "e5 _ _ _"                     # 5
+      - "f5 _ _ _"
+      - "g5 _ _ d5"
+      - "e5 _ _ ~"
 
-sections:
-  # Gounod's opening: Bach's first four bars alone, voice tacet, before they come round again with the melody.
-  intro:
-    loop: false
-    rh:
-      play:
-        - "dolce"
-        - "{~ ~ g4 c5} {e5 g4 c5 e5} {~ ~ g4 c5} {e5 g4 c5 e5}"
-        - "{~ ~ a4 d5} {f5 a4 d5 f5} {~ ~ a4 d5} {f5 a4 d5 f5}"
-        - "{~ ~ g4 d5} {f5 g4 d5 f5} {~ ~ g4 d5} {f5 g4 d5 f5}"
-        - "{~ ~ g4 c5} {e5 g4 c5 e5} {~ ~ g4 c5} {e5 g4 c5 e5}"
-    tenor:
-      play:
-        - "dolce"
-        - "{~ e4 _ _} _ {~ e4 _ _} _"
-        - "{~ d4 _ _} _ {~ d4 _ _} _"
-        - "{~ d4 _ _} _ {~ d4 _ _} _"
-        - "{~ e4 _ _} _ {~ e4 _ _} _"
-    bass:
-      play:
-        - "dolce"
-        - "c4 _ c4 _"
-        - "c4 _ c4 _"
-        - "b3 _ b3 _"
-        - "c4 _ c4 _"
+      # the sighing figure: a leap to a held note, an octave down, back up by step
+      - crescendo over 1, vibrato to 78 over 2
+      - "a5 _ {_ a4} {b4 c5}"          # 9
+      - pianissimo
+      - "d5 {_ _ _ e5} d5 ~"
+      - crescendo over 1
+      - "g5 _ {_ g4} {a4 b4}"
+      - pianissimo
+      - "c5 {_ _ _ d5} c5 ~"
 
-  piece:
-    loop: false
-    rh:
-      play:
-        # --- Opening Statement (Bars 5-8 = Bach 1-4): the repeat, voice in ---
-        - "dolce"
-        - "{~ ~ g4 c5} {e5 g4 c5 e5} {~ ~ g4 c5} {e5 g4 c5 e5}"
-        - "{~ ~ a4 d5} {f5 a4 d5 f5} {~ ~ a4 d5} {f5 a4 d5 f5}"
-        - "{~ ~ g4 d5} {f5 g4 d5 f5} {~ ~ g4 d5} {f5 g4 d5 f5}"
-        - "{~ ~ g4 c5} {e5 g4 c5 e5} {~ ~ g4 c5} {e5 g4 c5 e5}"
+      # the first high C, then the F# turn down to B
+      - crescendo over 1, vibrato to 96 over 1
+      - "c6 _ {_ c5} {d5 e5}"          # 13
+      - diminuendo over 1
+      - "f#5 {_ e5} d5 a4"
+      - piano
+      - "b4 _ {_ ~} d5"
 
-        # --- Harmonic Rise (Bars 9-12 = Bach 5-8): Crescendo toward A minor ---
-        - "crescendo over 4"
-        - "{~ ~ a4 e5} {a5 a4 e5 a5} {~ ~ a4 e5} {a5 a4 e5 a5}"
-        - "{~ ~ f#4 a4} {d5 f#4 a4 d5} {~ ~ f#4 a4} {d5 f#4 a4 d5}"
-        - "{~ ~ g4 d5} {g5 g4 d5 g5} {~ ~ g4 d5} {g5 g4 d5 g5}"
-        - "{~ ~ e4 g4} {c5 e4 g4 c5} {~ ~ e4 g4} {c5 e4 g4 c5}"
+      # the same rising sequence three times, a step higher each time
+      - crescendo over 1, vibrato to 72 over 1
+      - "e5 _ {_ e5} {f5 g5}"          # 16
+      - pianissimo
+      - "a5 _ a4 ~"
+      - crescendo over 1
+      - "d5 _ {_ d5} {e5 f5}"
+      - pianissimo
+      - "g5 _ g4 ~"
+      - crescendo over 2
+      - "c5 _ {_ c5} {d5 e5}"
+      - "f5 _ {_ f5} {g5 a5}"
 
-        # --- Middle Arc (Bars 13-18 = Bach 9-14): D minor / F minor darkening ---
-        - "mezzoforte"
-        - "{~ ~ e4 g4} {c5 e4 g4 c5} {~ ~ e4 g4} {c5 e4 g4 c5}"
-        - "{~ ~ d4 f#4} {c5 d4 f#4 c5} {~ ~ d4 f#4} {c5 d4 f#4 c5}"
-        - "{~ ~ d4 g4} {b4 d4 g4 b4} {~ ~ d4 g4} {b4 d4 g4 b4}"
-        - "diminuendo over 3"
-        - "{~ ~ e4 g4} {c#5 e4 g4 c#5} {~ ~ e4 g4} {c#5 e4 g4 c#5}"
-        - "{~ ~ d4 a4} {d5 d4 a4 d5} {~ ~ d4 a4} {d5 d4 a4 d5}"
-        - "{~ ~ d4 f4} {b4 d4 f4 b4} {~ ~ d4 f4} {b4 d4 f4 b4}"
+      # tops out on B5: the widest, fastest vibrato so far
+      - forte, molto vibrato, fast vibrato
+      - "b5 {_ a5} g5 d5"              # 22
 
-        # --- Floating Middle (Bars 19-23 = Bach 15-19): Subdued & cantabile ---
-        - "mezzopiano"
-        - "cantabile"
-        # Half the depth, still re-taken each bar: the texture stays legato
-        # without the wash the full pedal gives it.
-        - "half pedal per bar"
-        - "{~ ~ c4 g4} {c5 c4 g4 c5} {~ ~ c4 g4} {c5 c4 g4 c5}"
-        - "{~ ~ a3 c4} {f4 a3 c4 f4} {~ ~ a3 c4} {f4 a3 c4 f4}"
-        - "{~ ~ a3 c4} {f4 a3 c4 f4} {~ ~ a3 c4} {f4 a3 c4 f4}"
-        - "{~ ~ g3 b3} {f4 g3 b3 f4} {~ ~ g3 b3} {f4 g3 b3 f4}"
-        - "{~ ~ g3 c4} {e4 g3 c4 e4} {~ ~ g3 c4} {e4 g3 c4 e4}"
+      # the great crescendo molto: one half note per bar, a 16th pickup, the vibrato widening with it
+      - piano, poco vibrato, slow vibrato
+      - "e5 _ _ {~ ~ ~ e5}"            # 23
+      - crescendo over 4, vibrato to 118 over 4, fast vibrato over 4
+      - "g5 _ e5 {~ ~ ~ e5}"
+      - "a5 _ a4 {~ ~ ~ a5}"
+      - "a5 _ c5 {~ ~ ~ a5}"
+      - "c6 _ d5 {~ ~ ~ d5}"
 
-        # --- Chromatic Bass Line (Bars 24-28 = Bach 20-24): Building tension over pedal ---
-        - "crescendo over 5"
-        - "{~ ~ bb3 c4} {e4 bb3 c4 e4} {~ ~ bb3 c4} {e4 bb3 c4 e4}"
-        - "{~ ~ a3 c4} {e4 a3 c4 e4} {~ ~ a3 c4} {e4 a3 c4 e4}"
-        - "{~ ~ a3 c4} {eb4 a3 c4 eb4} {~ ~ a3 c4} {eb4 a3 c4 eb4}"
-        - "{~ ~ b3 c4} {d4 b3 c4 d4} {~ ~ b3 c4} {d4 b3 c4 d4}"
-        - "{~ ~ g3 b3} {d4 g3 b3 d4} {~ ~ g3 b3} {d4 g3 b3 d4}"
+      # the release back to C, then a new rise from F
+      - piano, vibrato to 92 over 1
+      - "d5 _ {_ d5} {c5 b4}"          # 28
+      - "g5 {_ e5} c5 ~"
+      - crescendo over 1
+      - "f5 _ {_ f5} {e5 d5}"
 
-        # --- Dominant Pedal Climax (Bars 29-36 = Bach 25-32): Forte & sostenuto ---
-        - "forte"
-        - "sostenuto"
-        - "pedale sincopato"
-        - "{~ ~ g3 c4} {e4 g3 c4 e4} {~ ~ g3 c4} {e4 g3 c4 e4}"
-        - "{~ ~ g3 c4} {f4 g3 c4 f4} {~ ~ g3 c4} {f4 g3 c4 f4}"
-        - "{~ ~ g3 b3} {f4 g3 b3 f4} {~ ~ g3 b3} {f4 g3 b3 f4}"
-        - "{~ ~ a3 c4} {f#4 a3 c4 f#4} {~ ~ a3 c4} {f#4 a3 c4 f#4}"
-        - "{~ ~ g3 c4} {g4 g3 c4 g4} {~ ~ g3 c4} {g4 g3 c4 g4}"
-        - "{~ ~ g3 c4} {f4 g3 c4 f4} {~ ~ g3 c4} {f4 g3 c4 f4}"
-        - "{~ ~ g3 b3} {f4 g3 b3 f4} {~ ~ g3 b3} {f4 g3 b3 f4}"
-        - "{~ ~ g3 bb3} {e4 g3 bb3 e4} {~ ~ g3 bb3} {e4 g3 bb3 e4}"
+      # the climax: D6, then E6 (ff, "tutta forza"), the peak of the piece
+      - forte, molto vibrato
+      - "d6 {_ b5} g5 _"               # 31
+      - "a5 _ {_ a5} {b5 c6}"
+      - fortissimo, fast vibrato
+      - "e6 _ {_ c6} {g5 e5}"
+      - "d5 _ {_ a5} {b5 a5}"
+      - "{a5 g5} {f5 d5} {b4 g4} {f4 d4}"   # 35: two octaves down through the G7
 
-        # --- Cadenza & Grand Resolution (Bars 37-39 = Bach 33-35) ---
-        - "fortissimo"
-        - "ritardando over 2 to 54"
-        - "{~ ~ f3 a3} {c4 f4 c4 a3} {c4 a3 f3 a3} {f3 d3 f3 d3}"
-        - "{~ ~ g4 b4} {d5 f5 d5 b4} {d5 b4 g4 b4} {d4 f4 e4 d4}"
-        - "piano"
-        - "a tempo"
-        # Stop re-taking and hold the last chord under the fermata.
-        - "senza pedale"
-        - "pedal down"
-        - "[e4 g4 c5] _ _ _"
-
-    tenor:
-      play:
-        - "dolce"
-        - "{~ e4 _ _} _ {~ e4 _ _} _"
-        - "{~ d4 _ _} _ {~ d4 _ _} _"
-        - "{~ d4 _ _} _ {~ d4 _ _} _"
-        - "{~ e4 _ _} _ {~ e4 _ _} _"
-
-        - "crescendo over 4"
-        - "{~ e4 _ _} _ {~ e4 _ _} _"
-        - "{~ d4 _ _} _ {~ d4 _ _} _"
-        - "{~ d4 _ _} _ {~ d4 _ _} _"
-        - "{~ c4 _ _} _ {~ c4 _ _} _"
-
-        - "mezzoforte"
-        - "{~ c4 _ _} _ {~ c4 _ _} _"
-        - "{~ a3 _ _} _ {~ a3 _ _} _"
-        - "{~ b3 _ _} _ {~ b3 _ _} _"
-        - "diminuendo over 3"
-        - "{~ bb3 _ _} _ {~ bb3 _ _} _"
-        - "{~ a3 _ _} _ {~ a3 _ _} _"
-        - "{~ ab3 _ _} _ {~ ab3 _ _} _"
-
-        - "mezzopiano"
-        - "cantabile"
-        - "half pedal per bar"
-        - "{~ g3 _ _} _ {~ g3 _ _} _"
-        - "{~ f3 _ _} _ {~ f3 _ _} _"
-        - "{~ f3 _ _} _ {~ f3 _ _} _"
-        - "{~ d3 _ _} _ {~ d3 _ _} _"
-        - "{~ e3 _ _} _ {~ e3 _ _} _"
-
-        - "crescendo over 5"
-        - "{~ g3 _ _} _ {~ g3 _ _} _"
-        - "{~ f3 _ _} _ {~ f3 _ _} _"
-        - "{~ c3 _ _} _ {~ c3 _ _} _"
-        - "{~ f3 _ _} _ {~ f3 _ _} _"
-        - "{~ f3 _ _} _ {~ f3 _ _} _"
-
-        - "forte"
-        - "sostenuto"
-        - "pedale sincopato"
-        - "{~ e3 _ _} _ {~ e3 _ _} _"
-        - "{~ d3 _ _} _ {~ d3 _ _} _"
-        - "{~ d3 _ _} _ {~ d3 _ _} _"
-        - "{~ eb3 _ _} _ {~ eb3 _ _} _"
-        - "{~ e3 _ _} _ {~ e3 _ _} _"
-        - "{~ d3 _ _} _ {~ d3 _ _} _"
-        - "{~ d3 _ _} _ {~ d3 _ _} _"
-        - "{~ c3 _ _} _ {~ c3 _ _} _"
-
-        - "fortissimo"
-        - "{~ c3 _ _} _ _ _"
-        - "{~ b2 _ _} _ _ _"
-        - "piano"
-        - "senza pedale"
-        - "pedal down"
-        - "c3 _ _ _"
-
-    bass:
-      play:
-        - "dolce"
-        - "c4 _ c4 _"
-        - "c4 _ c4 _"
-        - "b3 _ b3 _"
-        - "c4 _ c4 _"
-
-        - "crescendo over 4"
-        - "c4 _ c4 _"
-        - "c4 _ c4 _"
-        - "b3 _ b3 _"
-        - "b3 _ b3 _"
-
-        - "mezzoforte"
-        - "a3 _ a3 _"
-        - "d3 _ d3 _"
-        - "g3 _ g3 _"
-        - "diminuendo over 3"
-        - "g3 _ g3 _"
-        - "f3 _ f3 _"
-        - "f3 _ f3 _"
-
-        - "mezzopiano"
-        - "cantabile"
-        - "half pedal per bar"
-        - "e3 _ e3 _"
-        - "e3 _ e3 _"
-        - "d3 _ d3 _"
-        - "g2 _ g2 _"
-        - "c3 _ c3 _"
-
-        - "crescendo over 5"
-        - "c3 _ c3 _"
-        - "f2 _ f2 _"
-        - "f#2 _ f#2 _"
-        - "ab2 _ ab2 _"
-        - "g2 _ g2 _"
-
-        - "forte"
-        - "sostenuto"
-        - "pedale sincopato"
-        - "g2 _ g2 _"
-        - "g2 _ g2 _"
-        - "g2 _ g2 _"
-        - "g2 _ g2 _"
-        - "g2 _ g2 _"
-        - "g2 _ g2 _"
-        - "g2 _ g2 _"
-        - "c2 _ c2 _"
-
-        - "fortissimo"
-        - "c2 _ _ _"
-        - "c2 _ _ _"
-        - "piano"
-        - "senza pedale"
-        - "pedal down"
-        - "c2 _ _ _"
-
-    voice:
-      play:
-        # --- The opening arch (bars 5-8): four long notes, rising a step at a time, then falling back ---
-        # the voice warms: almost straight on the first note, a normal tone by the end
-        - "vibrato to 58 over 3"
-        - "e5 _ _ _"
-        - "f5 _ _ _"
-        - "g5 _ _ d5"
-        - "e5 _ _ ~"
-
-        # --- The sighing figure (bars 9-12): each phrase leaps to a held note, drops an octave, climbs back by step ---
-        - "crescendo over 1"
-        # the tone opens as the phrase does, rather than switching on
-        - "vibrato to 78 over 2"
-        - "a5 _ {_ a4} {b4 c5}"
-        - "pianissimo"
-        - "d5 {_ _ _ e5} d5 ~"
-        - "crescendo over 1"
-        - "g5 _ {_ g4} {a4 b4}"
-        - "pianissimo"
-        - "c5 {_ _ _ d5} c5 ~"
-
-        # --- Bars 13-15: the line reaches its first high C, then the F# turn
-        # bends it down into the B that closes the phrase. ---
-        - "crescendo over 1"
-        - "vibrato to 96 over 1"
-        - "c6 _ {_ c5} {d5 e5}"
-        - "diminuendo over 1"
-        - "f#5 {_ e5} d5 a4"
-        - "piano"
-        - "b4 _ {_ ~} d5"
-
-        # --- Bars 16-21: the same rising sequence three times over, a step
-        # higher each time (E, D-G, C-F), pushing toward the climax. ---
-        - "crescendo over 1"
-        - "vibrato to 72 over 1"
-        - "e5 _ {_ e5} {f5 g5}"
-        - "pianissimo"
-        - "a5 _ a4 ~"
-        - "crescendo over 1"
-        - "d5 _ {_ d5} {e5 f5}"
-        - "pianissimo"
-        - "g5 _ g4 ~"
-        - "crescendo over 2"
-        - "c5 _ {_ c5} {d5 e5}"
-        - "f5 _ {_ f5} {g5 a5}"
-
-        # --- Bar 22: the phrase tops out on B5 and falls away. The voice
-        # opens right up here: widest and fastest vibrato so far. ---
-        - "forte"
-        - "molto vibrato"
-        - "fast vibrato"
-        - "b5 {_ a5} g5 d5"
-
-        # --- Bars 23-27: the great "crescendo molto", one accented half note per bar with a 16th-note pickup ---
-        # the vibrato pulls straight again so the long climb has somewhere to grow from
-        - "piano"
-        - "poco vibrato"
-        - "slow vibrato"
-        - "e5 _ _ {~ ~ ~ e5}"
-        - "crescendo over 4"
-        # the long climb: the vibrato widens with the breath, four bars of it
-        - "vibrato to 118 over 4"
-        - "fast vibrato over 4"
-        - "g5 _ e5 {~ ~ ~ e5}"
-        - "a5 _ a4 {~ ~ ~ a5}"
-        - "a5 _ c5 {~ ~ ~ a5}"
-        - "c6 _ d5 {~ ~ ~ d5}"
-
-        # --- Bars 28-30: the tension releases and the line sinks back to C, then rises again from F ---
-        - "piano"
-        - "vibrato to 92 over 1"
-        - "d5 _ {_ d5} {c5 b4}"
-        - "g5 {_ e5} c5 ~"
-        - "crescendo over 1"
-        - "f5 _ {_ f5} {e5 d5}"
-
-        # --- Bars 31-34: the climax. D6 is the highest note so far; E6 two
-        # bars later is the peak of the whole piece (ff, "tutta forza"). ---
-        - "forte"
-        - "molto vibrato"
-        - "d6 {_ b5} g5 _"
-        - "a5 _ {_ a5} {b5 c6}"
-        - "fortissimo"
-        - "fast vibrato"
-        - "e6 _ {_ c6} {g5 e5}"
-        - "d5 _ {_ a5} {b5 a5}"
-
-        # --- Bar 35: one long scale down through the G7, spanning two
-        # octaves: the descent that ends the piece. ---
-        - "{a5 g5} {f5 d5} {b4 g4} {f4 d4}"
-
-        # --- Bars 36-39: the voice lands low and holds C, then G, under the piano's cadenza and final chord ---
-        # vibrato narrows and slows to almost nothing, as in a held final note
-        - "diminuendo over 2"
-        - "poco vibrato over 2"
-        - "slow vibrato over 2"
-        - "c4 _ _ _"
-        - "_ _ _ _"
-        - "pianissimo"
-        - "senza vibrato"
-        - "g3 _ _ _"
-        - "_ _ _ _"
+      # the voice lands low and holds C, then G, as the vibrato fades out
+      - diminuendo over 2, poco vibrato over 2, slow vibrato over 2
+      - "c4 _ _ _"                     # 36
+      - "_ _ _ _"
+      - pianissimo, senza vibrato
+      - "g3 _ _ _"
+      - "_ _ _ _"
