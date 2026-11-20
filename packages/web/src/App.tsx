@@ -18,7 +18,7 @@ import {
   Square,
   TriangleAlert,
 } from 'lucide-react';
-import { DEFAULT_EXAMPLE, EXAMPLES, LISTED_EXAMPLES } from './examples';
+import { DEFAULT_CONTENT, DEFAULT_EXAMPLE, EXAMPLES, LISTED_EXAMPLES, loadExample } from './examples';
 import SongPicker from './SongPicker';
 import PianoRoll from './PianoRoll';
 import HarmonyView from './HarmonyView';
@@ -108,7 +108,21 @@ export default function App() {
   // A stored pointer to a score the picker no longer lists falls back to the default.
   const firstExample = LISTED_EXAMPLES.find((e) => e.name === exampleName) ?? DEFAULT_EXAMPLE;
   const [source, setSource] = useState<Source>({ kind: 'example', name: firstExample?.name ?? '' });
-  const [text, setText] = useState(firstExample?.content ?? '');
+  // The default score's text is in the main chunk; any other stored score is
+  // fetched right after the first paint (see the effect below).
+  const [text, setText] = useState(firstExample === DEFAULT_EXAMPLE ? DEFAULT_CONTENT : '');
+  useEffect(() => {
+    if (!firstExample || firstExample === DEFAULT_EXAMPLE) return;
+    let live = true;
+    void loadExample(firstExample.name).then((content) => {
+      if (live && content != null) setText((now) => (now === '' ? content : now));
+    });
+    return () => {
+      live = false;
+    };
+    // Once, for the score the page opened on.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [dirty, setDirty] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   // A status line is news, not state: it clears itself after a few seconds.
@@ -217,14 +231,19 @@ export default function App() {
     return () => window.clearTimeout(timer);
   }, [song]);
 
-  const selectExample = (name: string) => {
+  const selectExample = async (name: string) => {
     stop();
     const example = EXAMPLES.find((e) => e.name === name);
     if (!example) return;
+    const content = exampleEdits.current.get(name) ?? (await loadExample(name));
+    if (content == null) {
+      setStatus(`Could not load ${example.title ?? name}`);
+      return;
+    }
     clearShareHash();
     setExampleName(name);
     setSource({ kind: 'example', name });
-    setText(exampleEdits.current.get(name) ?? example.content);
+    setText(content);
     setDirty(false);
     setStatus(null);
   };
