@@ -5,6 +5,10 @@
 
 Make some music with YAML.
 
+https://github.com/user-attachments/assets/e3c789ef-bd03-4bf1-a71c-6f9d4b2494b8
+
+_The Ave Maria (Bach / Gounod) playing in the studio. Sound on!_
+
 ## why?
 
 I wanted to write music the way I write code: in a text file that I can read and keep in git.
