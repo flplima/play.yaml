@@ -23,10 +23,6 @@ are public domain.
   prelude's 16th-note wash rather than inside it. The piano stays on `epiano`.
 - **Melody**: range G3–E6, entering at bar 5 and verified to match the source
   onset-for-onset in all 35 sung bars.
-- **Words**: the Latin prayer (public domain), under the voice with `lyrics:`.
-  The underlay follows a public-domain 19th-century vocal edition on Wikimedia
-  Commons. Its melody matches Heugel's through bar 22. From bar 23 Heugel adds
-  pickups, so bars 23 to 29 are fitted by word stress, not copied.
 
 ### Dynamics
 
