@@ -181,10 +181,11 @@
 }
 
 /*
- * The notes sounding in the editor (highlight.ts). A mark is an inline span, so
- * transforms and layout are off the table: the animation is colour and glow
- * only. A note fades in as it starts; when it ends the same range lingers for a
- * moment with `-leaving` and fades out.
+ * The notes sounding in the editor (highlight.ts). A group's mark is an inline
+ * span, so transforms and layout are off the table: its animation is colour
+ * and glow only. A note's bar is a block on the layer under the text, and
+ * fades with opacity. Either one fades in as it starts; when it ends the same
+ * range lingers for a moment with `-leaving` and fades out.
  */
 @keyframes note-in {
   from {
@@ -200,22 +201,38 @@
     box-shadow: none;
   }
 }
-.cm-playing-note,
-.cm-playing-subnote {
+@keyframes hold-in {
+  from {
+    opacity: 0;
+    box-shadow: 0 0 10px 2px color-mix(in srgb, var(--mark) 70%, transparent);
+  }
+}
+@keyframes hold-out {
+  to {
+    opacity: 0;
+  }
+}
+.cm-playing-note {
   animation: note-in 110ms ease-out;
 }
-.cm-playing-note.cm-note-leaving,
-.cm-playing-subnote.cm-note-leaving {
+.cm-playing-note.cm-note-leaving {
   animation: note-out 140ms ease-in forwards;
+}
+.cm-hold {
+  animation: hold-in 110ms ease-out;
+}
+.cm-hold.cm-hold-leaving {
+  animation: hold-out 140ms ease-in forwards;
 }
 @media (prefers-reduced-motion: reduce) {
   .cm-playing-note,
-  .cm-playing-subnote,
   .cm-playing-note.cm-note-leaving,
-  .cm-playing-subnote.cm-note-leaving {
+  .cm-hold,
+  .cm-hold.cm-hold-leaving {
     animation: none;
   }
-  .cm-note-leaving {
+  .cm-note-leaving,
+  .cm-hold-leaving {
     display: none;
   }
 }

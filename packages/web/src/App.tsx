@@ -43,7 +43,7 @@ import { loadRoutes, routeKey, saveRoutes, MidiRoute, RouteMap } from './routes'
 import { encodeMp3, renderSong } from './render';
 import { renderScore, scoreXml } from './score';
 import { buildNoteSpans, NoteSpan } from './noteSpans';
-import { playingNoteExtension, setPlayingNotes } from './highlight';
+import { playingNoteExtension, setPlayhead, setPlayingNotes } from './highlight';
 import { gruvboxEditorTheme } from './editorTheme';
 import { useMidi } from './useMidi';
 import { clearShareHash, decodeShareHash, encodeShareHash, isShareHash } from './share';
@@ -348,9 +348,10 @@ export default function App() {
       if (key !== lastKey) {
         lastKey = key;
         editorView.current?.dispatch({
-          effects: setPlayingNotes.of(active.map(({ from, to, kind }) => ({ from, to, kind }))),
+          effects: setPlayingNotes.of(active.map(({ from, to, kind, startBeat, endBeat }) => ({ from, to, kind, startBeat, endBeat }))),
         });
       }
+      if (editorView.current) setPlayhead(editorView.current, beat);
       highlightRaf.current = requestAnimationFrame(tick);
     };
     highlightRaf.current = requestAnimationFrame(tick);
