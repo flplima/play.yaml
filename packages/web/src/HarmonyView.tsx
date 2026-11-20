@@ -8,6 +8,10 @@
  * major triad is one triangle, turned), and on a Tonnetz, where the shape is a
  * place, and a chord progression leaves a path.
  *
+ * The chord in the middle, and the strip of the whole progression along the
+ * bottom, come from chords.ts: a bar at a time, read from the accompaniment,
+ * so an arpeggio or a passing note in the tune still names its chord.
+ *
  * Symbolic only: it reads the compiled timeline, never the audio. Percussion
  * is left out, since a snare has no pitch class worth lighting. Everything is a
  * pure function of (song, beat), including the trail, so seeking or looping
@@ -17,6 +21,7 @@ import { Toggle } from '@/components/ui/toggle';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { GRUVBOX, QUALITY_COLORS, fgAlpha, trackColor, withAlpha } from './palette';
 import { DRUM_CHANNEL, type CompiledSong } from '@play.yaml/core';
+import { SHARP_NAMES, chordLabel, chordProgression, exactChord, spanIndexAt, type Chord, type ChordSpan } from './chords';
 
 interface Props {
   song: CompiledSong | null;
@@ -31,12 +36,11 @@ const FADE_BEATS = 0.5;
  * Bach prelude is one note at a time) still reads as the chord it spells.
  */
 const LINGER_BEATS = 1.5;
-/** How far back, and how often, the Tonnetz trail looks at the harmony. */
-const TRAIL_STEP = 0.5;
-const TRAIL_SAMPLES = 8;
+/** How many of the last chords the Tonnetz trail draws. */
 const TRAIL_MAX = 4;
-
-const SHARP_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+/** The progression strip: its height, and how wide a beat is on it. */
+const STRIP_H = 44;
+const STRIP_PX_PER_BEAT = 30;
 const CLOCK_LABELS = ['C', 'C#/Db', 'D', 'D#/Eb', 'E', 'F', 'F#/Gb', 'G', 'G#/Ab', 'A', 'A#/Bb', 'B'];
 
 interface Note {
@@ -107,45 +111,6 @@ function harmonyAt(notes: Note[], maxDur: number, beat: number): Harmony {
   return { pcs, held, bass: held[0] ?? -1 };
 }
 
-interface Chord {
-  root: number;
-  quality: string;
-  /** Text after the root name: "m", "7", "dim"… */
-  suffix: string;
-  triad: 'major' | 'minor' | null;
-}
-
-const CHORDS: { intervals: number[]; quality: string; suffix: string; triad: 'major' | 'minor' | null }[] = [
-  { intervals: [0, 4, 7], quality: 'major', suffix: '', triad: 'major' },
-  { intervals: [0, 3, 7], quality: 'minor', suffix: 'm', triad: 'minor' },
-  { intervals: [0, 3, 6], quality: 'dim', suffix: 'dim', triad: null },
-  { intervals: [0, 4, 8], quality: 'aug', suffix: 'aug', triad: null },
-  { intervals: [0, 2, 7], quality: 'sus', suffix: 'sus2', triad: null },
-  { intervals: [0, 5, 7], quality: 'sus', suffix: 'sus4', triad: null },
-  { intervals: [0, 4, 7, 11], quality: 'major', suffix: 'maj7', triad: 'major' },
-  { intervals: [0, 4, 7, 10], quality: 'major', suffix: '7', triad: 'major' },
-  { intervals: [0, 3, 7, 10], quality: 'minor', suffix: 'm7', triad: 'minor' },
-  { intervals: [0, 3, 7, 11], quality: 'minor', suffix: 'm(maj7)', triad: 'minor' },
-  { intervals: [0, 3, 6, 10], quality: 'dim', suffix: 'm7b5', triad: null },
-  { intervals: [0, 3, 6, 9], quality: 'dim', suffix: 'dim7', triad: null },
-];
-
-/** Names the held pitch classes as a chord, preferring the bass as root. */
-function nameChord(held: number[], bass: number): Chord | null {
-  if (held.length < 3) return null;
-  const set = new Set(held);
-  const roots = [bass, ...held.filter((p) => p !== bass)];
-  for (const root of roots) {
-    for (const c of CHORDS) {
-      if (c.intervals.length !== set.size) continue;
-      if (c.intervals.every((i) => set.has((root + i) % 12))) {
-        return { root, quality: c.quality, suffix: c.suffix, triad: c.triad };
-      }
-    }
-  }
-  return null;
-}
-
 /** Lattice coordinates → pitch class: +1 step right is a fifth, +1 up-right a major third. */
 const latticePc = (i: number, j: number) => (((7 * i + 4 * j) % 12) + 12) % 12;
 
@@ -159,6 +124,7 @@ export default function HarmonyView({ song, currentBeat }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [fifths, setFifths] = useState(false);
   const data = useMemo(() => pitchedNotes(song), [song]);
+  const progression = useMemo(() => chordProgression(song), [song]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -190,15 +156,20 @@ export default function HarmonyView({ song, currentBeat }: Props) {
       }
 
       const now = harmonyAt(data.notes, data.maxDur, currentBeat);
-      const chord = nameChord(now.held, now.bass);
+      // The bar's chord; between the song's chords, whatever the notes spell.
+      const idx = spanIndexAt(progression, currentBeat);
+      const span = idx >= 0 && progression[idx].end > currentBeat ? progression[idx] : null;
+      const chord = span ? span.chord : exactChord(now.held, now.bass);
 
-      // Side by side when wide, stacked when narrow.
-      const wide = w >= h * 1.15;
-      const clockBox = wide ? { x: 0, y: 0, w: w / 2, h } : { x: 0, y: 0, w, h: h / 2 };
-      const tonnBox = wide ? { x: w / 2, y: 0, w: w / 2, h } : { x: 0, y: h / 2, w, h: h / 2 };
+      // Side by side when wide, stacked when narrow, the strip under both.
+      const ch = progression.length ? h - STRIP_H : h;
+      const wide = w >= ch * 1.15;
+      const clockBox = wide ? { x: 0, y: 0, w: w / 2, h: ch } : { x: 0, y: 0, w, h: ch / 2 };
+      const tonnBox = wide ? { x: w / 2, y: 0, w: w / 2, h: ch } : { x: 0, y: ch / 2, w, h: ch / 2 };
 
       drawClock(ctx, clockBox, now, chord, fifths);
-      drawTonnetz(ctx, tonnBox, data.notes, data.maxDur, currentBeat, now);
+      drawTonnetz(ctx, tonnBox, progression, span ? idx : -1, now);
+      if (progression.length) drawStrip(ctx, { x: 0, y: ch, w, h: STRIP_H }, progression, currentBeat);
     };
 
     draw();
@@ -211,7 +182,7 @@ export default function HarmonyView({ song, currentBeat }: Props) {
       alive = false;
       observer.disconnect();
     };
-  }, [data, currentBeat, fifths]);
+  }, [data, progression, currentBeat, fifths]);
 
   return (
     <div ref={wrapRef} className="relative h-full w-full overflow-hidden bg-stage">
@@ -247,11 +218,14 @@ function drawClock(ctx: CanvasRenderingContext2D, box: Box, now: Harmony, chord:
   ctx.arc(cx, cy, R, 0, Math.PI * 2);
   ctx.stroke();
 
-  // The polygon: every lit pitch class in clock order, so a chord is a shape.
+  // The polygon: the chord's tones in clock order, so a chord is a shape even
+  // when an arpeggio sounds one of them at a time. With no chord named, the
+  // lit pitch classes make the shape instead.
   const lit = [...Array(12).keys()].filter((p) => now.pcs[p] && now.pcs[p]!.alpha > 0.04);
-  if (lit.length >= 2) {
-    const ordered = lit.sort((x, y) => pos(x).a - pos(y).a);
-    const peak = Math.max(...ordered.map((p) => now.pcs[p]!.alpha));
+  const shape = chord ? [...chord.tones] : lit;
+  if (shape.length >= 2) {
+    const ordered = shape.sort((x, y) => pos(x).a - pos(y).a);
+    const peak = chord ? 1 : Math.max(...ordered.map((p) => now.pcs[p]!.alpha));
     const color = QUALITY_COLORS[chord?.quality ?? 'other'] ?? QUALITY_COLORS.other;
     ctx.beginPath();
     ordered.forEach((p, i) => {
@@ -273,14 +247,15 @@ function drawClock(ctx: CanvasRenderingContext2D, box: Box, now: Harmony, chord:
     const r = 6 + (st ? 5 * st.alpha : 0);
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
+    const tone = chord?.tones.includes(pc) ?? false;
     if (st) {
       const color = trackColor(st.track);
       ctx.fillStyle = withAlpha(color, 0.35 + 0.65 * st.alpha);
     } else {
-      ctx.fillStyle = fgAlpha(0.1);
+      ctx.fillStyle = tone ? withAlpha(QUALITY_COLORS[chord!.quality] ?? QUALITY_COLORS.other, 0.45) : fgAlpha(0.1);
     }
     ctx.fill();
-    ctx.fillStyle = st ? fgAlpha(0.95) : fgAlpha(0.4);
+    ctx.fillStyle = st || tone ? fgAlpha(0.95) : fgAlpha(0.4);
     ctx.font = '11px "Paper Mono", ui-monospace, monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -293,18 +268,14 @@ function drawClock(ctx: CanvasRenderingContext2D, box: Box, now: Harmony, chord:
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   if (now.held.length) {
-    const label = chord
-      ? SHARP_NAMES[chord.root] + chord.suffix
-      : now.held.map((p) => SHARP_NAMES[p]).join(' ');
+    const label = chord ? chordLabel(chord) : now.held.map((p) => SHARP_NAMES[p]).join(' ');
     ctx.fillStyle = fgAlpha(0.92);
     ctx.font = `600 ${chord ? Math.max(16, R * 0.28) : Math.max(12, R * 0.14)}px "Paper Mono", ui-monospace, monospace`;
     ctx.fillText(label, cx, cy);
   }
 }
 
-function drawTonnetz(
-  ctx: CanvasRenderingContext2D, box: Box, notes: Note[], maxDur: number, beat: number, now: Harmony,
-) {
+function drawTonnetz(ctx: CanvasRenderingContext2D, box: Box, progression: ChordSpan[], current: number, now: Harmony) {
   const s = Math.max(34, Math.min(box.w / 6.5, box.h / 4.6));
   const cx = box.x + box.w / 2;
   const cy = box.y + box.h / 2;
@@ -322,19 +293,19 @@ function drawTonnetz(
     }
   }
 
-  // The trail: the distinct triads of the last few beats, oldest first, each
+  // The trail: the last few triads of the progression, oldest first, each
   // placed on the lattice copy nearest the previous one so the path is short.
+  // A seventh chord counts as its triad; a diminished one has no triangle.
   const triads: { root: number; minor: boolean; age: number }[] = [];
-  for (let k = TRAIL_SAMPLES; k >= 0; k--) {
-    const hm = k === 0 ? now : harmonyAt(notes, maxDur, beat - k * TRAIL_STEP);
-    const c = nameChord(hm.held, hm.bass);
-    if (!c?.triad) continue;
+  for (let k = Math.max(0, current - 3 * TRAIL_MAX); current >= 0 && k <= current; k++) {
+    const c = progression[k].chord;
+    if (!c.triad) continue;
     const last = triads[triads.length - 1];
     if (last && last.root === c.root && last.minor === (c.triad === 'minor')) {
-      last.age = k;
+      last.age = current - k;
       continue;
     }
-    triads.push({ root: c.root, minor: c.triad === 'minor', age: k });
+    triads.push({ root: c.root, minor: c.triad === 'minor', age: current - k });
   }
   const recent = triads.slice(-TRAIL_MAX);
   let ref = { x: cx, y: cy };
@@ -413,4 +384,44 @@ function drawTonnetz(
     ctx.fillStyle = st ? GRUVBOX.bg0H : fgAlpha(0.38);
     ctx.fillText(SHARP_NAMES[n.pc], n.x, n.y);
   }
+}
+
+/**
+ * The whole progression as a tape under the playhead: one cell per chord, as
+ * wide as it lasts, sliding left as the song plays. The cell under the line is
+ * the chord in the middle of the clock.
+ */
+function drawStrip(ctx: CanvasRenderingContext2D, box: Box, progression: ChordSpan[], beat: number) {
+  const mid = box.x + box.w / 2;
+  ctx.fillStyle = fgAlpha(0.03);
+  ctx.fillRect(box.x, box.y, box.w, box.h);
+  ctx.font = '600 12px "Paper Mono", ui-monospace, monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (const sp of progression) {
+    const x0 = mid + (sp.start - beat) * STRIP_PX_PER_BEAT;
+    const x1 = mid + (sp.end - beat) * STRIP_PX_PER_BEAT;
+    if (x1 < box.x || x0 > box.x + box.w) continue;
+    const now = sp.start <= beat && beat < sp.end;
+    const past = sp.end <= beat;
+    const color = QUALITY_COLORS[sp.chord.quality] ?? QUALITY_COLORS.other;
+    ctx.beginPath();
+    ctx.roundRect(x0 + 2, box.y + 8, Math.max(1, x1 - x0 - 4), box.h - 14, 4);
+    ctx.fillStyle = withAlpha(color, now ? 0.32 : past ? 0.06 : 0.12);
+    ctx.fill();
+    if (now) {
+      ctx.strokeStyle = withAlpha(color, 0.9);
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+    ctx.fillStyle = now ? fgAlpha(0.95) : fgAlpha(past ? 0.3 : 0.6);
+    ctx.fillText(chordLabel(sp.chord), (x0 + x1) / 2, box.y + 1 + box.h / 2, Math.max(8, x1 - x0 - 8));
+  }
+  // The playhead.
+  ctx.strokeStyle = fgAlpha(0.7);
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(mid, box.y + 4);
+  ctx.lineTo(mid, box.y + box.h - 2);
+  ctx.stroke();
 }
