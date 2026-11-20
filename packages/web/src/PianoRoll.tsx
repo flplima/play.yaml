@@ -12,7 +12,8 @@
  * change rarely, so it is DOM with CSS 3D (PianoKeys.tsx).
  */
 import { useEffect, useMemo, useRef } from 'react';
-import type { CompiledSong } from '@play.yaml/core';
+import { CC, beatsToSeconds, tempoSegments } from '@play.yaml/core';
+import type { CompiledSong, ControlEvent, TempoSegment } from '@play.yaml/core';
 import { GRUVBOX, fgAlpha, trackColor, withAlpha } from './palette';
 import PianoKeys, { isBlack, type KeysApi } from './PianoKeys';
 
@@ -24,6 +25,62 @@ interface Props {
 
 /** Beats of music visible above the keyboard. */
 const LOOK_AHEAD = 8;
+
+// ── tracks that bend: vibrato and pressure ───────────────────────────────
+
+/** One controller's values over a track, in beats. */
+interface Curve {
+  times: number[];
+  values: number[];
+}
+
+/**
+ * How a track's notes change shape while they ring. A note sways with the
+ * vibrato, at its depth and rate, and narrows as the pressure drops: the
+ * expression, breath and bow pressure it is played with. A track with none of
+ * these controls (a piano) keeps plain bars.
+ */
+interface Shape {
+  vibrato: Curve | null;
+  rate: Curve | null;
+  pressure: Curve[];
+}
+
+function curveOf(controls: ControlEvent[], cc: number): Curve | null {
+  const events = controls.filter((c) => c.cc === cc).sort((a, b) => a.time - b.time);
+  if (!events.length) return null;
+  return { times: events.map((e) => e.time), values: events.map((e) => e.value / 127) };
+}
+
+/**
+ * A curve's value at `beat`, 0 to 1. A ramp compiles to small steps, so
+ * steps up to a beat apart are joined into a line; a longer gap is a held
+ * value that changes at once, the way `pianissimo` after a swell does.
+ */
+function valueAt(c: Curve, beat: number, before = 1): number {
+  const { times, values } = c;
+  if (beat < times[0]) return before;
+  let i = times.length - 1;
+  while (i > 0 && times[i] > beat) i--;
+  const next = i + 1;
+  if (next < times.length && times[next] - times[i] <= 1) {
+    const f = (beat - times[i]) / (times[next] - times[i]);
+    return values[i] + (values[next] - values[i]) * f;
+  }
+  return values[i];
+}
+
+function shapeOf(controls: ControlEvent[]): Shape | null {
+  const vibrato = curveOf(controls, CC.vibrato);
+  const pressure = [CC.expression, CC.breath, CC.pressure]
+    .map((cc) => curveOf(controls, cc))
+    .filter((c): c is Curve => c !== null);
+  if (!vibrato && !pressure.length) return null;
+  return { vibrato, rate: curveOf(controls, CC.vibratoRate), pressure };
+}
+
+/** The synth's vibrato rate for a CC 76 value (core's bus): 3.2 to 7.7 Hz, 5.2 unset. */
+const vibratoHz = (shape: Shape, beat: number) => (shape.rate ? 3.2 + 4.5 * valueAt(shape.rate, beat) : 5.2);
 
 /**
  * The pitch span the roll and the keyboard share: the score's own range,
@@ -48,6 +105,8 @@ export default function PianoRoll({ song, currentBeat }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const keysRef = useRef<KeysApi | null>(null);
   const { lo, hi } = useMemo(() => pitchRange(song), [song]);
+  const shapes = useMemo(() => (song?.tracks ?? []).map((t) => shapeOf(t.controls ?? [])), [song]);
+  const segments = useMemo<TempoSegment[]>(() => tempoSegments(song?.bpm ?? 120, song?.tempoMap ?? []), [song]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -114,6 +173,41 @@ export default function PianoRoll({ song, currentBeat }: Props) {
       }
 
       // ── the notes ───────────────────────────────────────────────────────
+
+      // A bending note's outline, from its start to its end: the centre sways
+      // with the vibrato and the width follows the pressure. The phase runs
+      // from the note's own start, in seconds, so the sway keeps the rate you
+      // hear through tempo changes.
+      const traceBend = (start: number, end: number, cx: number, half: number, shape: Shape) => {
+        const step = 1 / pxPerBeat; // a point a pixel: a 5 Hz sway is ~12 px a cycle
+        const from = Math.max(start, currentBeat - 0.5);
+        const to = Math.min(end, currentBeat + LOOK_AHEAD);
+        const left: [number, number][] = [];
+        const right: [number, number][] = [];
+        let phase = 0;
+        let prevSec = beatsToSeconds(segments, start);
+        for (let b = start; ; b = Math.min(to, b + step)) {
+          const sec = beatsToSeconds(segments, b);
+          phase += 2 * Math.PI * vibratoHz(shape, b) * (sec - prevSec);
+          prevSec = sec;
+          if (b >= from) {
+            const depth = shape.vibrato ? valueAt(shape.vibrato, b, 0) : 0;
+            const sway = keyW * 0.22 * depth * Math.sin(phase);
+            const p = shape.pressure.reduce((acc, c) => acc * valueAt(c, b), 1);
+            const w = Math.max(0.75, half * (0.2 + 0.8 * p * p));
+            const y = rollH - (b - currentBeat) * pxPerBeat;
+            left.push([cx + sway - w, y]);
+            right.push([cx + sway + w, y]);
+          }
+          if (b >= to) break;
+        }
+        if (!left.length) return;
+        ctx.moveTo(left[0][0], left[0][1]);
+        for (const [px, py] of left) ctx.lineTo(px, py);
+        for (let i = right.length - 1; i >= 0; i--) ctx.lineTo(right[i][0], right[i][1]);
+        ctx.closePath();
+      };
+
       const sounding = new Map<number, string>();
       for (const n of notes) {
         const end = n.time + n.duration;
@@ -126,18 +220,24 @@ export default function PianoRoll({ song, currentBeat }: Props) {
         if (live) sounding.set(n.midi, color);
         // A note being played is solid; one still falling is fainter, and the
         // dimming follows velocity so a phrase's shape is visible before it
-        // arrives rather than only when it sounds.
-        const alpha = live ? 1 : 0.4 + (n.velocity / 127) * 0.3;
+        // arrives rather than only when it sounds. A track that bends is drawn
+        // at 80%, so the notes it passes over stay visible through it.
+        const shape = shapes[n.track];
+        const alpha = (live ? 1 : 0.4 + (n.velocity / 127) * 0.3) * (shape ? 0.8 : 1);
         ctx.fillStyle = withAlpha(color, alpha);
         const x = xOf(n.midi) + keyW * 0.08;
         const nw = Math.max(1.5, keyW * 0.84);
-        const r = Math.min(3, nw / 2, height / 2);
         ctx.beginPath();
-        ctx.roundRect(x, Math.max(-height, top), nw, height, r);
+        if (shape) {
+          traceBend(n.time, end, x + nw / 2, nw / 2, shape);
+        } else {
+          const r = Math.min(3, nw / 2, height / 2);
+          ctx.roundRect(x, Math.max(-height, top), nw, height, r);
+        }
         ctx.fill();
         if (live) {
           ctx.strokeStyle = GRUVBOX.fg;
-          ctx.lineWidth = 1.5;
+          ctx.lineWidth = shape ? 1 : 1.5;
           ctx.stroke();
         }
       }
@@ -163,7 +263,7 @@ export default function PianoRoll({ song, currentBeat }: Props) {
       alive = false;
       observer.disconnect();
     };
-  }, [song, currentBeat, lo, hi]);
+  }, [song, currentBeat, lo, hi, shapes, segments]);
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-stage">
