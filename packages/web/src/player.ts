@@ -100,7 +100,6 @@ function controlsBefore(track: CompiledSong['tracks'][number], beat: number): Ma
   return out;
 }
 
-/** MIDI has no "unset": these return to off (or centre) on a loop pass. */
 /**
  * Tone.js is its own chunk, fetched with `import()` instead of with the page.
  * `preloadPlayer` starts that fetch once the page is idle, so the first Play
@@ -114,6 +113,7 @@ export function preloadPlayer(): void {
   else setTimeout(start, 2000);
 }
 
+/** MIDI has no "unset": these return to off (or centre) on a loop pass. */
 const MIDI_START: Record<number, number> = {
   [CC.sustain]: 0, [CC.sostenuto]: 0, [CC.soft]: 0, [CC.sordino]: 0, [CC.pan]: 64,
 };

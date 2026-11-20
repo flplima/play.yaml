@@ -114,9 +114,11 @@ export default function App() {
   useEffect(() => {
     if (!firstExample || firstExample === DEFAULT_EXAMPLE) return;
     let live = true;
-    void loadExample(firstExample.name).then((content) => {
-      if (live && content != null) setText((now) => (now === '' ? content : now));
-    });
+    loadExample(firstExample.name)
+      .then((content) => {
+        if (live && content != null) setText((now) => (now === '' ? content : now));
+      })
+      .catch(() => setStatus(`Could not load ${firstExample.title ?? firstExample.name}`));
     return () => {
       live = false;
     };
@@ -235,7 +237,8 @@ export default function App() {
     stop();
     const example = EXAMPLES.find((e) => e.name === name);
     if (!example) return;
-    const content = exampleEdits.current.get(name) ?? (await loadExample(name));
+    // A score never opened online is not in the offline cache: say so, don't throw.
+    const content = exampleEdits.current.get(name) ?? (await loadExample(name).catch(() => undefined));
     if (content == null) {
       setStatus(`Could not load ${example.title ?? name}`);
       return;
