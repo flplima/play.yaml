@@ -15,6 +15,55 @@ import { DRUM_CHANNEL, type CompiledSong } from '@play.yaml/core';
 
 export const SHARP_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
+const LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+const LETTER_PC = [0, 2, 4, 5, 7, 9, 11];
+/** Letter steps above the tonic for each semitone above it: b2, b3, #4, b6 and b7 for the black keys. */
+const STEPS = [0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6];
+/** How each tonic is usually written, by pitch class. */
+const MAJOR_TONICS = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
+const MINOR_TONICS = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'G#', 'A', 'Bb', 'B'];
+const MAJOR = [0, 2, 4, 5, 7, 9, 11];
+const HARMONIC_MINOR = [0, 2, 3, 5, 7, 8, 11];
+
+/**
+ * Note names in the song's key: the Nocturne is in E-flat, so its chords are
+ * Eb and Bb7, not D# and A#7; Für Elise is in A minor, so its leading tones
+ * are G# and D#. The key is the scale that holds the most sounding time,
+ * leaning on its tonic triad; each note is then spelled from the tonic's
+ * letter, so every pitch class gets the letter its scale degree calls for.
+ */
+export function spelling(song: CompiledSong | null): string[] {
+  const weight = new Array(12).fill(0);
+  for (const t of song?.tracks ?? []) {
+    if (t.channel === DRUM_CHANNEL || t.kit) continue;
+    for (const n of t.timeline) weight[((n.midi % 12) + 12) % 12] += n.duration;
+  }
+  let best = { tonic: 0, minor: false, score: -1 };
+  for (let tonic = 0; tonic < 12; tonic++) {
+    for (const minor of [false, true]) {
+      const scale = minor ? HARMONIC_MINOR : MAJOR;
+      const triad = minor ? [0, 3, 7] : [0, 4, 7];
+      const score =
+        scale.reduce((a, i) => a + weight[(tonic + i) % 12], 0) +
+        0.5 * triad.reduce((a, i) => a + weight[(tonic + i) % 12], 0);
+      if (score > best.score + 1e-9) best = { tonic, minor, score };
+    }
+  }
+  const tonicName = (best.minor ? MINOR_TONICS : MAJOR_TONICS)[best.tonic];
+  const letter = LETTERS.indexOf(tonicName[0]);
+  return [...Array(12).keys()].map((pc) => spellAt(pc, letter + STEPS[(pc - best.tonic + 12) % 12]));
+}
+
+/** A pitch class written on a given letter (an index into LETTERS, any integer). */
+function spellAt(pc: number, letter: number): string {
+  const l = ((letter % 7) + 7) % 7;
+  const diff = ((pc - LETTER_PC[l] + 18) % 12) - 6;
+  return LETTERS[l] + (diff > 0 ? '#'.repeat(diff) : 'b'.repeat(-diff));
+}
+
+/** Letter steps above a chord's root for each of its intervals: a third is two letters up, a fifth four. */
+const CHORD_STEPS = [0, 1, 1, 2, 2, 3, 4, 4, 4, 6, 6, 6];
+
 export interface Chord {
   root: number;
   /** The lowest pitch class in the window; a slash chord when it is not the root. */
@@ -49,9 +98,18 @@ const CHORDS: { intervals: number[]; quality: string; suffix: string; triad: 'ma
   { intervals: [0, 5, 7, 10], quality: 'sus', suffix: '7sus4', triad: null },
 ];
 
-export function chordLabel(c: Chord): string {
-  const name = SHARP_NAMES[c.root] + c.suffix;
-  return c.bass === c.root ? name : `${name}/${SHARP_NAMES[c.bass]}`;
+/**
+ * "Dm7/C". The root is spelled in the song's key; a bass that is a chord tone
+ * is spelled from the root, so C7 over its third is C7/E even in E-flat.
+ */
+export function chordLabel(c: Chord, names: string[] = SHARP_NAMES): string {
+  const root = names[c.root];
+  const name = root + c.suffix;
+  if (c.bass === c.root) return name;
+  const bass = c.tones.includes(c.bass)
+    ? spellAt(c.bass, LETTERS.indexOf(root[0]) + CHORD_STEPS[(c.bass - c.root + 12) % 12])
+    : names[c.bass];
+  return `${name}/${bass}`;
 }
 
 export const sameChord = (a: Chord, b: Chord) => a.root === b.root && a.suffix === b.suffix && a.bass === b.bass;
@@ -92,13 +150,19 @@ interface Fit {
  */
 function fitWindow(notes: Pitched[], start: number, end: number): Fit | null {
   const weight = new Array(12).fill(0);
+  // The bass is the lowest note to start before the window's last quarter: a
+  // low note that only arrives at the end walks to the next chord.
   let bassMidi = Infinity;
+  let lowest = Infinity;
+  const head = start + ((end - start) * 3) / 4;
   for (const n of notes) {
     const d = Math.min(end, n.end) - Math.max(start, n.time);
     if (d <= 0) continue;
     weight[((n.midi % 12) + 12) % 12] += d;
-    if (n.midi < bassMidi) bassMidi = n.midi;
+    if (n.midi < lowest) lowest = n.midi;
+    if (n.time < head && n.midi < bassMidi) bassMidi = n.midi;
   }
+  if (bassMidi === Infinity) bassMidi = lowest;
   const total = weight.reduce((a, b) => a + b, 0);
   if (!total || bassMidi === Infinity) return null;
   // A sliver, like the last bar's note ringing a moment into this one, is not
@@ -115,6 +179,9 @@ function fitWindow(notes: Pitched[], start: number, end: number): Fit | null {
       const missing = tones.filter((p) => !present(p)).length;
       let score = inside - 1.5 * (total - inside) - missing * (total / tones.length);
       score -= (tones.length - 3) * 0.02 * total; // a triad, unless the 7th is really there
+      // A suspension is usually a chord tone arriving late, not the chord:
+      // name it sus only when nothing plainer fits nearly as well.
+      if (c.quality === 'sus') score -= 0.25 * total;
       if (root === bass) score += 0.05 * total;
       if (!tones.includes(bass)) score -= 0.1 * total;
       if (!best || score > best.score) {

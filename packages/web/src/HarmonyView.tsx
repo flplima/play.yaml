@@ -21,7 +21,7 @@ import { Toggle } from '@/components/ui/toggle';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { GRUVBOX, QUALITY_COLORS, fgAlpha, trackColor, withAlpha } from './palette';
 import { DRUM_CHANNEL, type CompiledSong } from '@play.yaml/core';
-import { SHARP_NAMES, chordLabel, chordProgression, exactChord, spanIndexAt, type Chord, type ChordSpan } from './chords';
+import { chordLabel, chordProgression, exactChord, spanIndexAt, spelling, type Chord, type ChordSpan } from './chords';
 
 interface Props {
   song: CompiledSong | null;
@@ -125,6 +125,7 @@ export default function HarmonyView({ song, currentBeat }: Props) {
   const [fifths, setFifths] = useState(false);
   const data = useMemo(() => pitchedNotes(song), [song]);
   const progression = useMemo(() => chordProgression(song), [song]);
+  const names = useMemo(() => spelling(song), [song]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -167,9 +168,9 @@ export default function HarmonyView({ song, currentBeat }: Props) {
       const clockBox = wide ? { x: 0, y: 0, w: w / 2, h: ch } : { x: 0, y: 0, w, h: ch / 2 };
       const tonnBox = wide ? { x: w / 2, y: 0, w: w / 2, h: ch } : { x: 0, y: ch / 2, w, h: ch / 2 };
 
-      drawClock(ctx, clockBox, now, chord, fifths);
-      drawTonnetz(ctx, tonnBox, progression, span ? idx : -1, now);
-      if (progression.length) drawStrip(ctx, { x: 0, y: ch, w, h: STRIP_H }, progression, currentBeat);
+      drawClock(ctx, clockBox, now, chord, fifths, names);
+      drawTonnetz(ctx, tonnBox, progression, span ? idx : -1, now, names);
+      if (progression.length) drawStrip(ctx, { x: 0, y: ch, w, h: STRIP_H }, progression, currentBeat, names);
     };
 
     draw();
@@ -182,7 +183,7 @@ export default function HarmonyView({ song, currentBeat }: Props) {
       alive = false;
       observer.disconnect();
     };
-  }, [data, progression, currentBeat, fifths]);
+  }, [data, progression, names, currentBeat, fifths]);
 
   return (
     <div ref={wrapRef} className="relative h-full w-full overflow-hidden bg-stage">
@@ -202,7 +203,9 @@ export default function HarmonyView({ song, currentBeat }: Props) {
 
 type Box = { x: number; y: number; w: number; h: number };
 
-function drawClock(ctx: CanvasRenderingContext2D, box: Box, now: Harmony, chord: Chord | null, fifths: boolean) {
+function drawClock(
+  ctx: CanvasRenderingContext2D, box: Box, now: Harmony, chord: Chord | null, fifths: boolean, names: string[],
+) {
   const cx = box.x + box.w / 2;
   const cy = box.y + box.h / 2;
   const R = Math.max(40, Math.min(box.w, box.h) / 2 - 38);
@@ -268,14 +271,16 @@ function drawClock(ctx: CanvasRenderingContext2D, box: Box, now: Harmony, chord:
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   if (now.held.length) {
-    const label = chord ? chordLabel(chord) : now.held.map((p) => SHARP_NAMES[p]).join(' ');
+    const label = chord ? chordLabel(chord, names) : now.held.map((p) => names[p]).join(' ');
     ctx.fillStyle = fgAlpha(0.92);
     ctx.font = `600 ${chord ? Math.max(16, R * 0.28) : Math.max(12, R * 0.14)}px "Paper Mono", ui-monospace, monospace`;
     ctx.fillText(label, cx, cy);
   }
 }
 
-function drawTonnetz(ctx: CanvasRenderingContext2D, box: Box, progression: ChordSpan[], current: number, now: Harmony) {
+function drawTonnetz(
+  ctx: CanvasRenderingContext2D, box: Box, progression: ChordSpan[], current: number, now: Harmony, names: string[],
+) {
   const s = Math.max(34, Math.min(box.w / 6.5, box.h / 4.6));
   const cx = box.x + box.w / 2;
   const cy = box.y + box.h / 2;
@@ -382,7 +387,7 @@ function drawTonnetz(ctx: CanvasRenderingContext2D, box: Box, progression: Chord
     }
     ctx.fill();
     ctx.fillStyle = st ? GRUVBOX.bg0H : fgAlpha(0.38);
-    ctx.fillText(SHARP_NAMES[n.pc], n.x, n.y);
+    ctx.fillText(names[n.pc], n.x, n.y);
   }
 }
 
@@ -391,7 +396,7 @@ function drawTonnetz(ctx: CanvasRenderingContext2D, box: Box, progression: Chord
  * wide as it lasts, sliding left as the song plays. The cell under the line is
  * the chord in the middle of the clock.
  */
-function drawStrip(ctx: CanvasRenderingContext2D, box: Box, progression: ChordSpan[], beat: number) {
+function drawStrip(ctx: CanvasRenderingContext2D, box: Box, progression: ChordSpan[], beat: number, names: string[]) {
   const mid = box.x + box.w / 2;
   ctx.fillStyle = fgAlpha(0.03);
   ctx.fillRect(box.x, box.y, box.w, box.h);
@@ -415,7 +420,7 @@ function drawStrip(ctx: CanvasRenderingContext2D, box: Box, progression: ChordSp
       ctx.stroke();
     }
     ctx.fillStyle = now ? fgAlpha(0.95) : fgAlpha(past ? 0.3 : 0.6);
-    ctx.fillText(chordLabel(sp.chord), (x0 + x1) / 2, box.y + 1 + box.h / 2, Math.max(8, x1 - x0 - 8));
+    ctx.fillText(chordLabel(sp.chord, names), (x0 + x1) / 2, box.y + 1 + box.h / 2, Math.max(8, x1 - x0 - 8));
   }
   // The playhead.
   ctx.strokeStyle = fgAlpha(0.7);
