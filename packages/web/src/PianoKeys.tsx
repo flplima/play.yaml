@@ -4,9 +4,11 @@
  * The canvas above draws the falling notes; this draws the keys they land on.
  * Every semitone owns one column, positioned in percent of the width with the
  * same `(midi - lo) / span` the canvas uses for its own columns, so the two
- * agree at any width without measuring anything. A white key widens into the
- * half columns of black neighbours, which tiles the whites the way a real
- * keyboard does while a black key keeps exactly its column.
+ * agree at any width without measuring anything. A black key keeps exactly
+ * its column. The seven white keys of an octave share its twelve columns
+ * equally, 12/7 of a column each, as on a real keyboard: every white key is
+ * the same width, and each black key still sits over the seam between two.
+ * The outermost white keys may run past the edge, where the stage cuts them.
  *
  * Keys are built once per pitch range. A key going down is a class and a CSS
  * variable on an existing node, set through `press`, which touches only the
@@ -17,6 +19,8 @@ import './piano-keys.css';
 
 /** Which semitones are black keys, indexed by pitch class. */
 const BLACK = [false, true, false, true, false, false, true, false, true, false, true, false];
+/** A white key's place among the octave's seven (C = 0 … B = 6), by pitch class. */
+const WHITE_INDEX = [0, -1, 1, -1, 2, 3, -1, 4, -1, 5, -1, 6];
 export const isBlack = (midi: number) => BLACK[((midi % 12) + 12) % 12];
 
 /** Height of the stage in px: what the roll leaves out of its own height. */
@@ -40,15 +44,12 @@ export default function PianoKeys({ lo, hi, apiRef }: Props) {
     const span = Math.max(1, hi - lo + 1);
     const col = 100 / span;
     const out = [];
+    const white = (col * 12) / 7;
     for (let m = lo; m <= hi; m++) {
       const black = isBlack(m);
-      let left = (m - lo) * col;
-      let width = col;
-      if (!black) {
-        if (m > lo && isBlack(m - 1)) { left -= col / 2; width += col / 2; }
-        if (m < hi && isBlack(m + 1)) width += col / 2;
-      }
-      out.push({ m, black, left, width });
+      const pc = ((m % 12) + 12) % 12;
+      const left = black ? (m - lo) * col : (m - pc - lo) * col + WHITE_INDEX[pc] * white;
+      out.push({ m, black, left, width: black ? col : white });
     }
     return out;
   }, [lo, hi]);
