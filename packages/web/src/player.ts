@@ -12,8 +12,12 @@ export interface PlaybackHandle {
   stop: () => void;
   /** Resolves when playback finishes (or is stopped). */
   done: Promise<void>;
-  /** Current transport position in beats (quarter notes). */
-  getPositionBeats: () => number;
+  /**
+   * The beat to show, in quarter notes: what the speakers play now, plus
+   * VISUAL_LEAD_SEC, plus `extraLeadSec` (the time the caller needs to put
+   * it on screen). Negative in the moment before the first note.
+   */
+  getPositionBeats: (extraLeadSec?: number) => number;
   /** Set master volume (0.0 to 1.0). */
   setVolume: (volume: number) => void;
   /**
@@ -35,6 +39,29 @@ export interface PlayOptions {
    * the sample library is not installed, or a program failed to load.
    */
   onOrchestraFallback?: (trackNames: string[]) => void;
+}
+
+/**
+ * Keys and highlights move this long before you hear the note. A pianist's
+ * key is down before the hammer strikes, and sound up to ~125 ms after the
+ * picture still reads as in sync, while sound ahead of it shows at ~45 ms
+ * (ITU-R BT.1359). 50 ms lets a key finish its 45 ms press as the note lands.
+ */
+export const VISUAL_LEAD_SEC = 0.05;
+
+/**
+ * The context time of the sample leaving the speakers right now. The render
+ * clock (`currentTime`) runs ahead of it by the device's output latency: a few
+ * ms on wired speakers, 150 ms or more on Bluetooth.
+ */
+function heardTime(ctx: AudioContext): number {
+  const ts = ctx.getOutputTimestamp?.();
+  if (ts?.contextTime && ts.performanceTime) {
+    const t = ts.contextTime + (performance.now() - ts.performanceTime) / 1000;
+    const behind = ctx.currentTime - t;
+    if (behind > -0.02 && behind < 1) return Math.min(t, ctx.currentTime);
+  }
+  return ctx.currentTime - (ctx.outputLatency || ctx.baseLatency || 0);
 }
 
 /**
@@ -333,7 +360,9 @@ export async function playSong(
   }, `${ppq}i`, 0);
 
   applyEnds(song, 0, first.endBeat);
-  transport.start();
+  // Tone starts a lookahead (100 ms) from now; keep the moment for the clock.
+  const startAt = Tone.now();
+  transport.start(startAt);
 
   const update = async (next: CompiledSong): Promise<number | null> => {
     if (stopped) return null;
@@ -471,7 +500,14 @@ export async function playSong(
   return {
     stop: cleanup,
     done,
-    getPositionBeats: () => (stopped ? 0 : transport.ticks / ppq),
+    // Not `transport.ticks`: that reads Tone's scheduling clock, a lookahead
+    // ahead of the audio, and ignores the speakers' latency.
+    getPositionBeats: (extraLeadSec = 0) => {
+      if (stopped) return 0;
+      const t = heardTime(ctx) + VISUAL_LEAD_SEC + extraLeadSec;
+      if (t < startAt) return ((t - startAt) * song.bpm) / 60;
+      return transport.getTicksAtTime(t) / ppq;
+    },
     setVolume: (v: number) => {
       masterGain.gain.setValueAtTime(Math.max(0, Math.min(1, v)), ctx.currentTime);
     },

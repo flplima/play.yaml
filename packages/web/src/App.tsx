@@ -327,11 +327,19 @@ export default function App() {
     noteSpans.current = buildNoteSpans(text);
     let lastKey = '';
     let lastBeatValue = -1;
-    const tick = () => {
+    // The piano roll reaches the screen a frame after this read (React renders,
+    // then draws), so the clock leads by one frame more: 8 ms at 120 Hz, 33 ms
+    // on a phone that manages 30 fps.
+    let lastFrameAt = 0;
+    let frameSec = 1 / 60;
+    const tick = (now: number) => {
       if (playback.current !== handle) return;
-      const beat = handle.getPositionBeats();
-      // Re-render the beat readouts only when the change is visible.
-      if (Math.abs(beat - lastBeatValue) > 0.02) {
+      if (lastFrameAt) frameSec += (Math.min(0.1, (now - lastFrameAt) / 1000) - frameSec) * 0.1;
+      lastFrameAt = now;
+      const beat = handle.getPositionBeats(frameSec);
+      // Every frame the beat moves. A 0.02-beat threshold skipped every other
+      // frame at 72 bpm and slower, and the piano keys lagged behind.
+      if (beat !== lastBeatValue) {
         lastBeatValue = beat;
         setCurrentBeat(beat);
       }

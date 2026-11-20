@@ -49,7 +49,7 @@ export default function TrackMonitor({ song, currentBeat, playing }: Props) {
           )}
         </div>
         <div className="mt-1 flex items-center justify-between text-[11px] text-muted-foreground">
-          <span>Transport Beat: {currentBeat.toFixed(2)}</span>
+          <span>Transport Beat: {Math.max(0, currentBeat).toFixed(2)}</span>
         </div>
       </Card>
 
