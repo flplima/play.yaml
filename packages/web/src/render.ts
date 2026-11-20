@@ -7,7 +7,6 @@
  * words, ramps and rubato are baked into the file.
  */
 
-import { Mp3Encoder } from '@breezystack/lamejs';
 import {
   CompiledSong, beatsToSeconds, prepareVpo, scheduleSong, songEndBeat, tempoSegments,
 } from '@play.yaml/core';
@@ -28,6 +27,8 @@ export async function renderSong(song: CompiledSong): Promise<AudioBuffer> {
 
 /** AudioBuffer → MP3 blob (joint stereo, 192 kbps). Yields to keep the UI alive. */
 export async function encodeMp3(buffer: AudioBuffer): Promise<Blob> {
+  // Loaded on the first MP3 download, not with the page.
+  const { Mp3Encoder } = await import('@breezystack/lamejs');
   const encoder = new Mp3Encoder(2, buffer.sampleRate, 192);
   const left = buffer.getChannelData(0);
   const right = buffer.numberOfChannels > 1 ? buffer.getChannelData(1) : left;

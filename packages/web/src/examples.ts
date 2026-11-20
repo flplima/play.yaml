@@ -1,22 +1,25 @@
-import { parseYaml } from '@play.yaml/core';
+import scoreTitles from 'virtual:score-titles';
 
-// Bundle every score from the repo-root examples/ directory — and every song
-// project under songs/<slug>/ (see docs/song-workflow.md) — as raw text.
-const exampleModules = import.meta.glob('../../../examples/*.play.yaml', {
-  query: '?raw',
-  import: 'default',
-  eager: true,
-}) as Record<string, string>;
+// Every score from the repo-root examples/ directory — and every song project
+// under songs/<slug>/ (see docs/song-workflow.md) — is bundled, but only as a
+// lazy chunk each: the text loads when a score is picked (`loadExample`).
+// What the picker needs up front (names and titles) comes from the build.
+const DEFAULT_NAME = 'ave-maria-bach-gounod';
+const DEFAULT_PATH = `../../../songs/${DEFAULT_NAME}/${DEFAULT_NAME}.play.yaml`;
 
-const songModules = import.meta.glob('../../../songs/*/*.play.yaml', {
-  query: '?raw',
-  import: 'default',
-  eager: true,
-}) as Record<string, string>;
+/** The default score's text ships in the main chunk, so a first visit shows it at once. */
+import defaultContent from '../../../songs/ave-maria-bach-gounod/ave-maria-bach-gounod.play.yaml?raw';
+
+const scoreLoaders = {
+  ...import.meta.glob('../../../examples/*.play.yaml', { query: '?raw', import: 'default' }),
+  ...import.meta.glob(['../../../songs/*/*.play.yaml', '!../../../songs/ave-maria-bach-gounod/*'], {
+    query: '?raw',
+    import: 'default',
+  }),
+} as Record<string, () => Promise<string>>;
 
 export interface Example {
   name: string;
-  content: string;
   /** Which directory it came from — the picker groups by this. */
   group: 'example' | 'song';
   /** The score's `title:`, when it has one: what the picker shows and searches on. */
@@ -54,36 +57,36 @@ const LISTED: Record<string, { composer: string; category: Category }> = {
   'tico-tico-no-fuba': { composer: 'Zequinha de Abreu', category: 'Brazilian' },
 };
 
-function readTitle(content: string): string | undefined {
-  try {
-    const title = parseYaml(content)?.title;
-    return typeof title === 'string' && title ? title : undefined;
-  } catch {
-    return undefined;
-  }
+function toExamples(paths: string[], group: Example['group']): Example[] {
+  return paths.map((path) => {
+    const name = path.split('/').pop()!.replace(/\.play\.yaml$/, '');
+    return { name, group, title: (scoreTitles as Record<string, string>)[name], ...LISTED[name] };
+  });
 }
 
-function toExamples(modules: Record<string, string>, group: Example['group']): Example[] {
-  return Object.entries(modules).map(([path, content]) => ({
-    name: path.split('/').pop()!.replace(/\.play\.yaml$/, ''),
-    content,
-    group,
-    title: readTitle(content),
-    ...LISTED[path.split('/').pop()!.replace(/\.play\.yaml$/, '')],
-  }));
-}
+const allPaths = [DEFAULT_PATH, ...Object.keys(scoreLoaders)];
 
 export const EXAMPLES: Example[] = [
-  ...toExamples(exampleModules, 'example'),
-  ...toExamples(songModules, 'song'),
+  ...toExamples(allPaths.filter((p) => p.includes('/examples/')), 'example'),
+  ...toExamples(allPaths.filter((p) => p.includes('/songs/')), 'song'),
 ].sort((a, b) => a.name.localeCompare(b.name));
+
+/** A score's text. The default one is already in hand; the rest are fetched on demand. */
+export async function loadExample(name: string): Promise<string | undefined> {
+  if (name === DEFAULT_NAME) return defaultContent;
+  const path = Object.keys(scoreLoaders).find((p) => p.endsWith(`/${name}.play.yaml`));
+  return path ? scoreLoaders[path]() : undefined;
+}
+
+/** The default score's text, for the first paint. */
+export const DEFAULT_CONTENT = defaultContent;
 
 /**
  * The score a first visit opens on. The Ave Maria plays on the synth presets
  * alone, so it sounds the same on a static host with no sample library.
  */
 export const DEFAULT_EXAMPLE: Example | undefined =
-  EXAMPLES.find((e) => e.name === 'ave-maria-bach-gounod') ?? EXAMPLES[0];
+  EXAMPLES.find((e) => e.name === DEFAULT_NAME) ?? EXAMPLES[0];
 
 /** What the picker offers, in category order, then by title. */
 export const LISTED_EXAMPLES: Example[] = EXAMPLES.filter((e) => e.category).sort(
