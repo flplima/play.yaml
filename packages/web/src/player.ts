@@ -1,6 +1,6 @@
 import * as Tone from 'tone';
 import {
-  DEFAULT_VELOCITY, beatsToSeconds, metronomeClick, prepareVpo, tempoSegments, trackVoice,
+  CC, DEFAULT_VELOCITY, beatsToSeconds, metronomeClick, prepareVpo, tempoSegments, trackVoice,
   type CompiledSong, type Orchestra, type TrackBus,
 } from '@play.yaml/core';
 import { httpAssets } from './vpo';
@@ -65,6 +65,48 @@ function heardTime(ctx: AudioContext): number {
 }
 
 /**
+ * The tempo at `beat`, before any change written exactly there: a bpm, plus
+ * the rest of a ramp still running through it.
+ */
+function tempoAt(s: CompiledSong, beat: number): { bpm: number; rampTo?: number; rampBeats?: number } {
+  let bpm = s.bpm;
+  for (const change of s.tempoMap) {
+    if (change.time >= beat) break;
+    const end = change.time + change.rampBeats;
+    if (change.rampBeats > 0 && beat < end) {
+      const at = bpm + ((change.bpm - bpm) * (beat - change.time)) / change.rampBeats;
+      return { bpm: at, rampTo: change.bpm, rampBeats: end - beat };
+    }
+    bpm = change.bpm;
+  }
+  return { bpm };
+}
+
+/**
+ * What a loop pass must put back at `beat` for one track: each control that
+ * changes later in the loop, at the value it held before `beat` (undefined:
+ * never set yet). Controls written exactly at `beat` replay on their own.
+ */
+function controlsBefore(track: CompiledSong['tracks'][number], beat: number): Map<number, number | undefined> {
+  const before = new Map<number, number | undefined>();
+  const at = new Set<number>();
+  const later = new Set<number>();
+  for (const c of track.controls) {
+    if (c.time < beat) before.set(c.cc, c.value);
+    else if (c.time === beat) at.add(c.cc);
+    else later.add(c.cc);
+  }
+  const out = new Map<number, number | undefined>();
+  for (const cc of later) if (!at.has(cc)) out.set(cc, before.get(cc));
+  return out;
+}
+
+/** MIDI has no "unset": these return to off (or centre) on a loop pass. */
+const MIDI_START: Record<number, number> = {
+  [CC.sustain]: 0, [CC.sostenuto]: 0, [CC.soft]: 0, [CC.sordino]: 0, [CC.pan]: 64,
+};
+
+/**
  * Play a compiled song on the Tone.js Transport. Tracks with a MIDI route go
  * out through WebMIDI (timestamped sends); everything else is rendered by the
  * built-in orchestra and synth at transport-accurate times.
@@ -89,6 +131,18 @@ export async function playSong(
   transport.position = 0;
   transport.bpm.value = song.bpm;
   const ppq = transport.PPQ;
+  /**
+   * Stop any tempo ramp at `time`, at the value it has reached. Unlike
+   * cancelScheduledValues this keeps the curve before `time`, so the ticks
+   * already counted (and the clock the keys follow) don't move.
+   */
+  const holdTempo = (time: number) => {
+    try {
+      transport.bpm.cancelAndHoldAtTime(time);
+    } catch {
+      // Nothing to hold; the set that follows still lands the tempo.
+    }
+  };
   const atBeat = (beat: number) => `${Math.round(beat * ppq)}i`;
 
   const ctx = Tone.getContext().rawContext as AudioContext;
@@ -177,6 +231,32 @@ export async function playSong(
     let endBeat = 0;
     const schedulers: Array<(from: number, to: number) => void> = [];
 
+    // A loop pass starts in the state the first pass had at the loop point,
+    // not in the ending's: the tempo, the pedal, the dynamics and every other
+    // control. Scheduled first, so the score's own events at the same beat
+    // land after it. On the first pass it changes nothing.
+    const loopFrom = s.loopStartBeats ?? 0;
+    const loopResets: Array<(time: number) => void> = [];
+    if (opts.loop) {
+      schedulers.push((from, to) => {
+        if (loopFrom < from || loopFrom >= to) return;
+        register(gen, transport.schedule((time) => {
+          const tempo = tempoAt(s, loopFrom);
+          holdTempo(time); // an ending's ritardando
+          try {
+            transport.bpm.setValueAtTime(tempo.bpm, time);
+          } catch {
+            transport.bpm.value = tempo.bpm;
+          }
+          if (tempo.rampTo !== undefined && tempo.rampBeats) {
+            const seconds = (tempo.rampBeats * 60) / ((tempo.bpm + tempo.rampTo) / 2);
+            transport.bpm.linearRampToValueAtTime(tempo.rampTo, time + seconds);
+          }
+          for (const reset of loopResets) reset(time);
+        }, atBeat(loopFrom)));
+      });
+    }
+
     for (const track of s.tracks) {
       const route = routes[routeKey(track)];
       const output = route && midiOutputs.get(route.outputId);
@@ -198,6 +278,16 @@ export async function playSong(
           const firstVelocity = track.timeline[0]?.velocity ?? DEFAULT_VELOCITY;
           sendExpression(output, ch, firstVelocity);
           expressionByChannel.set(chKey, firstVelocity);
+        }
+
+        const carried = controlsBefore(track, loopFrom);
+        if (carried.size) {
+          loopResets.push((time) => sendAt(time, () => {
+            for (const [cc, value] of carried) {
+              const v = value ?? MIDI_START[cc];
+              if (v !== undefined) output.send([CONTROL_CHANGE | ch, cc & 0x7f, v & 0x7f]);
+            }
+          }));
         }
 
         schedulers.push((from, to) => {
@@ -236,6 +326,15 @@ export async function playSong(
       } else {
         const voice = trackVoice(ctx, masterGain, track, orchestra.get(track.name));
         buses.push(voice.bus);
+        const carried = controlsBefore(track, loopFrom);
+        if (carried.size) {
+          loopResets.push((time) => {
+            for (const [cc, value] of carried) {
+              if (value === undefined) voice.bus.resetCC(cc, time);
+              else voice.bus.applyCC(cc, value, time);
+            }
+          });
+        }
 
         schedulers.push((from, to) => {
           for (const control of track.controls) {
@@ -271,8 +370,9 @@ export async function playSong(
         runningBpm = change.bpm;
         if (change.time < from || change.time >= to) continue;
         register(gen, transport.schedule((time) => {
-          // transport.bpm is a TickSignal backing transport.ticks; every change
-          // is scheduled strictly later than the last, so nothing to cancel.
+          // transport.bpm is a TickSignal backing transport.ticks. A change can
+          // land inside a ramp that hasn't finished: stop it there first.
+          holdTempo(time);
           if (change.rampBeats > 0) {
             // Ramp length in seconds, using the average of the two tempi.
             const seconds = (change.rampBeats * 60) / ((fromBpm + change.bpm) / 2);

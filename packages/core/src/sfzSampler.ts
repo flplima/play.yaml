@@ -434,9 +434,10 @@ class BusVoices {
     // The bus's own dispose() drops this listener with the rest.
     bus.onCC((cc, value, time) => {
       // Live changes reach the voices that are sounding now; an offline
-      // render already scheduled them from the history at note-on.
-      for (const voice of this.voices) applyControllerAt(voice, cc, value, time);
-      if (cc === CC.sustain && value < PEDAL_DOWN) {
+      // render already scheduled them from the history at note-on. A reset
+      // (undefined) brings back the instrument's default.
+      for (const voice of this.voices) applyControllerAt(voice, cc, value ?? voice.ccAt(cc, time), time);
+      if (cc === CC.sustain && (value ?? 0) < PEDAL_DOWN) {
         for (const voice of this.held) voice.release(time);
         this.held.clear();
       }
@@ -691,7 +692,8 @@ export function startNote(opts: VoiceOptions): number {
 function pedalHoldsUntil(bus: TrackBus, time: number): number | null {
   const pedal = bus.ccAt(CC.sustain, time) ?? 0;
   if (pedal < PEDAL_DOWN) return null;
-  const up = bus.ccChanges(CC.sustain, time, Infinity).find(([, value]) => value < PEDAL_DOWN);
+  // A reset (undefined) lifts the pedal too.
+  const up = bus.ccChanges(CC.sustain, time, Infinity).find(([, value]) => (value ?? 0) < PEDAL_DOWN);
   return up ? up[0] : Infinity;
 }
 

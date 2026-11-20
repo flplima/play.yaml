@@ -9,7 +9,7 @@
  */
 import assert from 'assert';
 import { OfflineAudioContext } from 'node-web-audio-api';
-import { compileDoc, parseYaml, scheduleSong } from '@play.yaml/core';
+import { CC, compileDoc, createTrackBus, parseYaml, scheduleSong } from '@play.yaml/core';
 
 let passed = 0;
 const failed: string[] = [];
@@ -199,6 +199,35 @@ async function main(): Promise<void> {
     const both = await render(score('hall, pan left, chorus, volume 100'));
     assert.ok(rms(both.left) > 0.001 && rms(both.right) > 0.001);
     assert.ok(rms(both.left) > rms(both.right), 'pan left did not survive the other stages');
+  });
+
+  // A loop pass resets the controls a song only sets later on.
+  await check('resetCC puts a control back where the bus started', async () => {
+    const tone = async (reset: boolean) => {
+      const ctx = new OfflineAudioContext(2, SR * 2, SR);
+      const bus = createTrackBus(ctx, ctx.destination, { hasExpression: false, usesCC: [CC.pan] });
+      const osc = ctx.createOscillator();
+      osc.connect(bus.input);
+      osc.start(0);
+      if (reset) {
+        bus.applyCC(CC.pan, 0, 0); // hard left
+        bus.applyCC(CC.volume, 40, 0);
+        bus.resetCC(CC.pan, 1);
+        bus.resetCC(CC.volume, 1);
+        assert.equal(bus.ccAt(CC.pan, 0.5), 0);
+        assert.equal(bus.ccAt(CC.pan, 1.5), undefined, 'ccAt still reads the old value');
+      }
+      const buffer = await ctx.startRendering();
+      return { left: buffer.getChannelData(0).slice(), right: buffer.getChannelData(1).slice() };
+    };
+    const plain = await tone(false);
+    const reset = await tone(true);
+    assert.ok(rms(reset.right, 0.2, 0.9) < rms(reset.left, 0.2, 0.9) / 20, 'hard left never landed');
+    for (const side of ['left', 'right'] as const) {
+      const want = rms(plain[side], 1.4, 2);
+      const got = rms(reset[side], 1.4, 2);
+      assert.ok(Math.abs(got - want) < want * 0.02, `${side} after the reset: ${got}, want ${want}`);
+    }
   });
 
   console.log(`\n${passed} checks passed.`);

@@ -38,16 +38,26 @@ export interface TrackBus {
    * whether a note-off releases — and schedules ahead with `ccChanges`.
    */
   ccAt: (cc: number, time: number) => number | undefined;
-  /** Changes to `cc` after `from` and no later than `to`, in time order. */
-  ccChanges: (cc: number, from: number, to: number) => Array<[time: number, value: number]>;
+  /**
+   * Changes to `cc` after `from` and no later than `to`, in time order. An
+   * undefined value is a `resetCC`: the control is back to unset.
+   */
+  ccChanges: (cc: number, from: number, to: number) => Array<[time: number, value: number | undefined]>;
+  /**
+   * Put `cc` back where the bus started, as if the score had never set it:
+   * its circuit returns to the value it was built with, and `ccAt` answers
+   * undefined again, so a sampler falls back to its instrument's default. A
+   * loop pass uses this for the controls a song only sets later on.
+   */
+  resetCC: (cc: number, time: number) => void;
   /**
    * Hear control changes as they are applied. An offline render applies the
    * whole stream before it schedules a note, so a voice finds everything it
    * needs in `ccChanges`; live playback applies each change as the transport
    * reaches it, and this is how a sounding voice learns about the ones after
-   * its note-on.
+   * its note-on. `value` is undefined for a `resetCC`.
    */
-  onCC: (listener: (cc: number, value: number, time: number) => void) => () => void;
+  onCC: (listener: (cc: number, value: number | undefined, time: number) => void) => () => void;
   dispose: () => void;
 }
 
@@ -359,9 +369,9 @@ export function createTrackBus(
   // answer from. Live playback appends; an offline render's carried-over
   // values land at the origin before the stream proper, so out-of-order
   // arrivals are inserted rather than assumed away.
-  const history = new Map<number, Array<[number, number]>>();
-  const listeners = new Set<(cc: number, value: number, time: number) => void>();
-  const record = (cc: number, value: number, time: number) => {
+  const history = new Map<number, Array<[number, number | undefined]>>();
+  const listeners = new Set<(cc: number, value: number | undefined, time: number) => void>();
+  const record = (cc: number, value: number | undefined, time: number) => {
     let list = history.get(cc);
     if (!list) history.set(cc, (list = []));
     let at = list.length;
@@ -378,7 +388,7 @@ export function createTrackBus(
     }
     return value;
   };
-  const ccChanges = (cc: number, from: number, to: number): Array<[number, number]> =>
+  const ccChanges = (cc: number, from: number, to: number): Array<[number, number | undefined]> =>
     (history.get(cc) ?? []).filter(([at]) => at > from && at <= to);
 
   /**
@@ -463,10 +473,61 @@ export function createTrackBus(
     for (const listener of listeners) listener(cc, value, time);
   };
 
+  // Every circuit back to the value it was built with, above.
+  const resetCC = (cc: number, time: number) => {
+    record(cc, undefined, time);
+    switch (cc) {
+      case CC.expression:
+        expressionLevel = opts.hasExpression ? loudness(90) : 1;
+        writeLevel(time);
+        break;
+      case CC.vibrato:
+        glide(vibrato.gain, 0, time, 0.08);
+        break;
+      case CC.vibratoRate:
+        glide(lfo.frequency, 5.2, time, 0.08);
+        break;
+      case CC.bow:
+        glide(color.frequency, 5200, time, 0.1);
+        glide(edge.gain, 0, time, 0.1);
+        break;
+      case CC.pressure:
+        pressureLevel = 1;
+        writeLevel(time);
+        glide(edge.Q, 1.2, time, 0.1);
+        break;
+      case CC.volume:
+        volumeLevel = 1;
+        writeLevel(time);
+        break;
+      case CC.pan:
+        if (panner) glide(panner.pan, 0, time, 0.05);
+        panTrim = 1;
+        writeLevel(time, 0.05);
+        break;
+      case CC.reverb:
+        if (reverbSend) glide(reverbSend.gain, 0, time, 0.12);
+        break;
+      case CC.chorus:
+        for (const wet of chorusWet) glide(wet.gain, 0, time, 0.12);
+        for (const depth of chorusDepth) glide(depth.gain, 0, time, 0.12);
+        break;
+      case CC.sordino:
+        glide(sordino.frequency, 16000, time, 0.1);
+        sordinoLevel = 1;
+        writeLevel(time, 0.1);
+        break;
+      default:
+        break;
+    }
+    for (const listener of listeners) listener(cc, undefined, time);
+  };
+
   return {
     input,
     ctx,
     applyCC,
+    resetCC,
     vibrato,
     hasExpression: opts.hasExpression,
     ccAt,
