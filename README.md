@@ -6,6 +6,8 @@ https://github.com/user-attachments/assets/e3c789ef-bd03-4bf1-a71c-6f9d4b2494b8
 
 Sound on!
 
+Try it in your browser: **[flplima.github.io/play.yaml](https://flplima.github.io/play.yaml/)**
+
 ## a taste of the syntax
 
 > [!WARNING]

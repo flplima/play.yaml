@@ -1,11 +1,15 @@
 /*
  * sw.js — makes the studio open offline.
  *
- * - navigations: network first, the cached shell ("/") when the network fails.
+ * Paths are relative to the worker's own folder, so the same file works at a
+ * domain root and under a subpath (GitHub Pages serves it at /play.yaml/).
+ *
+ * - navigations: network first, the cached shell (the scope's root) when the
+ *   network fails.
  *   A redirect (an expired login on the auth proxy) goes through untouched.
- * - /assets/*: fingerprinted by Vite, so cache first, filled as they load and
+ * - assets/*: fingerprinted by Vite, so cache first, filled as they load and
  *   precached at install from the shell's own <script>/<link> tags.
- * - never touched: /vpo/* (big samples, range requests), non-GET, the API.
+ * - never touched: vpo/* (big samples, range requests), non-GET, the API.
  *
  * Bump VERSION to drop every old cache on the next activate. A new worker
  * waits for the next load: no skipWaiting, so a score being edited is never
@@ -13,7 +17,9 @@
  */
 const VERSION = 'v1';
 const CACHE = `play-yaml-${VERSION}`;
-const SHELL = '/';
+// '/' at a domain root, '/play.yaml/' on GitHub Pages.
+const SHELL = new URL('./', self.location).pathname;
+const ASSETS = `${SHELL}assets/`;
 
 // Only a plain 200 from our own origin is worth keeping: never a redirect
 // (the login page in disguise), an opaque response or an error.
@@ -30,7 +36,10 @@ self.addEventListener('install', (event) => {
         await cache.put(SHELL, res.clone());
         const html = await res.text();
         const urls = new Set();
-        for (const m of html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)) urls.add(m[1]);
+        // '/assets/…' from an absolute base, './assets/…' from a relative one.
+        for (const m of html.matchAll(/(?:src|href)="((?:\.?\/)?assets\/[^"]+)"/g)) {
+          urls.add(new URL(m[1], new URL(SHELL, self.location)).pathname);
+        }
         await Promise.all(
           [...urls].map(async (url) => {
             try {
@@ -86,7 +95,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (url.pathname.startsWith('/assets/')) {
+  if (url.pathname.startsWith(ASSETS)) {
     event.respondWith(
       (async () => {
         const hit = await caches.match(req);
