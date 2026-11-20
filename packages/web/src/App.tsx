@@ -44,6 +44,9 @@ import { encodeMp3, renderSong } from './render';
 import { renderScore, scoreXml } from './score';
 import { buildNoteSpans, NoteSpan } from './noteSpans';
 import { playingNoteExtension, setPlayhead, setPlayingNotes } from './highlight';
+import { PageTurner } from './pageTurn';
+import FollowButton from './FollowButton';
+import { leadTrack } from './chords';
 import { gruvboxEditorTheme } from './editorTheme';
 import { useMidi } from './useMidi';
 import { clearShareHash, decodeShareHash, encodeShareHash, isShareHash } from './share';
@@ -132,6 +135,13 @@ export default function App() {
   const exampleEdits = useRef(new Map<string, string>());
   const playback = useRef<PlaybackHandle | null>(null);
   const editorView = useRef<EditorView | null>(null);
+  // The editor turns its pages with the playback until you scroll it yourself.
+  const pageTurner = useRef<PageTurner | null>(null);
+  const [editorFollowing, setEditorFollowing] = useState(true);
+  const followEditor = () => {
+    pageTurner.current?.resume();
+    setEditorFollowing(true);
+  };
   const noteSpans = useRef<NoteSpan[]>([]);
   const highlightRaf = useRef(0);
 
@@ -321,6 +331,8 @@ export default function App() {
     }
     playback.current = handle;
     setPlaying(true);
+    followEditor();
+    const lead = leadTrack(song);
 
     // Strudel-style highlighting: an rAF loop reads the transport's beat
     // position and lights up the beat tokens currently sounding.
@@ -352,6 +364,10 @@ export default function App() {
         });
       }
       if (editorView.current) setPlayhead(editorView.current, beat);
+      pageTurner.current?.frame(
+        active.filter((s) => s.kind === 'note').map((s) => ({ from: s.from, to: s.to, lead: s.track === lead })),
+        now,
+      );
       highlightRaf.current = requestAnimationFrame(tick);
     };
     highlightRaf.current = requestAnimationFrame(tick);
@@ -583,11 +599,16 @@ export default function App() {
               </TabsTrigger>
             ))}
           </TabsList>
-          <TabsContent value="editor" forceMount className="min-h-0 overflow-hidden data-[state=inactive]:hidden">
+          <TabsContent value="editor" forceMount className="relative min-h-0 overflow-hidden data-[state=inactive]:hidden">
+            {playing && !editorFollowing && <FollowButton onClick={followEditor} />}
             <CodeMirror
               value={text}
               onChange={handleEdit}
-              onCreateEditor={(view) => (editorView.current = view)}
+              onCreateEditor={(view) => {
+                editorView.current = view;
+                pageTurner.current?.destroy();
+                pageTurner.current = new PageTurner(view, () => setEditorFollowing(false));
+              }}
               theme={gruvboxEditorTheme}
               height="100%"
               style={{ height: '100%' }}

@@ -15,6 +15,8 @@ export interface NoteSpan {
    * or chord with the `_` holds after it, `g _ _` in `g _ _ e`.
    */
   kind: 'beat' | 'note';
+  /** The track it belongs to: its key under `tracks:`. */
+  track?: string;
 }
 
 /** One token that takes time: a note (or chord), a hold or a rest. */
@@ -69,7 +71,7 @@ export function buildNoteSpans(text: string): NoteSpan[] {
   const spans: NoteSpan[] = [];
   let cursor = 0;
 
-  const walk = (node: TrackNode, inheritedMeasure: string | number | undefined, waited = 0) => {
+  const walk = (node: TrackNode, inheritedMeasure: string | number | undefined, waited = 0, track?: string) => {
     if (!node || typeof node !== 'object') return;
     const measure = node.measure ?? inheritedMeasure;
     const wait = waited + (typeof node.wait === 'number' ? node.wait : 0);
@@ -100,7 +102,7 @@ export function buildNoteSpans(text: string): NoteSpan[] {
           const endBeat = startBeat + slots[i].span;
           const from = idx + tok.from;
           if (isGroup(tok.text)) {
-            spans.push({ from, to: idx + tok.to, startBeat, endBeat, kind: 'beat' });
+            spans.push({ from, to: idx + tok.to, startBeat, endBeat, kind: 'beat', track });
             groupLeaves(tok.text, from, startBeat, endBeat, leaves);
           } else {
             leaves.push({ from, to: idx + tok.to, startBeat, endBeat, type: leafType(tok.text) });
@@ -118,14 +120,14 @@ export function buildNoteSpans(text: string): NoteSpan[] {
         for (const leaf of leaves) {
           if (leaf.type === 'note') {
             close();
-            held = { from: leaf.from, to: leaf.to, startBeat: leaf.startBeat, endBeat: leaf.endBeat, kind: 'note' };
+            held = { from: leaf.from, to: leaf.to, startBeat: leaf.startBeat, endBeat: leaf.endBeat, kind: 'note', track };
             sounding = true;
           } else if (leaf.type === 'hold' && sounding) {
             if (held) {
               held.to = leaf.to;
               held.endBeat = leaf.endBeat;
             } else {
-              held = { from: leaf.from, to: leaf.to, startBeat: leaf.startBeat, endBeat: leaf.endBeat, kind: 'note' };
+              held = { from: leaf.from, to: leaf.to, startBeat: leaf.startBeat, endBeat: leaf.endBeat, kind: 'note', track };
             }
           } else {
             close();
@@ -137,7 +139,7 @@ export function buildNoteSpans(text: string): NoteSpan[] {
     }
 
     if (node.tracks && typeof node.tracks === 'object') {
-      for (const child of Object.values(node.tracks)) walk(child, measure, wait);
+      for (const [name, child] of Object.entries(node.tracks)) walk(child, measure, wait, name);
     }
   };
 

@@ -205,23 +205,31 @@ function fitBoth(accomp: Pitched[], all: Pitched[], start: number, end: number):
   return best && best.coverage >= 0.6 ? best : null;
 }
 
-/** The song's chords, in order, one span per change. */
-export function chordProgression(song: CompiledSong | null): ChordSpan[] {
-  if (!song) return [];
+/** The pitched tracks with notes, and the one that sits highest: the tune, when there are two or more. */
+function voices(song: CompiledSong) {
   const tracks = song.tracks
     .filter((t) => t.channel !== DRUM_CHANNEL && !t.kit && t.timeline.length)
     .map((t) => {
       const notes = t.timeline.map((n) => ({ time: n.time, end: n.time + n.duration, midi: n.midi }));
       const sorted = notes.map((n) => n.midi).sort((a, b) => a - b);
-      return { notes, median: sorted[sorted.length >> 1] };
+      return { name: t.name, notes, median: sorted[sorted.length >> 1] };
     });
+  const top = tracks.length > 1 ? tracks.reduce((a, b) => (b.median > a.median ? b : a)) : null;
+  return { tracks, top };
+}
+
+/** The track carrying the tune (the highest one), or null with fewer than two. */
+export function leadTrack(song: CompiledSong | null): string | null {
+  return song ? (voices(song).top?.name ?? null) : null;
+}
+
+/** The song's chords, in order, one span per change. */
+export function chordProgression(song: CompiledSong | null): ChordSpan[] {
+  if (!song) return [];
+  const { tracks, top } = voices(song);
   if (!tracks.length) return [];
   const all = tracks.flatMap((t) => t.notes);
-  let accomp = all;
-  if (tracks.length > 1) {
-    const top = tracks.reduce((a, b) => (b.median > a.median ? b : a));
-    accomp = tracks.filter((t) => t !== top).flatMap((t) => t.notes);
-  }
+  const accomp = top ? tracks.filter((t) => t !== top).flatMap((t) => t.notes) : all;
 
   const bar = Math.max(1, song.measureBeats || 4);
   const endBeat = Math.max(...all.map((n) => n.end));
