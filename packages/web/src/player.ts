@@ -1,4 +1,3 @@
-import * as Tone from 'tone';
 import {
   CC, DEFAULT_VELOCITY, beatsToSeconds, metronomeClick, prepareVpo, tempoSegments, trackVoice,
   type CompiledSong, type Orchestra, type TrackBus,
@@ -102,6 +101,19 @@ function controlsBefore(track: CompiledSong['tracks'][number], beat: number): Ma
 }
 
 /** MIDI has no "unset": these return to off (or centre) on a loop pass. */
+/**
+ * Tone.js is its own chunk, fetched with `import()` instead of with the page.
+ * `preloadPlayer` starts that fetch once the page is idle, so the first Play
+ * finds it already loaded, and the service worker has cached it for offline.
+ */
+let tone: Promise<typeof import('tone')> | undefined;
+const loadTone = () => (tone ??= import('tone'));
+export function preloadPlayer(): void {
+  const start = () => void loadTone().catch(() => { tone = undefined; });
+  if ('requestIdleCallback' in window) window.requestIdleCallback(start, { timeout: 5000 });
+  else setTimeout(start, 2000);
+}
+
 const MIDI_START: Record<number, number> = {
   [CC.sustain]: 0, [CC.sostenuto]: 0, [CC.soft]: 0, [CC.sordino]: 0, [CC.pan]: 64,
 };
@@ -123,6 +135,7 @@ export async function playSong(
   midiOutputs: Map<string, MIDIOutput>,
   opts: PlayOptions = {},
 ): Promise<PlaybackHandle> {
+  const Tone = await loadTone();
   await Tone.start(); // Resume the audio context (requires a user gesture).
 
   const transport = Tone.getTransport();
