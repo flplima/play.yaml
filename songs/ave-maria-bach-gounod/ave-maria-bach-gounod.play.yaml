@@ -52,7 +52,7 @@ tracks:
       - "{g2 e3 g3 c4} {g4 g3 c4 g4} {g2 e3 g3 c4} {g4 g3 c4 g4}"
       - "{g2 d3 g3 c4} {f4 g3 c4 f4} {g2 d3 g3 c4} {f4 g3 c4 f4}"
       - "{g2 d3 g3 b3} {f4 g3 b3 f4} {g2 d3 g3 b3} {f4 g3 b3 f4}"
-      - ritardando over 3 to 48   # the slow-down starts as the voice lands on "A-"
+      - ritardando over 3 to 48   # the slow-down starts as the voice lands on its low C
       - "{c2 c3 g3 bb3} {e4 g3 bb3 e4} {c2 c3 g3 bb3} {e4 g3 bb3 e4}"   # 36
       - fortissimo
       - "{c2 c3 f3 a3} {c4 f4 c4 a3} {c4 a3 f3 a3} {f3 d3 f3 d3}"
@@ -74,42 +74,6 @@ tracks:
       vibrato: 1
       vibrato_rate: 76
     set: legato, cantabile, vibrato 26, slow vibrato
-    # The Latin prayer, one line per bar from bar 5. Underlay after a public-domain
-    # 19th-century edition; bars 23-29 are fitted to Heugel's pickups.
-    lyrics: |
-      A-               # 5
-      ve
-      Ma- ri-
-      a
-      gra- _ ti- a     # 9
-      ple- _ na
-      Do- _ mi- nus
-      te- _ cum
-      be- _ ne- _      # 13
-      dic- _ _ ta
-      tu in
-      mu- _ li- e-
-      ri- bus          # 17
-      et _ be- ne-
-      dic- tus
-      fruc- _ tus _
-      ven- _ tris _    # 21
-      tu- i Je- _
-      sus, Sanc-
-      _ ta Ma-
-      ri- a, sanc-     # 25
-      _ ta Ma-
-      ri- a, Ma-
-      ri- a, O- ra
-      pro no- bis,
-      no- bis pec- ca- # 30
-      to- ri- bus,
-      nunc _ et in
-      ho- _ ra, in
-      ho- _ _ ra
-      mor- _ tis _ no- _ strae. _   # 35
-      A-
-      men.
     play:
       # the opening arch: four long notes, the tone warming from almost straight
       - vibrato to 58 over 3
