@@ -44,7 +44,7 @@
   --gb-purple: #d3869b;
   --gb-aqua: #8ec07c;
   --gb-orange: #fe8019;
-  --gb-paper: #fbf1c7;
+  --gb-paper: #fff; /* the score's paper: plain white, not gruvbox's cream */
 
   --background: var(--gb-bg0);
   --foreground: var(--gb-fg);
