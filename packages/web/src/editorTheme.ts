@@ -16,7 +16,10 @@ const chrome = EditorView.theme(
     '.cm-cursor, .cm-dropCursor': { borderLeftColor: g.fg },
     '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection':
       { backgroundColor: g.bg3 },
-    '.cm-activeLine': { backgroundColor: g.bg0S },
+    // A tint rather than bg0S itself: the sounding notes are drawn on a layer
+    // under the text (highlight.ts), and an opaque line would hide them.
+    // 10% of fg over bg0H comes out at bg0S.
+    '.cm-activeLine': { backgroundColor: `color-mix(in srgb, ${g.fg} 10%, transparent)` },
     '.cm-gutters': { backgroundColor: g.bg0H, color: g.bg4, border: 'none' },
     '.cm-activeLineGutter': { backgroundColor: g.bg0S, color: g.fg3 },
     '.cm-lineNumbers .cm-gutterElement': { padding: '0 10px 0 14px' },
