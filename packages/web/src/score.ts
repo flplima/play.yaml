@@ -148,6 +148,8 @@ function pageMarkup(svg: SVGSVGElement): string {
 /**
  * The element ids sounding at each stop of the cursor, built once per render
  * so that a lookup per animation frame is a binary search and no OSMD call.
+ * A note stays in the list for as long as it lasts, not just at the stop it
+ * starts on: a whole note under running 16ths stays lit for the whole bar.
  */
 export interface CursorIndex {
   /** Quarter beats of each stop, ascending. */
@@ -164,16 +166,19 @@ function buildCursorIndex(osmd: OpenSheetMusicDisplay): CursorIndex {
   // overlay at every one of thousands of steps.
   cursor.reset();
   const it = cursor.Iterator;
+  let ringing: { id: string; end: number }[] = [];
   while (!it.EndReached) {
-    const here: string[] = [];
+    const at = it.currentTimeStamp.RealValue * 4;
+    ringing = ringing.filter((r) => r.end > at + 1e-6);
+    // The cursor lists the notes that start here; a chord is one element.
     for (const g of cursor.GNotesUnderCursor()) {
-      if (!g.sourceNote.isRest()) {
-        const id = (g as unknown as { getSVGGElement?: () => SVGGElement | undefined }).getSVGGElement?.()?.id;
-        if (id) here.push(id);
-      }
+      if (g.sourceNote.isRest()) continue;
+      const id = (g as unknown as { getSVGGElement?: () => SVGGElement | undefined }).getSVGGElement?.()?.id;
+      if (!id || ringing.some((r) => r.id === id)) continue;
+      ringing.push({ id, end: at + g.sourceNote.Length.RealValue * 4 });
     }
-    beats.push(it.currentTimeStamp.RealValue * 4);
-    ids.push(here);
+    beats.push(at);
+    ids.push(ringing.map((r) => r.id));
     it.moveToNext();
   }
   cursor.reset();

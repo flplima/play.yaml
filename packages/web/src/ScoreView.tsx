@@ -4,12 +4,15 @@
  * The editor says what a score is made of, the roll shows what it does, and
  * this shows it the way a musician would be handed it. Pages are rendered by
  * OpenSheetMusicDisplay (see score.ts) into white cards on the dark app, and while the song
- * plays the notes sounding at the transport's beat are coloured.
+ * plays the notes sounding at the transport's beat are coloured, each for as long as it lasts.
+ * The view follows the playback until you scroll it yourself (follow.ts).
  */
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CircleX, LoaderCircle, TriangleAlert } from 'lucide-react';
 import { activeAt, renderScore, scoreXml, RenderedScore } from './score';
 import { Button } from '@/components/ui/button';
+import FollowButton from './FollowButton';
+import { watchManualScroll } from './follow';
 
 interface Props {
   text: string;
@@ -48,6 +51,22 @@ export default function ScoreView({ text, visible, playing, currentBeat }: Props
   const scroller = useRef<HTMLDivElement>(null);
   const pagesRef = useRef<HTMLDivElement>(null);
   const lastXml = useRef<string | null>(null);
+
+  // Following: on with every play, off once you scroll by hand.
+  const [following, setFollowing] = useState(true);
+  const recheck = useRef(false);
+  useEffect(() => {
+    if (playing) setFollowing(true);
+  }, [playing]);
+  useEffect(() => {
+    const box = scroller.current;
+    if (!box) return;
+    return watchManualScroll(box, () => setFollowing(false));
+  }, []);
+  const resume = () => {
+    recheck.current = true;
+    setFollowing(true);
+  };
 
   // Engrave: off the keystroke path, debounced, and only while on screen.
   useEffect(() => {
@@ -110,8 +129,11 @@ export default function ScoreView({ text, visible, playing, currentBeat }: Props
     if (!visible) return;
     const ids = playing && rendered ? activeAt(rendered.cursor, currentBeat) : [];
     const next = ids.map((id) => notes.current.get(id)).filter((el): el is Element => !!el);
-    // A frame in which nothing changed (most of them) touches no DOM.
-    if (next.length === lit.current.length && next.every((el, i) => el === lit.current[i])) return;
+    // A frame in which nothing changed (most of them) touches no DOM, unless
+    // following just came back on and the page may need to catch up.
+    const same = next.length === lit.current.length && next.every((el, i) => el === lit.current[i]);
+    if (same && !recheck.current) return;
+    recheck.current = false;
     lit.current.forEach((el) => el.classList.remove('playing'));
     next.forEach((el) => el.classList.add('playing'));
     lit.current = next;
@@ -120,7 +142,7 @@ export default function ScoreView({ text, visible, playing, currentBeat }: Props
     // note inside it is already on screen, so most changes do nothing.
     const note = next[0];
     const box = scroller.current;
-    if (!note || !box) return;
+    if (!note || !box || !following) return;
     const n = note.getBoundingClientRect();
     const b = box.getBoundingClientRect();
     const margin = 48;
@@ -128,12 +150,13 @@ export default function ScoreView({ text, visible, playing, currentBeat }: Props
       // Land the system a quarter of the way down, so the next one is in view too.
       box.scrollTo({ top: box.scrollTop + (n.top - b.top) - b.height * 0.25, behavior: 'smooth' });
     }
-  }, [currentBeat, playing, rendered, visible]);
+  }, [currentBeat, playing, rendered, visible, following]);
 
   const warningText = useMemo(() => warnings.join('\n'), [warnings]);
 
   return (
     <div className="relative flex h-full min-h-0 flex-col">
+      {playing && !following && rendered && <FollowButton onClick={resume} />}
       {((busy && rendered) || compileError || warnings.length > 0) && (
         <div className="flex shrink-0 items-center gap-3 border-b border-border bg-card px-4 py-1 text-xs">
           {busy && rendered && (
