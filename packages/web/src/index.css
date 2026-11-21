@@ -142,6 +142,50 @@
   }
 }
 
+/* The phone's bottom sheets (ui/sheet.tsx): the sheet slides, its scrim fades. */
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes sheet-out {
+  to {
+    transform: translateY(100%);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@utility animate-sheet {
+  &[data-state='open'] {
+    animation: sheet-in 220ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  &[data-state='closed'] {
+    animation: sheet-out 160ms ease-in forwards;
+  }
+}
+@utility animate-fade {
+  &[data-state='open'] {
+    animation: fade-in 220ms ease-out;
+  }
+  &[data-state='closed'] {
+    animation: fade-out 160ms ease-in forwards;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-sheet,
+  .animate-fade {
+    animation: none !important;
+  }
+}
+
 /*
  * Sheet music pages are cream paper (gruvbox light bg0) on the dark app. The
  * engraving itself is the same SVG the PDF export prints on white with black

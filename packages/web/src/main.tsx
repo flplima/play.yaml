@@ -3,6 +3,16 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 import { preloadPlayer } from './player';
+import { isIOS } from './usePhone';
+
+// iOS zooms into any field under 16 px when it takes focus (the phone editor
+// is 13), and stays zoomed. maximum-scale=1 stops that, and iOS still lets you
+// pinch-zoom: it ignores the cap for gestures. Android honours the cap, so it
+// only goes on iOS.
+if (isIOS) {
+  const viewport = document.querySelector('meta[name="viewport"]');
+  viewport?.setAttribute('content', `${viewport.getAttribute('content')}, maximum-scale=1`);
+}
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

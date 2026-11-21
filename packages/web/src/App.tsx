@@ -19,7 +19,7 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import { DEFAULT_CONTENT, DEFAULT_EXAMPLE, EXAMPLES, LISTED_EXAMPLES, loadExample } from './examples';
-import SongPicker from './SongPicker';
+import SongPicker, { SongSheet } from './SongPicker';
 import PianoRoll from './PianoRoll';
 import HarmonyView from './HarmonyView';
 import ScoreView from './ScoreView';
@@ -51,10 +51,16 @@ import { gruvboxEditorTheme } from './editorTheme';
 import { useMidi } from './useMidi';
 import { clearShareHash, decodeShareHash, encodeShareHash, isShareHash } from './share';
 import { usePersisted } from './storage';
+import { GithubMark } from './icons';
+import { isIOS, usePhone, useVisualViewport } from './usePhone';
+import { PhoneHeader, PhoneTabBar, PlayerBar, SymbolBar, type MainTab } from './PhoneBars';
+import SoundSheet from './SoundSheet';
+import MoreSheet from './MoreSheet';
 
 type Source =
   | { kind: 'example'; name: string }
-  | { kind: 'file'; name: string; handle: FileSystemFileHandle }
+  /** No handle where the browser can't write files back (iOS, Firefox): Save downloads it. */
+  | { kind: 'file'; name: string; handle: FileSystemFileHandle | null }
   | { kind: 'shared' };
 
 function compile(text: string): { song: CompiledSong | null; error: string | null } {
@@ -74,15 +80,6 @@ function download(blob: Blob, filename: string): void {
   a.click();
   // A large file (a PDF of a long score) is still being read when click() returns.
   setTimeout(() => URL.revokeObjectURL(url), 30_000);
-}
-
-/** lucide-react dropped brand icons, so the GitHub mark is inline. */
-function GithubMark() {
-  return (
-    <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z" />
-    </svg>
-  );
 }
 
 const canOpenFiles = 'showOpenFilePicker' in window;
@@ -141,7 +138,19 @@ export default function App() {
   const [loop, setLoop] = useState(true);
   const [metronome, setMetronome] = useState(false);
   const [showPanel, setShowPanel] = useState(true);
-  const [mainTab, setMainTab] = useState<'editor' | 'roll' | 'score' | 'harmony'>('editor');
+  const [mainTab, setMainTab] = useState<MainTab>('editor');
+  // A phone gets one column: bars top and bottom, and the panels as sheets.
+  const phone = usePhone();
+  useVisualViewport(phone);
+  const [sheet, setSheet] = useState<null | 'songs' | 'sound' | 'more'>(null);
+  const sheetProps = (name: 'songs' | 'sound' | 'more') => ({
+    open: sheet === name,
+    onOpenChange: (open: boolean) => setSheet(open ? name : null),
+  });
+  // While the editor has focus on a phone, the symbol row stands in for the player and the tabs.
+  const [editorFocused, setEditorFocused] = useState(false);
+  const typing = phone && editorFocused && mainTab === 'editor';
+  const fileInput = useRef<HTMLInputElement>(null);
   const [currentBeat, setCurrentBeat] = useState(0);
   // The player polls this ref every beat, so toggling works mid-playback.
   const metronomeRef = useRef(false);
@@ -287,6 +296,10 @@ export default function App() {
   };
 
   const openFile = async () => {
+    if (!canOpenFiles) {
+      fileInput.current?.click();
+      return;
+    }
     try {
       const [handle] = await window.showOpenFilePicker({
         types: [{ description: 'play.yaml score', accept: { 'application/yaml': ['.yaml', '.yml'] } }],
@@ -305,8 +318,30 @@ export default function App() {
     }
   };
 
+  /** The picker's choice where there is no File System Access: read once, saved as a download. */
+  const openPicked = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      const content = await file.text();
+      stop();
+      clearShareHash();
+      setSource({ kind: 'file', name: file.name, handle: null });
+      setText(content);
+      setDirty(false);
+      setStatus(null);
+    } catch (err) {
+      setStatus(`Could not open file: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
   const saveFile = useCallback(async () => {
     if (source.kind !== 'file') return;
+    if (!source.handle) {
+      download(new Blob([text], { type: 'text/yaml' }), source.name);
+      setDirty(false);
+      setStatus(`Downloaded ${source.name}`);
+      return;
+    }
     try {
       const writable = await source.handle.createWritable();
       await writable.write(text);
@@ -473,9 +508,51 @@ export default function App() {
     });
   };
 
+  const handleMetronomeChange = (on: boolean) => {
+    metronomeRef.current = on;
+    setMetronome(on);
+  };
+
+  // What the phone's top row says: the piece and its composer, or the file and its title.
+  const example = source.kind === 'example' ? EXAMPLES.find((e) => e.name === source.name) : undefined;
+  const songTitle =
+    source.kind === 'example'
+      ? (example?.title ?? source.name)
+      : source.kind === 'file'
+        ? source.name
+        : (lastGoodSong?.title ?? 'Shared score');
+  const songSubtitle =
+    source.kind === 'example' ? example?.composer : source.kind === 'file' ? lastGoodSong?.title : 'from a share link';
+  const edited = source.kind === 'file' ? dirty : source.kind === 'example' && exampleEdits.current.has(source.name);
+
   return (
     <TooltipProvider delayDuration={400} skipDelayDuration={200}>
-    <div className="flex h-full flex-col bg-background text-foreground">
+    {/*
+      One <Tabs> around the whole studio, so the phone's tab bar at the bottom
+      and the desktop's row on top drive the same four views.
+    */}
+    <Tabs
+      value={mainTab}
+      onValueChange={(v) => setMainTab(v as MainTab)}
+      className={cn(
+        'gap-0 bg-background text-foreground',
+        // On a phone the studio is pinned to the visible part of the page (see useVisualViewport).
+        phone
+          ? 'fixed inset-x-0 top-[var(--vv-top,0px)] h-[var(--vv-h,100dvh)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]'
+          : 'h-full',
+      )}
+    >
+      {phone ? (
+        <PhoneHeader
+          title={songTitle}
+          subtitle={songSubtitle}
+          edited={edited}
+          onOpenSongs={() => setSheet('songs')}
+          onShare={() => void shareLink()}
+          canShare={!!text}
+          onOpenMore={() => setSheet('more')}
+        />
+      ) : (
       <header className="flex flex-wrap items-center gap-2 border-b border-border bg-card px-4 py-2.5">
         <h1 className="text-sm font-semibold tracking-tight">
           <button
@@ -497,8 +574,8 @@ export default function App() {
           onSelect={selectExample}
         />
 
-        <Hint label={canOpenFiles ? 'Open a .play.yaml file from disk' : 'File System Access API not supported in this browser'}>
-          <Button onClick={openFile} disabled={!canOpenFiles}>
+        <Hint label={canOpenFiles ? 'Open a .play.yaml file from disk' : 'Open a .play.yaml file (Save downloads a copy)'}>
+          <Button onClick={() => void openFile()}>
             <FolderOpen />
             Open…
           </Button>
@@ -510,8 +587,8 @@ export default function App() {
               {source.name}
               {dirty && <span className="ml-1 text-warning">●</span>}
             </span>
-            <Hint label="Save to the opened file (Ctrl+S)">
-              <Button onClick={() => void saveFile()} disabled={!dirty}>
+            <Hint label={source.handle ? 'Save to the opened file (Ctrl+S)' : "Download it: this browser can't write back to the file (Ctrl+S)"}>
+              <Button onClick={() => void saveFile()} disabled={!!source.handle && !dirty}>
                 <Save />
                 Save
               </Button>
@@ -590,14 +667,10 @@ export default function App() {
         </Hint>
 
       </header>
+      )}
 
       <main className="flex min-h-0 flex-1">
-        <div className="relative flex min-w-0 flex-1">
-        <Tabs
-          value={mainTab}
-          onValueChange={(v) => setMainTab(v as typeof mainTab)}
-          className="min-w-0 flex-1 gap-0 overflow-hidden"
-        >
+        <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
           {/*
             Four views of the same score. The editor is what it says; the roll
             is what it does; the score is how a musician would read it; the
@@ -606,6 +679,7 @@ export default function App() {
             selection, and the canvases are cheap to leave sitting there, so
             the inactive ones are hidden with CSS rather than unmounted.
           */}
+          {!phone && (
           <TabsList
             variant="line"
             aria-label="Main view"
@@ -621,7 +695,13 @@ export default function App() {
               </TabsTrigger>
             ))}
           </TabsList>
-          <TabsContent value="editor" forceMount className="relative min-h-0 overflow-hidden data-[state=inactive]:hidden">
+          )}
+          <TabsContent
+            value="editor"
+            forceMount
+            // 13 px on a phone, as in the prototype: a bar's line still runs off the right, and scrolls.
+            className={cn('relative min-h-0 overflow-hidden data-[state=inactive]:hidden', phone && '[&_.cm-scroller]:text-[13px]')}
+          >
             {playing && !editorFollowing && <FollowButton onClick={followEditor} />}
             <CodeMirror
               value={text}
@@ -635,18 +715,20 @@ export default function App() {
               height="100%"
               style={{ height: '100%' }}
               extensions={[yaml(), playingNoteExtension]}
+              onUpdate={(update) => {
+                if (update.focusChanged) setEditorFocused(update.view.hasFocus);
+              }}
             />
           </TabsContent>
           <TabsContent value="roll" forceMount className="min-h-0 data-[state=inactive]:hidden">
             <PianoRoll song={song} currentBeat={currentBeat} />
           </TabsContent>
           <TabsContent value="harmony" forceMount className="min-h-0 data-[state=inactive]:hidden">
-            <HarmonyView song={song} currentBeat={currentBeat} />
+            <HarmonyView song={song} currentBeat={currentBeat} compact={phone} />
           </TabsContent>
           <TabsContent value="score" forceMount className="min-h-0 data-[state=inactive]:hidden">
             <ScoreView text={text} visible={mainTab === 'score'} playing={playing} currentBeat={currentBeat} />
           </TabsContent>
-        </Tabs>
 
         {/* Compile errors, warnings and the last action's status, only when there is one. */}
         {(error || song?.warnings?.length || status) && (
@@ -685,6 +767,7 @@ export default function App() {
           inside it. The canvases' ResizeObservers redraw as the main area
           resizes, and once more at the final size.
         */}
+        {!phone && (
         <div
           className={cn(
             'shrink-0 overflow-hidden border-l border-border bg-card transition-[width,border-color,visibility] duration-200 ease-in-out motion-reduce:transition-none',
@@ -705,10 +788,7 @@ export default function App() {
               loop={loop}
               onLoopChange={setLoop}
               metronome={metronome}
-              onMetronomeChange={(v) => {
-                metronomeRef.current = v;
-                setMetronome(v);
-              }}
+              onMetronomeChange={handleMetronomeChange}
             />
             <RoutingPanel
               samples={samples}
@@ -720,9 +800,90 @@ export default function App() {
             <TrackMonitor song={lastGoodSong} currentBeat={currentBeat} playing={playing} />
           </aside>
         </div>
+        )}
       </main>
 
-    </div>
+      {phone &&
+        (typing ? (
+          <SymbolBar
+            view={() => editorView.current}
+            playing={playing}
+            canPlay={!!song}
+            onPlay={() => void play()}
+            onStop={stop}
+          />
+        ) : (
+          <>
+            <PlayerBar
+              song={song ?? lastGoodSong}
+              playing={playing}
+              currentBeat={currentBeat}
+              onPlay={() => void play()}
+              onStop={stop}
+              loop={loop}
+              onLoopChange={setLoop}
+              onOpenSound={() => setSheet('sound')}
+            />
+            <PhoneTabBar />
+          </>
+        ))}
+    </Tabs>
+
+    {phone && (
+      <>
+        <SongSheet
+          {...sheetProps('songs')}
+          value={source.kind === 'example' ? source.name : ''}
+          onSelect={(name) => void selectExample(name)}
+        />
+        <SoundSheet
+          {...sheetProps('sound')}
+          midiSupported={midi.supported}
+          outputMode={outputMode}
+          onOutputModeChange={setOutputMode}
+          masterVolume={masterVolume}
+          onVolumeChange={handleVolumeChange}
+          loop={loop}
+          onLoopChange={setLoop}
+          metronome={metronome}
+          onMetronomeChange={handleMetronomeChange}
+          routing={
+            <RoutingPanel samples={samples} midi={midi} routes={routes} onRouteChange={handleRouteChange} disabled={false} />
+          }
+          monitor={<TrackMonitor song={lastGoodSong} currentBeat={currentBeat} playing={playing} />}
+        />
+        <MoreSheet
+          {...sheetProps('more')}
+          onOpenFile={() => void openFile()}
+          openHint={isIOS ? 'from Files, iCloud or Downloads' : 'from this device'}
+          file={source.kind === 'file' ? { name: source.name, dirty, inPlace: !!source.handle } : null}
+          onSave={() => void saveFile()}
+          hasSong={!!song}
+          hasText={!!text}
+          rendering={rendering}
+          makingPdf={makingPdf}
+          onMidi={downloadMid}
+          onMp3={() => void downloadMp3()}
+          onPdf={() => void downloadPdf()}
+          onYaml={downloadYaml}
+          onShare={() => void shareLink()}
+        />
+      </>
+    )}
+
+    {/*
+      Open, where the browser has no File System Access (iOS, Firefox). No
+      `accept`: iOS greys out files whose type it doesn't know, and .yaml is one.
+    */}
+    <input
+      ref={fileInput}
+      type="file"
+      hidden
+      onChange={(e) => {
+        void openPicked(e.target.files?.[0]);
+        e.target.value = ''; // the same file again is still a change
+      }}
+    />
     </TooltipProvider>
   );
 }

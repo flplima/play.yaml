@@ -4,6 +4,7 @@ import { CATEGORIES, EXAMPLES, LISTED_EXAMPLES } from './examples';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 import {
   Command,
   CommandEmpty,
@@ -29,15 +30,6 @@ interface SongPickerProps {
 export default function SongPicker({ value, placeholder, onSelect }: SongPickerProps) {
   const [open, setOpen] = useState(false);
 
-  const groups = useMemo(
-    () =>
-      CATEGORIES.map((category) => ({
-        category,
-        items: LISTED_EXAMPLES.filter((e) => e.category === category),
-      })).filter((g) => g.items.length > 0),
-    [],
-  );
-
   // A score opened by name that the picker does not list (a stored pointer) still shows its title.
   const selected = EXAMPLES.find((e) => e.name === value);
   const label = selected ? (selected.title ?? selected.name) : (placeholder ?? 'Pick a score…');
@@ -61,43 +53,99 @@ export default function SongPicker({ value, placeholder, onSelect }: SongPickerP
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="start">
-        <Command
-          // `value` is the file name we select by; what the user types is matched
-          // against the title, the composer and the style, never the file name.
-          filter={(_itemValue, search, keywords) => {
-            const haystack = (keywords ?? []).join(' ').toLowerCase();
-            return haystack.includes(search.toLowerCase()) ? 1 : 0;
+        <SongList
+          value={value}
+          onSelect={(name) => {
+            setOpen(false);
+            onSelect(name);
           }}
-        >
-          <CommandInput placeholder="Search scores…" />
-          <CommandList>
-            <CommandEmpty>No score matches.</CommandEmpty>
-            {groups.map((group) => (
-              <CommandGroup key={group.category} heading={group.category}>
-                {group.items.map((example) => (
-                  <CommandItem
-                    key={example.name}
-                    value={example.name}
-                    keywords={[example.title ?? '', example.composer ?? '', example.category ?? '']}
-                    onSelect={(name) => {
-                      setOpen(false);
-                      onSelect(name);
-                    }}
-                  >
-                    <Check
-                      className={cn('self-center', example.name === value ? 'opacity-100' : 'opacity-0')}
-                    />
-                    <span className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate">{example.title ?? example.name}</span>
-                      <span className="truncate text-[10px] text-muted-foreground">{example.composer}</span>
-                    </span>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            ))}
-          </CommandList>
-        </Command>
+        />
       </PopoverContent>
     </Popover>
+  );
+}
+
+interface SongSheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  value: string;
+  onSelect: (name: string) => void;
+}
+
+/** The same list on a phone: a tall sheet, rows big enough for a thumb. */
+export function SongSheet({ open, onOpenChange, value, onSelect }: SongSheetProps) {
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        title="Scores"
+        className="h-[calc(100dvh-3.5rem)]"
+        bodyClassName="flex flex-col overflow-hidden"
+        // The search field would pop the keyboard over the list: focus stays on the sheet.
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <SongList
+          touch
+          value={value}
+          onSelect={(name) => {
+            onOpenChange(false);
+            onSelect(name);
+          }}
+        />
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function SongList({ value, onSelect, touch = false }: { value: string; onSelect: (name: string) => void; touch?: boolean }) {
+  const groups = useMemo(
+    () =>
+      CATEGORIES.map((category) => ({
+        category,
+        items: LISTED_EXAMPLES.filter((e) => e.category === category),
+      })).filter((g) => g.items.length > 0),
+    [],
+  );
+
+  return (
+    <Command
+      className={cn(touch && 'min-h-0 flex-1 rounded-none bg-transparent')}
+      // `value` is the file name we select by; what the user types is matched
+      // against the title, the composer and the style, never the file name.
+      filter={(_itemValue, search, keywords) => {
+        const haystack = (keywords ?? []).join(' ').toLowerCase();
+        return haystack.includes(search.toLowerCase()) ? 1 : 0;
+      }}
+    >
+      {/* 16 px on a phone: iOS zooms into any smaller field that takes focus. */}
+      <CommandInput placeholder="Search title or composer" className={cn(touch && 'h-11 text-base')} />
+      <CommandList className={cn(touch && 'max-h-none min-h-0 flex-1 overscroll-contain px-2 pb-4')}>
+        <CommandEmpty>No score matches.</CommandEmpty>
+        {groups.map((group) => (
+          <CommandGroup key={group.category} heading={group.category}>
+            {group.items.map((example) => (
+              <CommandItem
+                key={example.name}
+                value={example.name}
+                keywords={[example.title ?? '', example.composer ?? '', example.category ?? '']}
+                onSelect={onSelect}
+                className={cn(
+                  touch &&
+                    'min-h-13 gap-3 rounded-lg px-3 text-sm data-[selected=true]:bg-transparent [&_svg]:size-4',
+                  touch && example.name === value && 'bg-primary/10 data-[selected=true]:bg-primary/10',
+                )}
+              >
+                <Check className={cn('self-center', example.name === value ? 'opacity-100' : 'opacity-0')} />
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate">{example.title ?? example.name}</span>
+                  <span className={cn('truncate text-muted-foreground', touch ? 'text-xs' : 'text-[10px]')}>
+                    {example.composer}
+                  </span>
+                </span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        ))}
+      </CommandList>
+    </Command>
   );
 }
