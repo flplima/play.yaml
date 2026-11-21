@@ -18,6 +18,7 @@
  * never leaves a stale picture behind.
  */
 import { Toggle } from '@/components/ui/toggle';
+import { cn } from '@/lib/utils';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { GRUVBOX, QUALITY_COLORS, fgAlpha, trackColor, withAlpha } from './palette';
 import { DRUM_CHANNEL, type CompiledSong } from '@play.yaml/core';
@@ -27,7 +28,15 @@ interface Props {
   song: CompiledSong | null;
   /** Transport position, in beats. */
   currentBeat: number;
+  /**
+   * A phone: one picture at a time, the clock or the Tonnetz, chosen above
+   * it, so each gets the whole width instead of half the height.
+   */
+  compact?: boolean;
 }
+
+/** Room the compact view's switches take above its picture. */
+const COMPACT_TOP = 60;
 
 /** Beats a released note takes to fade out. */
 const FADE_BEATS = 0.5;
@@ -119,10 +128,11 @@ function triangleAt(i: number, j: number, minor: boolean): [number, number][] {
   return minor ? [[i, j], [i + 1, j], [i + 1, j - 1]] : [[i, j], [i + 1, j], [i, j + 1]];
 }
 
-export default function HarmonyView({ song, currentBeat }: Props) {
+export default function HarmonyView({ song, currentBeat, compact = false }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [fifths, setFifths] = useState(false);
+  const [picture, setPicture] = useState<'clock' | 'tonnetz'>('clock');
   const data = useMemo(() => pitchedNotes(song), [song]);
   const progression = useMemo(() => chordProgression(song), [song]);
   const names = useMemo(() => spelling(song), [song]);
@@ -163,13 +173,19 @@ export default function HarmonyView({ song, currentBeat }: Props) {
       const chord = span ? span.chord : exactChord(now.held, now.bass);
 
       // Side by side when wide, stacked when narrow, the strip under both.
+      // Compact draws only the picture picked above it.
       const ch = progression.length ? h - STRIP_H : h;
-      const wide = w >= ch * 1.15;
-      const clockBox = wide ? { x: 0, y: 0, w: w / 2, h: ch } : { x: 0, y: 0, w, h: ch / 2 };
-      const tonnBox = wide ? { x: w / 2, y: 0, w: w / 2, h: ch } : { x: 0, y: ch / 2, w, h: ch / 2 };
-
-      drawClock(ctx, clockBox, now, chord, fifths, names);
-      drawTonnetz(ctx, tonnBox, progression, span ? idx : -1, now, names);
+      if (compact) {
+        const box = { x: 0, y: COMPACT_TOP, w, h: ch - COMPACT_TOP };
+        if (picture === 'clock') drawClock(ctx, box, now, chord, fifths, names);
+        else drawTonnetz(ctx, box, progression, span ? idx : -1, now, names);
+      } else {
+        const wide = w >= ch * 1.15;
+        const clockBox = wide ? { x: 0, y: 0, w: w / 2, h: ch } : { x: 0, y: 0, w, h: ch / 2 };
+        const tonnBox = wide ? { x: w / 2, y: 0, w: w / 2, h: ch } : { x: 0, y: ch / 2, w, h: ch / 2 };
+        drawClock(ctx, clockBox, now, chord, fifths, names);
+        drawTonnetz(ctx, tonnBox, progression, span ? idx : -1, now, names);
+      }
       if (progression.length) drawStrip(ctx, { x: 0, y: ch, w, h: STRIP_H }, progression, currentBeat, names);
     };
 
@@ -183,20 +199,56 @@ export default function HarmonyView({ song, currentBeat }: Props) {
       alive = false;
       observer.disconnect();
     };
-  }, [data, progression, names, currentBeat, fifths]);
+  }, [data, progression, names, currentBeat, fifths, compact, picture]);
+
+  const order = (
+    <Toggle
+      pressed={fifths}
+      onPressedChange={setFifths}
+      variant="outline"
+      size="sm"
+      className={cn(
+        'h-auto min-w-0 bg-card/80 font-normal text-muted-foreground',
+        compact ? 'h-11 px-3 text-xs' : 'absolute left-3 top-3 px-2 py-1 text-[11px]',
+      )}
+    >
+      Order: {fifths ? 'circle of fifths' : 'chromatic'}
+    </Toggle>
+  );
 
   return (
     <div ref={wrapRef} className="relative h-full w-full overflow-hidden bg-stage">
       <canvas ref={canvasRef} className="block h-full w-full" />
-      <Toggle
-        pressed={fifths}
-        onPressedChange={setFifths}
-        variant="outline"
-        size="sm"
-        className="absolute left-3 top-3 h-auto min-w-0 bg-card/80 px-2 py-1 text-[11px] font-normal text-muted-foreground"
-      >
-        Order: {fifths ? 'circle of fifths' : 'chromatic'}
-      </Toggle>
+      {compact ? (
+        <div className="absolute inset-x-3 top-3 flex items-center justify-between gap-2">
+          <div role="radiogroup" aria-label="Picture" className="flex rounded-lg border border-border bg-card/80 p-0.5">
+            {(
+              [
+                ['clock', 'Circle'],
+                ['tonnetz', 'Tonnetz'],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                role="radio"
+                aria-checked={picture === id}
+                onClick={() => setPicture(id)}
+                className={cn(
+                  'h-10 rounded-md px-3.5 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  picture === id ? 'bg-primary/15 text-primary' : 'text-muted-foreground',
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {/* The order moves the clock's pitches; the Tonnetz has its own. */}
+          {picture === 'clock' && order}
+        </div>
+      ) : (
+        order
+      )}
     </div>
   );
 }
@@ -208,7 +260,8 @@ function drawClock(
 ) {
   const cx = box.x + box.w / 2;
   const cy = box.y + box.h / 2;
-  const R = Math.max(40, Math.min(box.w, box.h) / 2 - 38);
+  // Room outside the ring for the labels: "D#/Eb" at 11 px reaches 41 px past it.
+  const R = Math.max(40, Math.min(box.w, box.h) / 2 - 46);
   const pos = (pc: number) => {
     const idx = fifths ? (pc * 7) % 12 : pc;
     const a = -Math.PI / 2 + (idx * Math.PI) / 6;
